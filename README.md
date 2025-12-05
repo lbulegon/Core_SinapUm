@@ -205,33 +205,18 @@ pip install -r requirements.txt
 ### 5. Configurar Variáveis de Ambiente
 
 ```bash
-# No servidor, criar arquivo .env
+# No servidor, copiar arquivo de exemplo e editar
 cd /opt/openmind-ai
+cp ENV_EXAMPLE.txt .env
 nano .env
 ```
 
-Conteúdo mínimo do `.env`:
+**IMPORTANTE**: Ajuste os valores no arquivo `.env`, especialmente:
+- `OPENMIND_ORG_API_KEY` - Sua chave API do OpenMind.org
+- `OPENMIND_AI_API_KEY` - Chave de autenticação (opcional)
+- `CORS_ORIGINS` - Origens permitidas (não use `*` em produção)
 
-```env
-# API Keys
-OPENMIND_ORG_API_KEY=your_api_key_here
-OPENMIND_AI_API_KEY=your_backup_api_key_here
-
-# Configurações da Aplicação
-OPENMIND_ORG_BASE_URL=https://api.openmind.org/v1
-OPENMIND_ORG_MODEL=openmind-vision
-
-# Logging
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-LOG_DIR=/var/log/openmind-ai
-LOKI_ENABLED=True
-LOKI_URL=http://localhost:3100/loki/api/v1/push
-
-# Servidor
-HOST=0.0.0.0
-PORT=8000
-```
+O arquivo `ENV_EXAMPLE.txt` contém todas as variáveis documentadas e organizadas por seções.
 
 ### 6. Criar Serviço systemd
 
@@ -280,20 +265,45 @@ systemctl status openmind-ai
 
 ### Variáveis de Ambiente
 
-O arquivo `.env` no servidor contém todas as configurações. Principais variáveis:
+O arquivo `.env` no servidor contém todas as configurações, organizadas em seções:
+
+#### 🔑 API Keys (Obrigatórias)
 
 | Variável | Descrição | Exemplo |
 |----------|-----------|---------|
-| `OPENMIND_ORG_API_KEY` | Chave API OpenMind.org (obrigatória) | `sk-...` |
-| `OPENMIND_AI_API_KEY` | Chave API alternativa | `sk-...` |
-| `OPENMIND_ORG_BASE_URL` | URL base da API | `https://api.openmind.org/v1` |
-| `OPENMIND_ORG_MODEL` | Modelo de IA a usar | `openmind-vision` |
-| `LOG_LEVEL` | Nível de log | `INFO`, `DEBUG`, `WARNING`, `ERROR` |
-| `LOG_FORMAT` | Formato dos logs | `json` ou `text` |
-| `LOG_DIR` | Diretório para logs | `/var/log/openmind-ai` |
-| `LOKI_ENABLED` | Habilitar Loki | `True` ou `False` |
+| `OPENMIND_ORG_API_KEY` | Chave API OpenMind.org (obrigatória) | `om1_live_...` |
+| `OPENMIND_ORG_BASE_URL` | URL base da API OpenMind | `https://api.openmind.org/api/core/openai` |
+| `OPENMIND_ORG_MODEL` | Modelo de IA a usar | `qwen2.5-vl-72b-instruct` |
+| `OPENMIND_AI_API_KEY` | Chave para autenticação (opcional) | `om1_live_...` |
+
+#### 🖼️ Configurações de Imagem
+
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
+| `MAX_IMAGE_SIZE_MB` | Tamanho máximo da imagem | `10` |
+| `ALLOWED_IMAGE_FORMATS` | Formatos permitidos | `jpeg,jpg,png,webp` |
+| `IMAGE_MAX_DIMENSION` | Dimensão máxima em pixels | `2048` |
+
+#### ⚙️ Servidor e Performance
+
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
 | `HOST` | Endereço do servidor | `0.0.0.0` |
 | `PORT` | Porta da aplicação | `8000` |
+| `RATE_LIMIT_PER_MINUTE` | Limite de requisições/min | `100` |
+| `CORS_ORIGINS` | Origens CORS permitidas | `*` |
+
+#### 📊 Logging e Monitoramento
+
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
+| `LOG_LEVEL` | Nível de log | `INFO` |
+| `LOG_FORMAT` | Formato dos logs | `json` |
+| `LOG_DIR` | Diretório para logs | `/var/log/openmind-ai` |
+| `LOKI_ENABLED` | Habilitar Loki | `True` |
+| `LOKI_URL` | URL do Loki | `http://localhost:3100/loki/api/v1/push` |
+
+**📝 Nota**: Veja o arquivo `ENV_EXAMPLE.txt` para todas as variáveis disponíveis com documentação completa.
 
 ### Firewall
 
