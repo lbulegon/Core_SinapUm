@@ -1,0 +1,22 @@
+[Unit]
+Description=SinapUm Django - Página Inicial do Servidor
+After=network.target
+
+[Service]
+Type=notify
+User=root
+WorkingDirectory=/root/SinapUm/setup
+Environment="PATH=/root/SinapUm/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=setup.settings"
+ExecStart=/root/SinapUm/venv/bin/gunicorn setup.wsgi:application --bind 0.0.0.0:80 --workers 3 --timeout 120 --access-logfile - --error-logfile -
+Restart=always
+RestartSec=10
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sinapum-django
+
+[Install]
+WantedBy=multi-user.target
+

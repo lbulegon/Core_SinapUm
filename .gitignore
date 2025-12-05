@@ -1,0 +1,199 @@
+# ============================================
+# Python - Arquivos gerados e compilados
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.pyc
+*.pyo
+*.pyd
+
+# ============================================
+# Virtual Environment
+# ============================================
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv
+
+# ============================================
+# Django - Arquivos do projeto
+# ============================================
+# Banco de dados
+*.sqlite3
+*.db
+db.sqlite3
+db.sqlite3-journal
+
+# Arquivos estáticos e mídia
+staticfiles/
+static/
+media/
+/staticfiles/
+/static/
+/media/
+
+# Arquivos gerados
+*.pot
+*.mo
+local_settings.py
+settings_local.py
+
+# Projeto Django - Setup (manter estrutura, ignorar apenas arquivos gerados)
+setup/db.sqlite3
+setup/staticfiles/
+setup/media/
+setup/**/__pycache__/
+setup/*.log
+
+# ============================================
+# Projeto Django antigo - REMOVIDO (ignorar se recriado)
+# ============================================
+sinapum_project/
+
+# ============================================
+# Logs
+# ============================================
+*.log
+*.log.*
+logs/
+/var/log/
+
+# ============================================
+# Ambiente e variáveis de ambiente
+# ============================================
+.env
+.env.local
+.env.*.local
+*.env
+!ENV_EXAMPLE.txt
+!ENV_EXAMPLE.txt.example
+
+# ============================================
+# IDEs e editores
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# Arquivos do sistema operacional
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# Backup e arquivos temporários
+# ============================================
+*.bak
+*.backup
+*.tmp
+*.temp
+backups/
+backup/
+*.tar.gz
+*.zip
+
+# ============================================
+# Testes e cobertura
+# ============================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+*.cover
+*.py,cover
+
+# ============================================
+# Jupyter Notebook
+# ============================================
+.ipynb_checkpoints
+
+# ============================================
+# Ferramentas Python
+# ============================================
+.python-version
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+celerybeat-schedule
+celerybeat.pid
+
+# ============================================
+# Node.js (se usar frontend)
+# ============================================
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ============================================
+# Arquivos de saída dos testes de imagem/JSON
+# ============================================
+test_image_json_output*.json
+test_image_json_report.txt
+image_content_analysis*.json
+image_content_analysis_report.txt
+
+# ============================================
+# Configurações secretas e sensíveis
+# ============================================
+*.key
+*.pem
+*.secret
+
+# ============================================
+# Arquivos do servidor
+# ============================================
+*.pid
+*.sock
+
+# ============================================
+# Cache e arquivos temporários
+# ============================================
+*.cache
+.cache/
+tmp/
+temp/
+
+# ============================================
+# Outros projetos (se houver)
+# ============================================
+openmind-ai/
