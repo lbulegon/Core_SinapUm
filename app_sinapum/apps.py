@@ -1,7 +1,6 @@
 from django.apps import AppConfig
 
 
-class HomeConfig(AppConfig):
+class AppSinapumConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'home'
-
+    name = 'app_sinapum'
