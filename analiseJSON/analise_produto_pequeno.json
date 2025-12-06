@@ -1,0 +1,27 @@
+﻿{
+    "success":  true,
+    "data":  {
+                 "nome_produto":  "Produto identificado",
+                 "categoria":  "NÃ£o identificada",
+                 "subcategoria":  "",
+                 "descricao":  "AnÃ¡lise de imagem em desenvolvimento",
+                 "caracteristicas":  {
+
+                                     },
+                 "compatibilidade":  {
+
+                                     },
+                 "codigo_barras":  null,
+                 "dimensoes_embalagem":  {
+                                             "altura_cm":  null,
+                                             "largura_cm":  null,
+                                             "profundidade_cm":  null
+                                         },
+                 "peso_embalagem_gramas":  null,
+                 "preco_visivel":  null
+             },
+    "error":  null,
+    "error_code":  null,
+    "confidence":  0.95,
+    "processing_time_ms":  49
+}

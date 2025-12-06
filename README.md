@@ -474,6 +474,11 @@ systemctl restart promtail
 
 ### Configuração no Grafana
 
+
+Admin
+TroqueEstaSenha123
+
+
 1. **Adicionar Loki como Data Source:**
    - Acesse Grafana → Configuration → Data Sources
    - Adicione Loki
