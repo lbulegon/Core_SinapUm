@@ -308,3 +308,4 @@ python manage.py startapp nome_do_app
 
 6. **Adicionar JavaScript** (se necessário)
 
+

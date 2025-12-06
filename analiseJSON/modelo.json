@@ -1,0 +1,72 @@
+{
+    "produto": {
+      "nome": "1 Million Royal 50ml",
+      "marca": "Paco Rabanne",
+      "descricao": "Perfume masculino 1 Million Royal, Paco Rabanne, 50 ml, Parfum Natural Spray.",
+      "categoria": "Perfumaria",
+      "subcategoria": "Perfume Masculino",
+      "familia_olfativa": null,
+      "volume_ml": 50,
+      "tipo": "Parfum",
+      "codigo_barras": "3470498996753",
+      "imagens": [
+        "1million_royal_frente.jpg",
+        "1million_royal_verso.jpg",
+        "1million_royal_preco.jpg"
+      ]
+    },
+  
+    "produto_generico_catalogo": {
+      "nome": "1 Million Royal",
+      "marca": "Paco Rabanne",
+      "categoria": "Perfumaria",
+      "subcategoria": "Perfume Masculino",
+      "variantes": [
+        "50ml",
+        "Parfum"
+      ]
+    },
+  
+    "produto_viagem": {
+      "preco_compra_usd": 55.0,
+      "preco_compra_brl": 308.0,
+      "margem_lucro_percentual": 100,
+      "preco_venda_usd": 110.0,
+      "preco_venda_brl": 616.0
+    },
+  
+    "estabelecimento": {
+      "nome": "Mega",
+      "endereco": null,
+      "localizacao_geografica": {
+        "latitude": -25.5095,
+        "longitude": -54.6115
+      },
+      "observacao": "Loja Mega (duty free / importados) em Ciudad del Este. Coordenadas aproximadas para referência de compra."
+    },
+  
+    "campanha": {
+      "id": null,
+      "nome": "Viagem Shopper – Mega Perfumes",
+      "data_registro": "2025-11-22T00:00:00Z"
+    },
+  
+    "shopper": {
+      "id": null,
+      "nome": "Shopper responsável",
+      "pais": "Paraguai"
+    },
+  
+    "cadastro_meta": {
+      "capturado_por": "VitrineZap (IA Évora)",
+      "data_captura": "2025-11-22T00:00:00Z",
+      "fonte": "Fotos tiradas na loja Mega",
+      "confianca_da_leitura": 0.97,
+      "detalhes_rotulo": {
+        "frase": "conscious & vegan formula",
+        "origem": "Made in France",
+        "duracao": "very long-lasting"
+      }
+    }
+  }
+  

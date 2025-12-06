@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Imagens - SinapUm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-menu a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-menu a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-menu a.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-menu a.grafana-link {
+            background: #667eea;
+            color: white;
+        }
+        
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #5568d3;
+        }
+        
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        input[type="file"] {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .result-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f8f9ff;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .result-success {
+            border-left-color: #28a745;
+        }
+        
+        .result-error {
+            border-left-color: #dc3545;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .result-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .result-meta {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .json-display {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1.5rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .messages {
+            margin-bottom: 1.5rem;
+        }
+        
+        .message {
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">🚀 SinapUm</div>
+            <ul class="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/analyze/" class="active">📸 Análise de Imagens</a></li>
+                <li><a href="/admin/">Admin</a></li>
+                <li><a href="http://69.169.102.84:3000/login" target="_blank" class="grafana-link">📊 Grafana</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="container">
+            <h1>📸 Análise de Imagens com OpenMind AI</h1>
+            
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="message {{ message.tags }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <form method="post" enctype="multipart/form-data" class="upload-form">
+                {% csrf_token %}
+                <div class="upload-area">
+                    <h2>Selecione uma ou mais imagens para análise</h2>
+                    <p style="color: #666; margin-top: 1rem;">Formatos suportados: JPEG, PNG, WebP</p>
+                    <p style="color: #667eea; margin-top: 0.5rem; font-weight: 600;">💡 Dica: Selecione múltiplas imagens do mesmo produto para melhor análise</p>
+                    <input type="file" name="images" accept="image/*" multiple required style="margin-top: 1.5rem;">
+                    <div id="selected-files" style="margin-top: 1rem; padding: 1rem; background: #f8f9ff; border-radius: 5px; display: none;">
+                        <p style="font-weight: 600; color: #333; margin-bottom: 0.5rem;">Arquivos selecionados:</p>
+                        <ul id="files-list" style="list-style: none; padding: 0; margin: 0;"></ul>
+                    </div>
+                </div>
+                <button type="submit" class="btn">🔍 Analisar Imagem(ns)</button>
+            </form>
+            
+            <script>
+                // Mostrar arquivos selecionados
+                document.querySelector('input[name="images"]').addEventListener('change', function(e) {
+                    const filesList = document.getElementById('files-list');
+                    const selectedFilesDiv = document.getElementById('selected-files');
+                    
+                    if (e.target.files.length > 0) {
+                        filesList.innerHTML = '';
+                        Array.from(e.target.files).forEach((file, index) => {
+                            const li = document.createElement('li');
+                            li.style.padding = '0.5rem';
+                            li.style.borderBottom = '1px solid #ddd';
+                            li.innerHTML = `${index + 1}. ${file.name} <span style="color: #666;">(${(file.size / 1024).toFixed(2)} KB)</span>`;
+                            filesList.appendChild(li);
+                        });
+                        selectedFilesDiv.style.display = 'block';
+                    } else {
+                        selectedFilesDiv.style.display = 'none';
+                    }
+                });
+            </script>
+            
+            {% if result %}
+            <div class="result-container {% if result.success %}result-success{% else %}result-error{% endif %}">
+                <div class="result-header">
+                    <div>
+                        <div class="result-title">
+                            {% if result.success %}
+                                {% if multiple_images %}
+                                    ✅ Análise de {{ saved_images|length }} Imagem(ns) Concluída
+                                {% else %}
+                                    ✅ Análise Concluída
+                                {% endif %}
+                            {% else %}
+                                ❌ Erro na Análise
+                            {% endif %}
+                        </div>
+                        <div class="result-meta" style="margin-top: 0.5rem;">
+                            {% if not multiple_images %}
+                                {% if image_name %}Arquivo: {{ image_name }}<br>{% endif %}
+                            {% else %}
+                                Total de imagens: {{ saved_images|length }}<br>
+                                {% if mesmo_produto %}
+                                    <span style="color: #28a745; font-weight: bold;">✓ Todas as imagens são do mesmo produto</span><br>
+                                {% else %}
+                                    <span style="color: #ffc107; font-weight: bold;">⚠ ATENÇÃO: As imagens parecem ser de produtos diferentes!</span><br>
+                                {% endif %}
+                            {% endif %}
+                            {% if result.processing_time_ms %}Tempo de processamento: {{ result.processing_time_ms }}ms<br>{% endif %}
+                            {% if result.confidence %}Confiança: {{ result.confidence|floatformat:2 }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if multiple_images and saved_images %}
+                <div style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: #333;">Imagens Enviadas ({{ saved_images|length }}):</h3>
+                    <p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">💡 Clique no botão ❌ para excluir uma imagem da análise</p>
+                    <div id="images-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        {% for img in saved_images %}
+                        <div id="image-card-{{ forloop.counter0 }}" class="image-card" style="position: relative; text-align: center; background: #f8f9ff; padding: 1rem; border-radius: 10px; border: 2px solid #e0e0e0; transition: all 0.3s;">
+                            <button onclick="removeImage({{ forloop.counter0 }}, '{{ img.image_path|escapejs }}')" 
+                                    class="remove-image-btn" 
+                                    style="position: absolute; top: 5px; right: 5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;"
+                                    title="Excluir esta imagem">
+                                ❌
+                            </button>
+                            <img src="{{ img.image_url }}" alt="{{ img.filename }}" style="max-width: 100%; max-height: 200px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                            <p style="margin-top: 0.5rem; color: #666; font-size: 0.85rem; word-break: break-all;">{{ img.filename }}</p>
+                            <p style="margin-top: 0.25rem; color: #999; font-size: 0.75rem;">{{ img.image_path }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div id="image-removal-status" style="margin-top: 1rem; display: none;"></div>
+                </div>
+                
+                <script>
+                    // Função para remover imagem (será definida após carregar currentProductJSON)
+                    function setupRemoveImageFunction() {
+                        window.removeImage = function(index, imagePath) {
+                            if (!confirm('Tem certeza que deseja excluir esta imagem da análise?\n\nA imagem será removida do JSON do produto.')) {
+                                return;
+                            }
+                            
+                            const imageCard = document.getElementById('image-card-' + index);
+                            const statusDiv = document.getElementById('image-removal-status');
+                            
+                            // Remover visualmente com animação
+                            if (imageCard) {
+                                imageCard.style.opacity = '0.5';
+                                imageCard.style.transform = 'scale(0.95)';
+                                imageCard.style.borderColor = '#dc3545';
+                                
+                                // Remover caminho da imagem do JSON do produto
+                                if (typeof currentProductJSON !== 'undefined' && currentProductJSON && currentProductJSON.produto && currentProductJSON.produto.imagens) {
+                                    const imagensArray = currentProductJSON.produto.imagens;
+                                    const imageIndex = imagensArray.indexOf(imagePath);
+                                    if (imageIndex > -1) {
+                                        imagensArray.splice(imageIndex, 1);
+                                    }
+                                    
+                                    // Atualizar visualizador JSON se estiver visível
+                                    const jsonViewer = document.getElementById('json-viewer');
+                                    if (jsonViewer && jsonViewer.style.display !== 'none') {
+                                        jsonViewer.innerHTML = '<pre class="json-display">' + JSON.stringify(currentProductJSON, null, 2) + '</pre>';
+                                    }
+                                    
+                                    // Atualizar contador de imagens no título
+                                    const remainingCards = Array.from(document.querySelectorAll('.image-card')).filter(card => card.style.display !== 'none');
+                                    if (remainingCards.length > 0) {
+                                        const title = document.querySelector('.result-title');
+                                        if (title && title.textContent.includes('Imagem')) {
+                                            title.textContent = '✅ Análise de ' + remainingCards.length + ' Imagem(ns) Concluída';
+                                        }
+                                    }
+                                }
+                                
+                                // Esconder card após animação
+                                setTimeout(() => {
+                                    imageCard.style.display = 'none';
+                                    
+                                    // Verificar se há imagens restantes
+                                    const visibleCards = Array.from(document.querySelectorAll('.image-card')).filter(card => card.style.display !== 'none');
+                                    
+                                    if (statusDiv) {
+                                        if (visibleCards.length <= 1) {
+                                            statusDiv.style.display = 'block';
+                                            statusDiv.style.background = '#fff3cd';
+                                            statusDiv.style.border = '1px solid #ffc107';
+                                            statusDiv.style.borderRadius = '5px';
+                                            statusDiv.style.padding = '1rem';
+                                            statusDiv.innerHTML = '<p style="color: #856404; font-weight: bold; margin: 0;">⚠️ Atenção: Resta apenas uma imagem. Considere manter múltiplas imagens para melhor qualidade.</p>';
+                                        } else if (visibleCards.length === 0) {
+                                            statusDiv.style.display = 'block';
+                                            statusDiv.style.background = '#f8d7da';
+                                            statusDiv.style.border = '1px solid #dc3545';
+                                            statusDiv.style.borderRadius = '5px';
+                                            statusDiv.style.padding = '1rem';
+                                            statusDiv.innerHTML = '<p style="color: #721c24; font-weight: bold; margin: 0;">❌ Todas as imagens foram removidas. Recarregue a página para enviar novas imagens.</p>';
+                                        } else {
+                                            statusDiv.style.display = 'block';
+                                            statusDiv.style.background = '#d4edda';
+                                            statusDiv.style.border = '1px solid #28a745';
+                                            statusDiv.style.borderRadius = '5px';
+                                            statusDiv.style.padding = '1rem';
+                                            statusDiv.innerHTML = '<p style="color: #155724; font-weight: bold; margin: 0;">✅ Imagem removida com sucesso! Imagens restantes: ' + visibleCards.length + '</p>';
+                                            setTimeout(() => {
+                                                statusDiv.style.display = 'none';
+                                            }, 3000);
+                                        }
+                                    }
+                                }, 300);
+                            }
+                        };
+                        
+                        // Adicionar evento de hover nos botões de remoção
+                        document.querySelectorAll('.remove-image-btn').forEach(btn => {
+                            btn.addEventListener('mouseenter', function() {
+                                this.style.transform = 'scale(1.1)';
+                                this.style.background = '#c82333';
+                            });
+                            btn.addEventListener('mouseleave', function() {
+                                this.style.transform = 'scale(1)';
+                                this.style.background = '#dc3545';
+                            });
+                        });
+                    }
+                    
+                    // Chamar após o DOM estar pronto
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', setupRemoveImageFunction);
+                    } else {
+                        setupRemoveImageFunction();
+                    }
+                    
+                    // Variável global para armazenar todas as imagens ativas
+                    if (typeof allActiveImages === 'undefined') {
+                        allActiveImages = [];
+                        try {
+                            {% if saved_images_json %}
+                            allActiveImages = JSON.parse('{{ saved_images_json|escapejs }}');
+                            {% elif image_url %}
+                            allActiveImages = [{
+                                filename: '{{ image_name|escapejs }}',
+                                saved_filename: '{{ saved_filename|escapejs }}',
+                                image_path: '{{ image_path|escapejs }}',
+                                image_url: '{{ image_url|escapejs }}'
+                            }];
+                            {% endif %}
+                        } catch(e) {
+                            console.error('Erro ao parsear imagens:', e);
+                        }
+                    }
+                    
+                    // Função para obter CSRF token
+                    function getCookie(name) {
+                        let cookieValue = null;
+                        if (document.cookie && document.cookie !== '') {
+                            const cookies = document.cookie.split(';');
+                            for (let i = 0; i < cookies.length; i++) {
+                                const cookie = cookies[i].trim();
+                                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                    break;
+                                }
+                            }
+                        }
+                        return cookieValue;
+                    }
+                    
+                    // Função para adicionar mais imagens
+                    const addMoreImagesBtn = document.getElementById('add-more-images-btn');
+                    if (addMoreImagesBtn) {
+                        addMoreImagesBtn.addEventListener('click', function() {
+                            document.getElementById('add-images-modal').style.display = 'flex';
+                        });
+                    }
+                    
+                    const cancelAddImagesBtn = document.getElementById('cancel-add-images');
+                    if (cancelAddImagesBtn) {
+                        cancelAddImagesBtn.addEventListener('click', function() {
+                            document.getElementById('add-images-modal').style.display = 'none';
+                            document.getElementById('add-images-form').reset();
+                            document.getElementById('new-images-preview').innerHTML = '';
+                        });
+                    }
+                    
+                    // Preview de novas imagens
+                    const addImagesInput = document.querySelector('#add-images-form input[name="images"]');
+                    if (addImagesInput) {
+                        addImagesInput.addEventListener('change', function(e) {
+                            const preview = document.getElementById('new-images-preview');
+                            preview.innerHTML = '';
+                            
+                            if (e.target.files.length > 0) {
+                                preview.innerHTML = '<p style="font-weight: bold; margin-bottom: 0.5rem;">Imagens selecionadas:</p>';
+                                Array.from(e.target.files).forEach((file, index) => {
+                                    const reader = new FileReader();
+                                    reader.onload = function(e) {
+                                        const div = document.createElement('div');
+                                        div.style.marginBottom = '0.5rem';
+                                        div.style.padding = '0.5rem';
+                                        div.style.border = '1px solid #ddd';
+                                        div.style.borderRadius = '5px';
+                                        div.innerHTML = `
+                                            <img src="${e.target.result}" style="max-width: 100px; max-height: 100px; border-radius: 5px; margin-right: 0.5rem; vertical-align: middle;">
+                                            <span>${file.name} (${(file.size / 1024).toFixed(2)} KB)</span>
+                                        `;
+                                        preview.appendChild(div);
+                                    };
+                                    reader.readAsDataURL(file);
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Enviar formulário de adicionar imagens
+                    const addImagesForm = document.getElementById('add-images-form');
+                    if (addImagesForm) {
+                        addImagesForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            
+                            const formData = new FormData(this);
+                            const submitBtn = this.querySelector('button[type="submit"]');
+                            const originalText = submitBtn.textContent;
+                            
+                            submitBtn.disabled = true;
+                            submitBtn.textContent = 'Adicionando...';
+                            
+                            const csrftoken = getCookie('csrftoken');
+                            
+                            fetch(window.location.pathname, {
+                                method: 'POST',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRFToken': csrftoken
+                                },
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    // Adicionar novas imagens ao array
+                                    const container = document.getElementById('images-container');
+                                    data.new_images.forEach((newImg, index) => {
+                                        const cardIndex = allActiveImages.length;
+                                        allActiveImages.push(newImg);
+                                        
+                                        // Adicionar card visual
+                                        const card = document.createElement('div');
+                                        card.id = `image-card-${cardIndex}`;
+                                        card.className = 'image-card';
+                                        card.style.cssText = 'position: relative; text-align: center; background: #f8f9ff; padding: 1rem; border-radius: 10px; border: 2px solid #e0e0e0; transition: all 0.3s;';
+                                        card.innerHTML = `
+                                            <button onclick="removeImage(${cardIndex}, '${newImg.image_path.replace(/'/g, "\\'")}')" 
+                                                    class="remove-image-btn" 
+                                                    style="position: absolute; top: 5px; right: 5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;"
+                                                    title="Excluir esta imagem">
+                                                ❌
+                                            </button>
+                                            <img src="${newImg.image_url}" alt="${newImg.filename}" style="max-width: 100%; max-height: 200px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                                            <p style="margin-top: 0.5rem; color: #666; font-size: 0.85rem; word-break: break-all;">${newImg.filename}</p>
+                                            <p style="margin-top: 0.25rem; color: #999; font-size: 0.75rem;">${newImg.image_path}</p>
+                                        `;
+                                        container.appendChild(card);
+                                        
+                                        // Reconfigurar botão de remoção
+                                        const removeBtn = card.querySelector('.remove-image-btn');
+                                        if (removeBtn) {
+                                            removeBtn.addEventListener('mouseenter', function() {
+                                                this.style.transform = 'scale(1.1)';
+                                                this.style.background = '#c82333';
+                                            });
+                                            removeBtn.addEventListener('mouseleave', function() {
+                                                this.style.transform = 'scale(1)';
+                                                this.style.background = '#dc3545';
+                                            });
+                                        }
+                                    });
+                                    
+                                    // Atualizar contador
+                                    const title = document.querySelector('.result-title');
+                                    if (title && title.textContent.includes('Imagem')) {
+                                        title.textContent = '✅ Análise de ' + allActiveImages.length + ' Imagem(ns) Concluída';
+                                    }
+                                    
+                                    // Fechar modal e mostrar mensagem
+                                    document.getElementById('add-images-modal').style.display = 'none';
+                                    document.getElementById('add-images-form').reset();
+                                    document.getElementById('new-images-preview').innerHTML = '';
+                                    
+                                    const statusDiv = document.getElementById('image-removal-status');
+                                    statusDiv.style.display = 'block';
+                                    statusDiv.style.background = '#d4edda';
+                                    statusDiv.style.border = '1px solid #28a745';
+                                    statusDiv.style.borderRadius = '5px';
+                                    statusDiv.style.padding = '1rem';
+                                    statusDiv.innerHTML = '<p style="color: #155724; font-weight: bold; margin: 0;">✅ ' + data.message + ' Clique em "Reanalisar Produto" para atualizar a análise.</p>';
+                                    
+                                    // Reconfigurar função de remoção
+                                    setupRemoveImageFunction();
+                                } else {
+                                    alert('Erro ao adicionar imagens: ' + (data.error || 'Erro desconhecido'));
+                                }
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = originalText;
+                            })
+                            .catch(error => {
+                                console.error('Erro:', error);
+                                alert('Erro ao adicionar imagens: ' + error.message);
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = originalText;
+                            });
+                        });
+                    }
+                    
+                    // Função para reanalisar produto
+                    const reanalyzeBtn = document.getElementById('reanalyze-btn');
+                    if (reanalyzeBtn) {
+                        reanalyzeBtn.addEventListener('click', function() {
+                            if (!confirm('Deseja reanalisar todas as imagens ativas?\n\nIsso atualizará o JSON do produto com base nas imagens não removidas.')) {
+                                return;
+                            }
+                            
+                            const btn = this;
+                            const originalText = btn.textContent;
+                            btn.disabled = true;
+                            btn.textContent = '🔄 Reanalisando...';
+                            
+                            // Coletar caminhos de todas as imagens ativas (não removidas)
+                            const activeImagePaths = [];
+                            document.querySelectorAll('.image-card').forEach((card) => {
+                                if (card && card.style.display !== 'none') {
+                                    const pathElement = card.querySelector('p:last-child');
+                                    if (pathElement) {
+                                        const imgPath = pathElement.textContent.trim();
+                                        if (imgPath) {
+                                            activeImagePaths.push(imgPath);
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            // Se não encontrou nenhuma imagem visível, tentar usar allActiveImages
+                            if (activeImagePaths.length === 0 && typeof allActiveImages !== 'undefined' && allActiveImages.length > 0) {
+                                allActiveImages.forEach(img => {
+                                    if (img && img.image_path) {
+                                        activeImagePaths.push(img.image_path);
+                                    }
+                                });
+                            }
+                            
+                            if (activeImagePaths.length === 0) {
+                                alert('Nenhuma imagem ativa para reanalisar.');
+                                btn.disabled = false;
+                                btn.textContent = originalText;
+                                return;
+                            }
+                            
+                            // Criar formulário para enviar
+                            const form = document.createElement('form');
+                            form.method = 'POST';
+                            form.style.display = 'none';
+                            
+                            // Adicionar CSRF token
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = 'csrfmiddlewaretoken';
+                            csrfInput.value = getCookie('csrftoken');
+                            form.appendChild(csrfInput);
+                            
+                            // Adicionar action
+                            const actionInput = document.createElement('input');
+                            actionInput.type = 'hidden';
+                            actionInput.name = 'action';
+                            actionInput.value = 'reanalyze';
+                            form.appendChild(actionInput);
+                            
+                            // Adicionar caminhos das imagens
+                            activeImagePaths.forEach(path => {
+                                const input = document.createElement('input');
+                                input.type = 'hidden';
+                                input.name = 'image_paths[]';
+                                input.value = path;
+                                form.appendChild(input);
+                            });
+                            
+                            document.body.appendChild(form);
+                            form.submit();
+                        });
+                    }
+                </script>
+                {% elif image_url %}
+                <div style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 1rem; color: #333;">Imagem Enviada:</h3>
+                    <div id="images-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div id="image-card-0" class="image-card" style="position: relative; text-align: center; background: #f8f9ff; padding: 1rem; border-radius: 10px; border: 2px solid #e0e0e0;">
+                            <button onclick="removeImage(0, '{{ image_path|escapejs }}')" 
+                                    class="remove-image-btn" 
+                                    style="position: absolute; top: 5px; right: 5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;"
+                                    title="Excluir esta imagem">
+                                ❌
+                            </button>
+                            <img src="{{ image_url }}" alt="Imagem enviada" style="max-width: 100%; max-height: 200px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                            <p style="margin-top: 0.5rem; color: #666; font-size: 0.85rem; word-break: break-all;">{{ image_name }}</p>
+                            <p style="margin-top: 0.25rem; color: #999; font-size: 0.75rem;">{{ image_path }}</p>
+                        </div>
+                    </div>
+                    <div id="image-removal-status" style="margin-top: 1rem; display: none;"></div>
+                </div>
+                {% endif %}
+                
+                <!-- Botões de ação após análise (sempre visíveis) -->
+                {% if result.success %}
+                <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button id="add-more-images-btn" class="btn" style="background: #17a2b8; min-width: 200px;">
+                        ➕ Adicionar Mais Imagens
+                    </button>
+                    <button id="reanalyze-btn" class="btn" style="background: #ffc107; color: #000; min-width: 200px;">
+                        🔄 Reanalisar Produto
+                    </button>
+                </div>
+                
+                <!-- Modal para adicionar mais imagens -->
+                <div id="add-images-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 2rem; border-radius: 10px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                        <h3 style="margin-bottom: 1rem; color: #333;">Adicionar Mais Imagens</h3>
+                        <form id="add-images-form" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="file" name="images" accept="image/*" multiple required style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 2px dashed #17a2b8; border-radius: 5px;">
+                            <div id="new-images-preview" style="margin-bottom: 1rem;"></div>
+                            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                                <button type="button" id="cancel-add-images" class="btn" style="background: #6c757d; min-width: 100px;">Cancelar</button>
+                                <button type="submit" class="btn" style="background: #17a2b8; min-width: 100px;">Adicionar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if aviso %}
+                <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px;">
+                    <strong>⚠️ Aviso:</strong> {{ aviso }}
+                </div>
+                {% endif %}
+                
+                {% if result.success and formatted_data %}
+                <div style="margin-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="color: #333; margin: 0;">Dados Extraídos (JSON ÉVORA):</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="edit-form-btn" class="btn" style="background: #ffc107; color: #000; padding: 0.5rem 1rem; font-size: 0.9rem; min-width: auto;">
+                                ✏️ Editar Campos
+                            </button>
+                            <button id="edit-json-btn" class="btn" style="background: #6c757d; color: #fff; padding: 0.5rem 1rem; font-size: 0.9rem; min-width: auto;">
+                                📄 Ver JSON
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="json-viewer">
+                        <pre class="json-display">{{ formatted_data }}</pre>
+                    </div>
+                    
+                    <!-- Incluir formulário de edição -->
+                    {% include 'app_sinapum/product_form.html' %}
+                    
+                    <div id="json-editor-container" style="display: none; margin-top: 1rem;">
+                        <textarea id="json-editor" style="width: 100%; min-height: 400px; font-family: 'Courier New', monospace; font-size: 0.9rem; padding: 1rem; border: 2px solid #667eea; border-radius: 5px; background: #2d2d2d; color: #f8f8f2; resize: vertical;"></textarea>
+                        <div style="margin-top: 1rem; display: flex; gap: 1rem; justify-content: center;">
+                            <button id="save-edit-btn" class="btn" style="background: #28a745; min-width: 150px;">
+                                💾 Salvar Edições
+                            </button>
+                            <button id="cancel-edit-btn" class="btn" style="background: #6c757d; min-width: 150px;">
+                                ❌ Cancelar
+                            </button>
+                        </div>
+                        <div id="edit-status" style="margin-top: 1rem; display: none;"></div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; text-align: center;">
+                        <button id="save-product-btn" class="btn" style="background: #28a745; min-width: 250px;">
+                            💾 Salvar Produto no Banco de Dados
+                        </button>
+                        <div id="save-status" style="margin-top: 1rem; display: none;"></div>
+                    </div>
+                    
+                    {% if produto_json %}
+                    <script>
+                        // Variável global para armazenar o JSON editável
+                        let currentProductJSON;
+                        try {
+                            currentProductJSON = JSON.parse('{{ produto_json|escapejs }}');
+                        } catch(e) {
+                            console.error('Erro ao parsear JSON inicial:', e);
+                            currentProductJSON = {};
+                        }
+                        
+                        // Garantir que setupRemoveImageFunction seja chamado após currentProductJSON estar definido
+                        if (typeof setupRemoveImageFunction === 'function') {
+                            setTimeout(setupRemoveImageFunction, 100);
+                        }
+                        
+                        // Elementos do formulário
+                        const editFormBtn = document.getElementById('edit-form-btn');
+                        const editJsonBtn = document.getElementById('edit-json-btn');
+                        const jsonViewer = document.getElementById('json-viewer');
+                        const productFormContainer = document.getElementById('product-form-container');
+                        const jsonEditorContainer = document.getElementById('json-editor-container');
+                        const jsonEditor = document.getElementById('json-editor');
+                        const saveEditBtn = document.getElementById('save-edit-btn');
+                        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+                        const editStatus = document.getElementById('edit-status');
+                        
+                        // Função para popular formulário com dados do JSON
+                        function populateFormFromJSON(jsonData) {
+                            const produto = jsonData.produto || {};
+                            const produtoViagem = jsonData.produto_viagem || {};
+                            const estabelecimento = jsonData.estabelecimento || {};
+                            const localizacao = estabelecimento.localizacao_geografica || {};
+                            const campanha = jsonData.campanha || {};
+                            const shopper = jsonData.shopper || {};
+                            
+                            // Produto
+                            document.getElementById('produto_nome').value = produto.nome || '';
+                            document.getElementById('produto_marca').value = produto.marca || '';
+                            document.getElementById('produto_descricao').value = produto.descricao || '';
+                            document.getElementById('produto_categoria').value = produto.categoria || '';
+                            document.getElementById('produto_subcategoria').value = produto.subcategoria || '';
+                            document.getElementById('produto_tipo').value = produto.tipo || '';
+                            document.getElementById('produto_volume_ml').value = produto.volume_ml || '';
+                            document.getElementById('produto_codigo_barras').value = produto.codigo_barras || '';
+                            document.getElementById('produto_familia_olfativa').value = produto.familia_olfativa || '';
+                            
+                            // Preços
+                            document.getElementById('preco_compra_brl').value = produtoViagem.preco_compra_brl || '';
+                            document.getElementById('preco_venda_brl').value = produtoViagem.preco_venda_brl || '';
+                            document.getElementById('preco_compra_usd').value = produtoViagem.preco_compra_usd || '';
+                            document.getElementById('margem_lucro_percentual').value = produtoViagem.margem_lucro_percentual || '';
+                            
+                            // Estabelecimento
+                            document.getElementById('estabelecimento_nome').value = estabelecimento.nome || '';
+                            document.getElementById('estabelecimento_endereco').value = estabelecimento.endereco || '';
+                            document.getElementById('estabelecimento_latitude').value = localizacao.latitude || '';
+                            document.getElementById('estabelecimento_longitude').value = localizacao.longitude || '';
+                            document.getElementById('estabelecimento_observacao').value = estabelecimento.observacao || '';
+                            
+                            // Campanha
+                            document.getElementById('campanha_nome').value = campanha.nome || '';
+                            if (campanha.data_registro) {
+                                const date = new Date(campanha.data_registro);
+                                document.getElementById('campanha_data_registro').value = date.toISOString().slice(0, 16);
+                            }
+                            
+                            // Shopper
+                            document.getElementById('shopper_nome').value = shopper.nome || '';
+                            document.getElementById('shopper_pais').value = shopper.pais || '';
+                        }
+                        
+                        // Função para converter formulário para JSON
+                        function formToJSON() {
+                            const json = {
+                                produto: {
+                                    nome: document.getElementById('produto_nome').value,
+                                    marca: document.getElementById('produto_marca').value,
+                                    descricao: document.getElementById('produto_descricao').value,
+                                    categoria: document.getElementById('produto_categoria').value,
+                                    subcategoria: document.getElementById('produto_subcategoria').value || null,
+                                    tipo: document.getElementById('produto_tipo').value || null,
+                                    volume_ml: document.getElementById('produto_volume_ml').value ? parseInt(document.getElementById('produto_volume_ml').value) : null,
+                                    codigo_barras: document.getElementById('produto_codigo_barras').value || null,
+                                    familia_olfativa: document.getElementById('produto_familia_olfativa').value || null,
+                                    imagens: currentProductJSON.produto?.imagens || []
+                                },
+                                produto_viagem: {
+                                    preco_compra_brl: document.getElementById('preco_compra_brl').value ? parseFloat(document.getElementById('preco_compra_brl').value) : null,
+                                    preco_venda_brl: document.getElementById('preco_venda_brl').value ? parseFloat(document.getElementById('preco_venda_brl').value) : null,
+                                    preco_compra_usd: document.getElementById('preco_compra_usd').value ? parseFloat(document.getElementById('preco_compra_usd').value) : null,
+                                    margem_lucro_percentual: document.getElementById('margem_lucro_percentual').value ? parseFloat(document.getElementById('margem_lucro_percentual').value) : null,
+                                    preco_venda_usd: document.getElementById('preco_venda_brl').value && document.getElementById('preco_compra_usd').value ? 
+                                        parseFloat(document.getElementById('preco_venda_brl').value) / (parseFloat(document.getElementById('preco_compra_brl').value) / parseFloat(document.getElementById('preco_compra_usd').value)) : null
+                                },
+                                estabelecimento: {
+                                    nome: document.getElementById('estabelecimento_nome').value || null,
+                                    endereco: document.getElementById('estabelecimento_endereco').value || null,
+                                    localizacao_geografica: {
+                                        latitude: document.getElementById('estabelecimento_latitude').value ? parseFloat(document.getElementById('estabelecimento_latitude').value) : null,
+                                        longitude: document.getElementById('estabelecimento_longitude').value ? parseFloat(document.getElementById('estabelecimento_longitude').value) : null
+                                    },
+                                    observacao: document.getElementById('estabelecimento_observacao').value || null
+                                },
+                                campanha: {
+                                    id: currentProductJSON.campanha?.id || null,
+                                    nome: document.getElementById('campanha_nome').value || null,
+                                    data_registro: document.getElementById('campanha_data_registro').value ? 
+                                        new Date(document.getElementById('campanha_data_registro').value).toISOString() : null
+                                },
+                                shopper: {
+                                    id: currentProductJSON.shopper?.id || null,
+                                    nome: document.getElementById('shopper_nome').value || null,
+                                    pais: document.getElementById('shopper_pais').value || null
+                                },
+                                cadastro_meta: currentProductJSON.cadastro_meta || {},
+                                produto_generico_catalogo: currentProductJSON.produto_generico_catalogo || {}
+                            };
+                            
+                            return json;
+                        }
+                        
+                        // Botão para editar formulário
+                        editFormBtn.addEventListener('click', function() {
+                            populateFormFromJSON(currentProductJSON);
+                            jsonViewer.style.display = 'none';
+                            productFormContainer.style.display = 'block';
+                            editFormBtn.style.display = 'none';
+                            editJsonBtn.style.display = 'none';
+                        });
+                        
+                        // Botão para ver JSON (alternar entre visualização e editor JSON)
+                        let jsonEditorMode = false;
+                        editJsonBtn.addEventListener('click', function() {
+                            if (!jsonEditorMode) {
+                                // Mostrar editor JSON
+                                jsonViewer.style.display = 'none';
+                                productFormContainer.style.display = 'none';
+                                jsonEditorContainer.style.display = 'block';
+                                jsonEditor.value = JSON.stringify(currentProductJSON, null, 2);
+                                editFormBtn.style.display = 'none';
+                                editJsonBtn.textContent = '👁️ Voltar';
+                                jsonEditorMode = true;
+                            } else {
+                                // Voltar para visualização
+                                jsonEditorContainer.style.display = 'none';
+                                jsonViewer.style.display = 'block';
+                                editFormBtn.style.display = 'inline-block';
+                                editJsonBtn.textContent = '📄 Ver JSON';
+                                jsonEditorMode = false;
+                            }
+                        });
+                        
+                        // Botão para cancelar formulário
+                        document.getElementById('cancel-form-btn').addEventListener('click', function() {
+                            productFormContainer.style.display = 'none';
+                            jsonViewer.style.display = 'block';
+                            editFormBtn.style.display = 'inline-block';
+                            editJsonBtn.style.display = 'inline-block';
+                            document.getElementById('form-status').style.display = 'none';
+                        });
+                        
+                        // Botão para salvar formulário
+                        document.getElementById('save-form-btn').addEventListener('click', function() {
+                            const form = document.getElementById('product-edit-form');
+                            if (form.checkValidity()) {
+                                try {
+                                    const updatedJSON = formToJSON();
+                                    currentProductJSON = updatedJSON;
+                                    
+                                    // Atualizar visualizador
+                                    jsonViewer.innerHTML = '<pre class="json-display">' + JSON.stringify(updatedJSON, null, 2) + '</pre>';
+                                    
+                                    // Mostrar mensagem
+                                    const formStatus = document.getElementById('form-status');
+                                    formStatus.style.display = 'block';
+                                    formStatus.innerHTML = '<p style="color: #28a745; font-weight: bold;">✅ Alterações salvas com sucesso!</p>';
+                                    
+                                    // Esconder formulário
+                                    setTimeout(() => {
+                                        productFormContainer.style.display = 'none';
+                                        jsonViewer.style.display = 'block';
+                                        editFormBtn.style.display = 'inline-block';
+                                        editJsonBtn.style.display = 'inline-block';
+                                        formStatus.style.display = 'none';
+                                    }, 2000);
+                                } catch(e) {
+                                    document.getElementById('form-status').style.display = 'block';
+                                    document.getElementById('form-status').innerHTML = '<p style="color: #dc3545; font-weight: bold;">❌ Erro ao salvar: ' + e.message + '</p>';
+                                }
+                            } else {
+                                form.reportValidity();
+                            }
+                        });
+                        
+                        
+                        cancelEditBtn.addEventListener('click', function() {
+                            // Esconder editor JSON e mostrar visualizador
+                            jsonEditorContainer.style.display = 'none';
+                            jsonViewer.style.display = 'block';
+                            editFormBtn.style.display = 'inline-block';
+                            editJsonBtn.style.display = 'inline-block';
+                            editJsonBtn.textContent = '📄 Ver JSON';
+                            jsonEditorMode = false;
+                            editStatus.style.display = 'none';
+                        });
+                        
+                        saveEditBtn.addEventListener('click', function() {
+                            try {
+                                // Validar JSON
+                                const editedJSON = JSON.parse(jsonEditor.value);
+                                
+                                // Atualizar JSON global
+                                currentProductJSON = editedJSON;
+                                
+                                // Atualizar visualizador
+                                jsonViewer.innerHTML = '<pre class="json-display">' + JSON.stringify(editedJSON, null, 2) + '</pre>';
+                                
+                                // Mostrar mensagem de sucesso
+                                editStatus.style.display = 'block';
+                                editStatus.innerHTML = '<p style="color: #28a745; font-weight: bold;">✅ JSON atualizado com sucesso!</p>';
+                                
+                                // Esconder editor após 2 segundos
+                                setTimeout(() => {
+                                    jsonEditorContainer.style.display = 'none';
+                                    jsonViewer.style.display = 'block';
+                                    editFormBtn.style.display = 'inline-block';
+                                    editJsonBtn.style.display = 'inline-block';
+                                    editJsonBtn.textContent = '📄 Ver JSON';
+                                    jsonEditorMode = false;
+                                    editStatus.style.display = 'none';
+                                }, 2000);
+                                
+                            } catch(e) {
+                                editStatus.style.display = 'block';
+                                editStatus.innerHTML = '<p style="color: #dc3545; font-weight: bold;">❌ Erro: JSON inválido. Por favor, verifique a sintaxe.</p>';
+                            }
+                        });
+                        
+                        // Salvar produto no banco
+                        document.getElementById('save-product-btn').addEventListener('click', function() {
+                            const btn = this;
+                            const statusDiv = document.getElementById('save-status');
+                            // Usar o JSON editado se disponível, senão usar o original
+                            const produtoData = typeof currentProductJSON !== 'undefined' ? currentProductJSON : JSON.parse('{{ produto_json|escapejs }}');
+                            
+                            // Desabilitar botão
+                            btn.disabled = true;
+                            btn.textContent = 'Salvando...';
+                            statusDiv.style.display = 'block';
+                            statusDiv.innerHTML = '<p style="color: #666;">⏳ Salvando produto no banco de dados...</p>';
+                            
+                            // Obter CSRF token
+                            function getCookie(name) {
+                                let cookieValue = null;
+                                if (document.cookie && document.cookie !== '') {
+                                    const cookies = document.cookie.split(';');
+                                    for (let i = 0; i < cookies.length; i++) {
+                                        const cookie = cookies[i].trim();
+                                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                            break;
+                                        }
+                                    }
+                                }
+                                return cookieValue;
+                            }
+                            const csrftoken = getCookie('csrftoken');
+                            
+                            // Enviar requisição
+                            fetch('{% url "save_product_json" %}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrftoken
+                                },
+                                body: JSON.stringify({
+                                    produto_json: produtoData
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    btn.style.background = '#28a745';
+                                    btn.textContent = '✅ Produto Salvo!';
+                                    statusDiv.innerHTML = '<p style="color: #28a745; font-weight: bold;">✅ ' + data.message + '</p>';
+                                    // Ocultar mensagem após 5 segundos
+                                    setTimeout(() => {
+                                        btn.textContent = '💾 Salvar Produto no Banco de Dados';
+                                        btn.disabled = false;
+                                        statusDiv.style.display = 'none';
+                                    }, 5000);
+                                } else {
+                                    btn.style.background = '#dc3545';
+                                    btn.textContent = '❌ Erro ao Salvar';
+                                    statusDiv.innerHTML = '<p style="color: #dc3545; font-weight: bold;">❌ Erro: ' + (data.error || 'Erro desconhecido') + '</p>';
+                                    btn.disabled = false;
+                                }
+                            })
+                            .catch(error => {
+                                btn.style.background = '#dc3545';
+                                btn.textContent = '❌ Erro ao Salvar';
+                                statusDiv.innerHTML = '<p style="color: #dc3545; font-weight: bold;">❌ Erro de conexão: ' + error.message + '</p>';
+                                btn.disabled = false;
+                            });
+                        });
+                    </script>
+                    {% endif %}
+                </div>
+                {% elif result.error %}
+                <div style="margin-top: 1rem; padding: 1rem; background: #fff; border-radius: 5px;">
+                    <strong>Erro:</strong> {{ result.error }}
+                    {% if result.error_code %}<br><strong>Código:</strong> {{ result.error_code }}{% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 SinapUm - Servidor VPS OpenMind AI</p>
+    </footer>
+</body>
+</html>
+

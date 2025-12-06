@@ -339,3 +339,4 @@ Veja o app `home` já criado como referência:
 - `/root/SinapUm/setup/home/urls.py` - URLs configuradas
 - `/root/SinapUm/setup/home/templates/home/` - Templates
 
+

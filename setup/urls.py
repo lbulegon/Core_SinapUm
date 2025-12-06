@@ -16,9 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
 from app_sinapum import views
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('analyze/', views.analyze_image, name='analyze_image'),
+    path('analyze/save-product/', views.save_product_json, name='save_product_json'),
     path('admin/', admin.site.urls),
 ]
+
+# Servir arquivos de mídia em desenvolvimento
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

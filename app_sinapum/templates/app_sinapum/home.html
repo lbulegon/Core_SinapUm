@@ -133,6 +133,7 @@
             <div class="logo">🚀 SinapUm</div>
             <ul class="nav-menu">
                 <li><a href="/">Home</a></li>
+                <li><a href="/analyze/">📸 Análise de Imagens</a></li>
                 <li><a href="/admin/">Admin</a></li>
                 <li><a href="{{ grafana_url }}" target="_blank" class="grafana-link">📊 Grafana</a></li>
             </ul>
@@ -143,8 +144,11 @@
         <div class="content">
             <h1>Bem-vindo ao SinapUm</h1>
             <p>Servidor VPS OpenMind AI</p>
-            <p>Gerencie seus serviços e monitore métricas através do Grafana.</p>
-            <a href="{{ grafana_url }}" target="_blank" class="btn">Acessar Grafana</a>
+            <p>Analise imagens de produtos com inteligência artificial e gerencie seus serviços.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem;">
+                <a href="/analyze/" class="btn">📸 Análise de Imagens</a>
+                <a href="{{ grafana_url }}" target="_blank" class="btn">📊 Acessar Grafana</a>
+            </div>
         </div>
     </main>
     

@@ -1,0 +1,155 @@
+<!-- Formulário de Edição de Produto -->
+<div id="product-form-container" style="display: none; margin-top: 1.5rem;">
+    <h3 style="color: #333; margin-bottom: 1.5rem;">📝 Editar Informações do Produto</h3>
+    
+    <form id="product-edit-form" style="background: #f8f9ff; padding: 2rem; border-radius: 10px;">
+        
+        <!-- Seção: Produto -->
+        <div class="form-section" style="margin-bottom: 2rem; padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #667eea;">
+            <h4 style="color: #667eea; margin-bottom: 1rem;">📦 Informações do Produto</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Nome do Produto *</label>
+                    <input type="text" id="produto_nome" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" required>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Marca *</label>
+                    <input type="text" id="produto_marca" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" required>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Descrição</label>
+                <textarea id="produto_descricao" class="form-input" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Categoria *</label>
+                    <input type="text" id="produto_categoria" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" required>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Subcategoria</label>
+                    <input type="text" id="produto_subcategoria" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Tipo</label>
+                    <input type="text" id="produto_tipo" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Volume (ml)</label>
+                    <input type="number" id="produto_volume_ml" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" min="0">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Código de Barras</label>
+                    <input type="text" id="produto_codigo_barras" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Família Olfativa</label>
+                    <input type="text" id="produto_familia_olfativa" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção: Preços -->
+        <div class="form-section" style="margin-bottom: 2rem; padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h4 style="color: #28a745; margin-bottom: 1rem;">💰 Informações de Preço</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Preço de Compra (BRL)</label>
+                    <input type="number" id="preco_compra_brl" class="form-input" step="0.01" min="0" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Preço de Venda (BRL)</label>
+                    <input type="number" id="preco_venda_brl" class="form-input" step="0.01" min="0" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Preço de Compra (USD)</label>
+                    <input type="number" id="preco_compra_usd" class="form-input" step="0.01" min="0" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Margem de Lucro (%)</label>
+                    <input type="number" id="margem_lucro_percentual" class="form-input" step="0.01" min="0" max="1000" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção: Estabelecimento -->
+        <div class="form-section" style="margin-bottom: 2rem; padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #17a2b8;">
+            <h4 style="color: #17a2b8; margin-bottom: 1rem;">🏪 Estabelecimento</h4>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Nome do Estabelecimento</label>
+                <input type="text" id="estabelecimento_nome" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Endereço</label>
+                <input type="text" id="estabelecimento_endereco" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Latitude</label>
+                    <input type="number" id="estabelecimento_latitude" class="form-input" step="0.000001" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Longitude</label>
+                    <input type="number" id="estabelecimento_longitude" class="form-input" step="0.000001" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Observação</label>
+                    <input type="text" id="estabelecimento_observacao" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção: Campanha e Shopper -->
+        <div class="form-section" style="margin-bottom: 2rem; padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h4 style="color: #ffc107; margin-bottom: 1rem;">📋 Campanha e Shopper</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Nome da Campanha</label>
+                    <input type="text" id="campanha_nome" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Data de Registro</label>
+                    <input type="datetime-local" id="campanha_data_registro" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">Nome do Shopper</label>
+                    <input type="text" id="shopper_nome" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #333;">País</label>
+                    <input type="text" id="shopper_pais" class="form-input" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Botões de Ação -->
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+            <button type="button" id="save-form-btn" class="btn" style="background: #28a745; min-width: 200px;">
+                ✅ Salvar Alterações
+            </button>
+            <button type="button" id="cancel-form-btn" class="btn" style="background: #6c757d; min-width: 200px;">
+                ❌ Cancelar
+            </button>
+        </div>
+        
+        <div id="form-status" style="margin-top: 1rem; display: none;"></div>
+    </form>
+</div>
+
