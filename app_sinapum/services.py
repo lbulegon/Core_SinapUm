@@ -12,15 +12,17 @@ OPENMIND_AI_URL = getattr(settings, 'OPENMIND_AI_URL', 'http://127.0.0.1:8000')
 OPENMIND_AI_KEY = getattr(settings, 'OPENMIND_AI_KEY', None)
 
 
-def analyze_image_with_openmind(image_file):
+def analyze_image_with_openmind(image_file, image_path=None, image_url=None):
     """
     Analisa uma imagem usando o OpenMind AI Server.
     
     Args:
         image_file: Arquivo de imagem (Django UploadedFile)
+        image_path: Caminho relativo da imagem salva (ex: "media/uploads/uuid.jpg")
+        image_url: URL completa da imagem (ex: "http://host:port/media/uploads/uuid.jpg")
     
     Returns:
-        dict: Resposta da API do OpenMind AI
+        dict: Resposta da API do OpenMind AI com image_url e image_path incluídos se fornecidos
     """
     try:
         url = f"{OPENMIND_AI_URL}/api/v1/analyze-product-image"
@@ -51,7 +53,8 @@ def analyze_image_with_openmind(image_file):
                         try:
                             modelo_json = transform_evora_to_modelo_json(
                                 result['data'],
-                                image_file.name
+                                image_filename=image_file.name,
+                                image_path=image_path
                             )
                             # Substituir data pelo formato modelo.json
                             result['data'] = modelo_json
@@ -59,6 +62,12 @@ def analyze_image_with_openmind(image_file):
                         except Exception as transform_error:
                             logger.error(f"Erro ao transformar dados: {str(transform_error)}", exc_info=True)
                             # Continuar com dados originais se houver erro na transformação
+                    
+                    # Adicionar image_url e image_path à resposta se fornecidos
+                    if image_url:
+                        result['image_url'] = image_url
+                    if image_path:
+                        result['image_path'] = image_path
                     
                     return result
                 else:
@@ -72,12 +81,19 @@ def analyze_image_with_openmind(image_file):
                             try:
                                 modelo_json = transform_evora_to_modelo_json(
                                     result['data'],
-                                    image_file.name
+                                    image_filename=image_file.name,
+                                    image_path=image_path
                                 )
                                 result['data'] = modelo_json
                                 logger.info("Dados transformados para formato modelo.json")
                             except Exception as transform_error:
                                 logger.error(f"Erro ao transformar dados: {str(transform_error)}", exc_info=True)
+                        
+                        # Adicionar image_url e image_path à resposta se fornecidos
+                        if image_url:
+                            result['image_url'] = image_url
+                        if image_path:
+                            result['image_path'] = image_path
                         
                         return result
                     except ValueError:

@@ -42,6 +42,8 @@ urlpatterns = [
     path('analyze/save-product/', views.save_product_json, name='save_product_json'),
     path('analyze/add-images-ajax/', views.handle_add_images_ajax, name='add_images_ajax'),
     path('analyze/reanalyze-ajax/', views.handle_reanalyze, name='reanalyze_ajax'),
+    # API REST endpoint para análise de imagens (usado pelo Évora)
+    path('api/v1/analyze-product-image', views.api_analyze_product_image, name='api_analyze_product_image'),
     path('admin/', admin.site.urls),
 ]
 
@@ -60,6 +62,6 @@ if AGNOS_AVAILABLE and agnos_views:
         path('api/agnos/validate/', agnos_views.api_validate_agnos, name='api_agnos_validate'),
     ]
 
-# Servir arquivos de mídia em desenvolvimento
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Servir arquivos de mídia (necessário para servir imagens salvas)
+# Em produção, considere usar nginx ou outro servidor web para servir arquivos estáticos
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

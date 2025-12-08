@@ -5,11 +5,16 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from .services import analyze_image_with_openmind, analyze_multiple_images
 from .models import ProdutoJSON
 import json
 import os
+import uuid
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 def home(request):
     """View para a página inicial com menu."""
@@ -83,10 +88,11 @@ def analyze_image(request):
             # Uma única imagem - usar método simples
             image_file = saved_images[0]['file']
             image_file.seek(0)
-            result = analyze_image_with_openmind(image_file)
+            image_path = saved_images[0]['image_path']
+            image_url = saved_images[0]['image_url']
+            result = analyze_image_with_openmind(image_file, image_path=image_path, image_url=image_url)
             
             produto_data = result.get('data', {})
-            image_path = saved_images[0]['image_path']
             
             # Transformar e adicionar caminho da imagem
             from .utils import transform_evora_to_modelo_json
@@ -274,10 +280,11 @@ def handle_reanalyze(request):
     if len(image_files_list) == 1:
         image_file = image_files_list[0]
         image_file.seek(0)
-        result = analyze_image_with_openmind(image_file)
+        image_path = saved_images[0]['image_path']
+        image_url = saved_images[0]['image_url']
+        result = analyze_image_with_openmind(image_file, image_path=image_path, image_url=image_url)
         
         produto_data = result.get('data', {})
-        image_path = saved_images[0]['image_path']
         
         from .utils import transform_evora_to_modelo_json
         if produto_data and result.get('success'):
@@ -414,4 +421,133 @@ def save_product_json(request):
         return JsonResponse({
             'success': False,
             'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_analyze_product_image(request):
+    """
+    API endpoint REST para análise de imagem de produto.
+    Salva a imagem no servidor SinapUm e retorna a URL completa.
+    
+    Endpoint: POST /api/v1/analyze-product-image
+    Content-Type: multipart/form-data
+    Body: image (arquivo de imagem)
+    
+    Response:
+    {
+        "success": true,
+        "data": { ... dados do produto ... },
+        "image_url": "http://69.169.102.84:5000/media/uploads/uuid.jpg",
+        "image_path": "media/uploads/uuid.jpg",
+        "saved_filename": "uuid.jpg"
+    }
+    """
+    try:
+        # Verificar se há imagem na requisição
+        if 'image' not in request.FILES and 'images' not in request.FILES:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nenhuma imagem enviada. Use o campo "image" ou "images" no form-data.',
+                'error_code': 'NO_IMAGE'
+            }, status=400)
+        
+        # Pegar a primeira imagem (suporta tanto 'image' quanto 'images')
+        if 'image' in request.FILES:
+            image_file = request.FILES['image']
+        else:
+            image_files = request.FILES.getlist('images')
+            if not image_files:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Nenhuma imagem válida enviada.',
+                    'error_code': 'NO_IMAGE'
+                }, status=400)
+            image_file = image_files[0]  # Usar primeira imagem para API
+        
+        # Validar tipo de arquivo
+        if not image_file.content_type.startswith('image/'):
+            return JsonResponse({
+                'success': False,
+                'error': f'O arquivo "{image_file.name}" deve ser uma imagem.',
+                'error_code': 'INVALID_FILE_TYPE'
+            }, status=400)
+        
+        # Salvar imagem no servidor SinapUm
+        upload_dir = Path(settings.MEDIA_ROOT) / 'uploads'
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        file_extension = os.path.splitext(image_file.name)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = upload_dir / unique_filename
+        
+        # Salvar arquivo
+        with open(file_path, 'wb+') as destination:
+            for chunk in image_file.chunks():
+                destination.write(chunk)
+        
+        # Gerar URLs da imagem
+        # Caminho relativo (usado no JSON)
+        image_path = f"media/uploads/{unique_filename}"
+        
+        # URL completa para acesso público
+        # Usar ALLOWED_HOSTS ou request.get_host() para URL dinâmica
+        host = request.get_host()
+        scheme = 'https' if request.is_secure() else 'http'
+        # Garantir que MEDIA_URL não tenha barra dupla
+        media_url = settings.MEDIA_URL.rstrip('/')
+        if not media_url.startswith('/'):
+            media_url = '/' + media_url
+        image_url = f"{scheme}://{host}{media_url}uploads/{unique_filename}"
+        
+        logger.info(f"Imagem salva: {image_path} (URL: {image_url})")
+        
+        # Resetar ponteiro do arquivo para análise
+        image_file.seek(0)
+        
+        # Analisar imagem com OpenMind AI (passar image_path e image_url)
+        result = analyze_image_with_openmind(image_file, image_path=image_path, image_url=image_url)
+        
+        # Adicionar informações da imagem salva à resposta
+        if result.get('success'):
+            # Adicionar image_url e image_path à resposta
+            result['image_url'] = image_url
+            result['image_path'] = image_path
+            result['saved_filename'] = unique_filename
+            
+            # Se houver dados do produto, adicionar o caminho da imagem
+            if result.get('data'):
+                produto_data = result['data']
+                
+                # Se já está no formato modelo.json
+                if isinstance(produto_data, dict) and 'produto' in produto_data:
+                    if 'imagens' not in produto_data['produto']:
+                        produto_data['produto']['imagens'] = []
+                    if image_path not in produto_data['produto']['imagens']:
+                        produto_data['produto']['imagens'].insert(0, image_path)
+                    
+                    # Atualizar fonte no cadastro_meta
+                    if 'cadastro_meta' in produto_data:
+                        produto_data['cadastro_meta']['fonte'] = f"Análise automática de imagem: {image_path}"
+                else:
+                    # Formato ÉVORA - adicionar image_path aos dados
+                    if 'imagens' not in produto_data:
+                        produto_data['imagens'] = []
+                    if image_path not in produto_data['imagens']:
+                        produto_data['imagens'].insert(0, image_path)
+        else:
+            # Mesmo se houver erro, retornar URL da imagem salva
+            result['image_url'] = image_url
+            result['image_path'] = image_path
+            result['saved_filename'] = unique_filename
+        
+        return JsonResponse(result, status=200 if result.get('success') else 500)
+        
+    except Exception as e:
+        logger.error(f"Erro na API de análise de imagem: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'error_code': 'INTERNAL_ERROR'
         }, status=500)
