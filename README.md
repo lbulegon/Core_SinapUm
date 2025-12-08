@@ -84,6 +84,24 @@ ssh root@69.169.102.84
 ├── requirements.txt           # Dependências Python (Django, Gunicorn, etc.)
 └── README.md                  # Este arquivo
 
+/root/openmind_ws/             # Workspace do projeto OpenMind (OM1)
+└── OM1/                       # Projeto OpenMind OM1 - Runtime AI modular
+    ├── src/                   # Código fonte principal
+    ├── config/                # Arquivos de configuração
+    ├── tests/                 # Testes automatizados
+    ├── docs/                  # Documentação do projeto
+    ├── scripts/               # Scripts auxiliares
+    ├── gazebo/                # Arquivos do Gazebo (simulação de robôs)
+    ├── mintlify/              # Documentação Mintlify
+    ├── system_hw_test/        # Testes de hardware
+    ├── cyclonedds/            # Configuração CycloneDDS (comunicação ROS2)
+    ├── .venv/                 # Ambiente virtual Python
+    ├── pyproject.toml         # Configuração do projeto Python
+    ├── Dockerfile             # Configuração Docker
+    ├── docker-compose.yml     # Orquestração Docker
+    ├── README.md              # Documentação principal do OM1
+    └── .git/                  # Repositório Git
+
 /data/                         # Diretórios de dados e imagens dos projetos
 ├── vitrinezap/
 │   └── images/                # Imagens do VitrineZap
@@ -138,7 +156,9 @@ ssh root@69.169.102.84
         └── setup_permissions.sh
 ```
 
-**Nota**: Cada projeto possui sua própria estrutura de diretórios para armazenamento de imagens, organizadas por categoria e tipo de arquivo. Os diretórios são criados automaticamente e incluem scripts de configuração de permissões.
+**Notas**:
+- Cada projeto em `/data/` possui sua própria estrutura de diretórios para armazenamento de imagens, organizadas por categoria e tipo de arquivo. Os diretórios são criados automaticamente e incluem scripts de configuração de permissões.
+- `/root/openmind_ws/OM1/` contém o projeto OpenMind OM1, um runtime AI modular para criar agentes de IA multimodais e robôs físicos. Veja mais detalhes no README.md do projeto OM1.
 
 ---
 
