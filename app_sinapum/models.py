@@ -1,11 +1,29 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, URLValidator
+from django.core.exceptions import ValidationError
 try:
     from django.contrib.postgres.fields import JSONField as PostgresJSONField
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
 import json
+from django.conf import settings
+import base64
+import hashlib
+
+# Tentar importar cryptography, se não estiver disponível, usar encoding simples
+try:
+    from cryptography.fernet import Fernet
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+    import warnings
+    warnings.warn(
+        "A biblioteca 'cryptography' não está instalada. "
+        "As credenciais não serão criptografadas. "
+        "Instale com: pip install cryptography>=41.0.0",
+        ImportWarning
+    )
 
 
 class Estabelecimento(models.Model):
@@ -235,3 +253,312 @@ class ProdutoJSON(models.Model):
             import json
             return json.loads(self.dados_json)
         return self.dados_json or {}
+
+
+class ServicoExterno(models.Model):
+    """Model para armazenar credenciais e configurações de serviços externos contratados"""
+    
+    TIPO_SERVICO_CHOICES = [
+        # Serviços de comunicação e API
+        ('twilio', 'Twilio'),
+        ('sendgrid', 'SendGrid'),
+        ('telegram', 'Telegram Bot API'),
+        ('whatsapp', 'WhatsApp Business API'),
+        # Cloud e infraestrutura
+        ('aws', 'AWS'),
+        ('azure', 'Azure'),
+        ('google', 'Google Cloud'),
+        ('firebase', 'Firebase'),
+        ('digitalocean', 'DigitalOcean'),
+        ('linode', 'Linode'),
+        # VPS e Hospedagem
+        ('interserver', 'InterServer'),
+        ('godaddy', 'GoDaddy'),
+        ('namecheap', 'Namecheap'),
+        ('hostgator', 'HostGator'),
+        ('bluehost', 'Bluehost'),
+        ('hostinger', 'Hostinger'),
+        ('siteground', 'SiteGround'),
+        ('dreamhost', 'DreamHost'),
+        ('vultr', 'Vultr'),
+        ('hetzner', 'Hetzner'),
+        ('contabo', 'Contabo'),
+        # Pagamentos
+        ('stripe', 'Stripe'),
+        ('paypal', 'PayPal'),
+        ('mercadopago', 'Mercado Pago'),
+        # Redes Sociais
+        ('facebook', 'Facebook API'),
+        ('instagram', 'Instagram API'),
+        # IA e Machine Learning
+        ('openai', 'OpenAI'),
+        # Outros
+        ('outro', 'Outro'),
+    ]
+    
+    AMBIENTE_CHOICES = [
+        ('desenvolvimento', 'Desenvolvimento'),
+        ('homologacao', 'Homologação'),
+        ('producao', 'Produção'),
+    ]
+    
+    nome = models.CharField(
+        max_length=200,
+        help_text="Nome identificador do serviço (ex: Twilio Principal, Firebase Prod)"
+    )
+    tipo_servico = models.CharField(
+        max_length=50,
+        choices=TIPO_SERVICO_CHOICES,
+        default='outro',
+        help_text="Tipo de serviço contratado"
+    )
+    ambiente = models.CharField(
+        max_length=20,
+        choices=AMBIENTE_CHOICES,
+        default='desenvolvimento',
+        help_text="Ambiente de uso do serviço"
+    )
+    url_base = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="URL base do serviço (ex: https://api.twilio.com)"
+    )
+    usuario = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Usuário/Login para autenticação"
+    )
+    senha = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Senha/Token de autenticação (armazenado de forma criptografada)"
+    )
+    api_key = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="API Key do serviço"
+    )
+    api_secret = models.TextField(
+        blank=True,
+        null=True,
+        help_text="API Secret (armazenado de forma criptografada)"
+    )
+    account_sid = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Account SID (para serviços como Twilio)"
+    )
+    auth_token = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Auth Token (armazenado de forma criptografada)"
+    )
+    # Campos específicos para VPS e Servidores
+    ip_servidor = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        help_text="Endereço IP do servidor VPS"
+    )
+    porta_ssh = models.IntegerField(
+        blank=True,
+        null=True,
+        default=22,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Porta SSH do servidor (padrão: 22)"
+    )
+    usuario_ssh = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Usuário SSH para acesso ao servidor"
+    )
+    senha_ssh = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Senha SSH (armazenado de forma criptografada)"
+    )
+    chave_privada_ssh = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Chave privada SSH (armazenado de forma criptografada)"
+    )
+    url_painel_controle = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="URL do painel de controle (cPanel, Plesk, etc)"
+    )
+    usuario_painel = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Usuário do painel de controle"
+    )
+    senha_painel = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Senha do painel de controle (armazenado de forma criptografada)"
+    )
+    sistema_operacional = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Sistema operacional do servidor (ex: Ubuntu 22.04, CentOS 7)"
+    )
+    porta_ftp = models.IntegerField(
+        blank=True,
+        null=True,
+        default=21,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Porta FTP (padrão: 21)"
+    )
+    usuario_ftp = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Usuário FTP"
+    )
+    senha_ftp = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Senha FTP (armazenado de forma criptografada)"
+    )
+    porta_mysql = models.IntegerField(
+        blank=True,
+        null=True,
+        default=3306,
+        validators=[MinValueValidator(1), MaxValueValidator(65535)],
+        help_text="Porta MySQL/MariaDB (padrão: 3306)"
+    )
+    usuario_mysql = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Usuário do banco de dados MySQL"
+    )
+    senha_mysql = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Senha do banco de dados MySQL (armazenado de forma criptografada)"
+    )
+    nome_banco_dados = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Nome do banco de dados"
+    )
+    credenciais_adicionais = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Credenciais adicionais em formato JSON (ex: project_id, database_url, domain, etc)"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        help_text="Indica se o serviço está ativo e sendo usado"
+    )
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Observações sobre o serviço e credenciais"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Serviço Externo"
+        verbose_name_plural = "Serviços Externos"
+        ordering = ['tipo_servico', 'ambiente', 'nome']
+        unique_together = [['tipo_servico', 'ambiente', 'nome']]
+    
+    def __str__(self):
+        status = "✓" if self.ativo else "✗"
+        return f"{status} {self.get_tipo_servico_display()} - {self.nome} ({self.get_ambiente_display()})"
+    
+    def _get_encryption_key(self):
+        """Gera uma chave de criptografia baseada no SECRET_KEY do Django"""
+        secret_key = settings.SECRET_KEY.encode()
+        # Gera uma chave Fernet a partir do SECRET_KEY
+        key = base64.urlsafe_b64encode(hashlib.sha256(secret_key).digest())
+        return key
+    
+    def _encrypt(self, value):
+        """Criptografa um valor"""
+        if not value:
+            return value
+        try:
+            key = self._get_encryption_key()
+            f = Fernet(key)
+            encrypted = f.encrypt(value.encode())
+            return encrypted.decode()
+        except Exception:
+            # Se falhar a criptografia, retorna o valor original (não recomendado em produção)
+            return value
+    
+    def _decrypt(self, encrypted_value):
+        """Descriptografa um valor"""
+        if not encrypted_value:
+            return encrypted_value
+        try:
+            key = self._get_encryption_key()
+            f = Fernet(key)
+            decrypted = f.decrypt(encrypted_value.encode())
+            return decrypted.decode()
+        except Exception:
+            # Se falhar, retorna o valor original
+            return encrypted_value
+    
+    def get_senha_decrypted(self):
+        """Retorna a senha descriptografada"""
+        return self._decrypt(self.senha) if self.senha else None
+    
+    def get_api_secret_decrypted(self):
+        """Retorna o API Secret descriptografado"""
+        return self._decrypt(self.api_secret) if self.api_secret else None
+    
+    def get_auth_token_decrypted(self):
+        """Retorna o Auth Token descriptografado"""
+        return self._decrypt(self.auth_token) if self.auth_token else None
+    
+    def get_senha_ssh_decrypted(self):
+        """Retorna a senha SSH descriptografada"""
+        return self._decrypt(self.senha_ssh) if self.senha_ssh else None
+    
+    def get_chave_privada_ssh_decrypted(self):
+        """Retorna a chave privada SSH descriptografada"""
+        return self._decrypt(self.chave_privada_ssh) if self.chave_privada_ssh else None
+    
+    def get_senha_painel_decrypted(self):
+        """Retorna a senha do painel descriptografada"""
+        return self._decrypt(self.senha_painel) if self.senha_painel else None
+    
+    def get_senha_ftp_decrypted(self):
+        """Retorna a senha FTP descriptografada"""
+        return self._decrypt(self.senha_ftp) if self.senha_ftp else None
+    
+    def get_senha_mysql_decrypted(self):
+        """Retorna a senha MySQL descriptografada"""
+        return self._decrypt(self.senha_mysql) if self.senha_mysql else None
+    
+    def save(self, *args, **kwargs):
+        """Override do save para criptografar campos sensíveis antes de salvar"""
+        # Criptografar apenas se o valor não estiver já criptografado
+        # (verificação: se começa com 'gAAAAAB' ou tem prefixo de aviso, já foi processado)
+        campos_criptografar = [
+            'senha', 'api_secret', 'auth_token', 'senha_ssh', 
+            'chave_privada_ssh', 'senha_painel', 'senha_ftp', 'senha_mysql'
+        ]
+        
+        for campo in campos_criptografar:
+            valor = getattr(self, campo, None)
+            if valor:
+                # Não criptografar se já estiver criptografado ou processado
+                if not (valor.startswith('gAAAAAB') or 
+                        valor.startswith('[NÃO_CRIPTOGRAFADO]') or 
+                        valor.startswith('[ERRO_CRIPTOGRAFIA]')):
+                    setattr(self, campo, self._encrypt(valor))
+        
+        super().save(*args, **kwargs)

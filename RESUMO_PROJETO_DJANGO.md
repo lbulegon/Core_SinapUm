@@ -20,7 +20,7 @@
 ├── venv/                          # Ambiente virtual (será criado)
 ├── setup_django.sh                # ✅ Script de instalação
 ├── sinapum-django.service         # ✅ Serviço systemd
-├── requirements_django.txt        # ✅ Dependências Django
+├── requirements.txt               # ✅ Dependências Django e outras
 └── .gitignore                     # ✅ Configurado (ignora sinapum_project/)
 ```
 

@@ -7,7 +7,8 @@ from .models import (
     Produto,
     ProdutoViagem,
     CadastroMeta,
-    ProdutoJSON
+    ProdutoJSON,
+    ServicoExterno
 )
 
 
@@ -156,3 +157,137 @@ class ProdutoJSONAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(ServicoExterno)
+class ServicoExternoAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'tipo_servico', 'ambiente', 'ativo', 'ip_servidor', 'usuario', 'criado_em']
+    list_filter = ['tipo_servico', 'ambiente', 'ativo', 'criado_em']
+    search_fields = [
+        'nome', 'tipo_servico', 'usuario', 'url_base', 'api_key', 
+        'account_sid', 'ip_servidor', 'usuario_ssh', 'usuario_painel'
+    ]
+    readonly_fields = [
+        'criado_em', 'atualizado_em', 
+        'senha_readonly', 'api_secret_readonly', 'auth_token_readonly',
+        'senha_ssh_readonly', 'chave_privada_ssh_readonly',
+        'senha_painel_readonly', 'senha_ftp_readonly', 'senha_mysql_readonly'
+    ]
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'tipo_servico', 'ambiente', 'ativo', 'url_base')
+        }),
+        ('Credenciais de Autenticação', {
+            'fields': ('usuario', 'senha', 'senha_readonly'),
+            'description': '⚠️ As senhas são criptografadas automaticamente ao salvar'
+        }),
+        ('API Keys e Tokens', {
+            'fields': ('api_key', 'api_secret', 'api_secret_readonly', 'account_sid', 'auth_token', 'auth_token_readonly'),
+            'description': '⚠️ API Secrets e Auth Tokens são criptografados automaticamente'
+        }),
+        ('Informações do Servidor VPS', {
+            'fields': (
+                'ip_servidor', 'sistema_operacional',
+                'porta_ssh', 'usuario_ssh', 'senha_ssh', 'senha_ssh_readonly',
+                'chave_privada_ssh', 'chave_privada_ssh_readonly'
+            ),
+            'description': 'Informações de acesso SSH ao servidor',
+            'classes': ('collapse',)
+        }),
+        ('Painel de Controle', {
+            'fields': (
+                'url_painel_controle', 'usuario_painel', 
+                'senha_painel', 'senha_painel_readonly'
+            ),
+            'description': 'Acesso ao painel de controle (cPanel, Plesk, etc)',
+            'classes': ('collapse',)
+        }),
+        ('FTP', {
+            'fields': (
+                'porta_ftp', 'usuario_ftp', 
+                'senha_ftp', 'senha_ftp_readonly'
+            ),
+            'description': 'Credenciais de acesso FTP',
+            'classes': ('collapse',)
+        }),
+        ('Banco de Dados MySQL/MariaDB', {
+            'fields': (
+                'porta_mysql', 'usuario_mysql', 
+                'senha_mysql', 'senha_mysql_readonly', 'nome_banco_dados'
+            ),
+            'description': 'Credenciais do banco de dados',
+            'classes': ('collapse',)
+        }),
+        ('Credenciais Adicionais', {
+            'fields': ('credenciais_adicionais',),
+            'description': 'Campos adicionais em formato JSON (ex: {"project_id": "xxx", "database_url": "xxx", "domain": "xxx"})'
+        }),
+        ('Observações', {
+            'fields': ('observacoes',)
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def senha_readonly(self, obj):
+        """Mostra indicação se a senha está definida (sem mostrar o valor)"""
+        if obj and obj.senha:
+            return "✓ Senha definida (criptografada)"
+        return "✗ Nenhuma senha definida"
+    senha_readonly.short_description = "Status da Senha"
+    
+    def api_secret_readonly(self, obj):
+        """Mostra indicação se o API Secret está definido"""
+        if obj and obj.api_secret:
+            return "✓ API Secret definido (criptografado)"
+        return "✗ Nenhum API Secret definido"
+    api_secret_readonly.short_description = "Status do API Secret"
+    
+    def auth_token_readonly(self, obj):
+        """Mostra indicação se o Auth Token está definido"""
+        if obj and obj.auth_token:
+            return "✓ Auth Token definido (criptografado)"
+        return "✗ Nenhum Auth Token definido"
+    auth_token_readonly.short_description = "Status do Auth Token"
+    
+    def senha_ssh_readonly(self, obj):
+        """Mostra indicação se a senha SSH está definida"""
+        if obj and obj.senha_ssh:
+            return "✓ Senha SSH definida (criptografada)"
+        return "✗ Nenhuma senha SSH definida"
+    senha_ssh_readonly.short_description = "Status da Senha SSH"
+    
+    def chave_privada_ssh_readonly(self, obj):
+        """Mostra indicação se a chave privada SSH está definida"""
+        if obj and obj.chave_privada_ssh:
+            return "✓ Chave privada SSH definida (criptografada)"
+        return "✗ Nenhuma chave privada SSH definida"
+    chave_privada_ssh_readonly.short_description = "Status da Chave Privada SSH"
+    
+    def senha_painel_readonly(self, obj):
+        """Mostra indicação se a senha do painel está definida"""
+        if obj and obj.senha_painel:
+            return "✓ Senha do painel definida (criptografada)"
+        return "✗ Nenhuma senha do painel definida"
+    senha_painel_readonly.short_description = "Status da Senha do Painel"
+    
+    def senha_ftp_readonly(self, obj):
+        """Mostra indicação se a senha FTP está definida"""
+        if obj and obj.senha_ftp:
+            return "✓ Senha FTP definida (criptografada)"
+        return "✗ Nenhuma senha FTP definida"
+    senha_ftp_readonly.short_description = "Status da Senha FTP"
+    
+    def senha_mysql_readonly(self, obj):
+        """Mostra indicação se a senha MySQL está definida"""
+        if obj and obj.senha_mysql:
+            return "✓ Senha MySQL definida (criptografada)"
+        return "✗ Nenhuma senha MySQL definida"
+    senha_mysql_readonly.short_description = "Status da Senha MySQL"
+    
+    def get_readonly_fields(self, request, obj=None):
+        """Campos readonly que dependem do objeto"""
+        readonly = list(self.readonly_fields)
+        return readonly

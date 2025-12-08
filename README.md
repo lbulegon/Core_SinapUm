@@ -48,9 +48,9 @@ O **SinapUm** é um servidor VPS Ubuntu configurado para executar o **OpenMind A
 - **IP Público**: `69.169.102.84`
 - **Sistema Operacional**: Ubuntu Server
 - **Usuário**: `root`
-- **Caminho da Aplicação**: `/opt/openmind-ai`
-- **Porta da Aplicação**: `8000`
-- **Serviço systemd**: `openmind-ai`
+- **Caminho da Aplicação**: `/root/SinapUm`
+- **Porta da Aplicação**: `8000` (configurável)
+- **Framework**: Django
 
 ### Acesso SSH
 
@@ -61,24 +61,84 @@ ssh root@69.169.102.84
 ### Estrutura de Diretórios
 
 ```
-/opt/openmind-ai/              # Diretório principal da aplicação
-├── app/                       # Código fonte da aplicação
-│   ├── core/                  # Configurações e utilitários
-│   ├── api/                   # Endpoints da API
-│   └── ...
-├── venv/                      # Ambiente virtual Python
-├── requirements.txt           # Dependências Python
-├── promtail-config.yml        # Configuração do Promtail
-├── backups/                   # Backups automáticos
-└── .env                       # Variáveis de ambiente (não versionado)
+/root/SinapUm/                 # Diretório principal do projeto Django
+├── app_sinapum/               # App principal Django
+│   ├── migrations/            # Migrações do banco de dados
+│   ├── templates/             # Templates HTML
+│   ├── models.py              # Models do Django
+│   ├── views.py               # Views/Controllers
+│   ├── admin.py               # Configuração do Admin
+│   ├── services.py            # Serviços e lógica de negócio
+│   └── utils.py               # Utilitários
+├── setup/                     # Configurações do projeto Django
+│   ├── settings.py            # Configurações principais
+│   ├── urls.py                # URLs principais
+│   └── wsgi.py                # WSGI config
+├── media/                     # Arquivos de mídia (upload)
+│   └── uploads/               # Imagens enviadas
+├── static/                    # Arquivos estáticos
+├── docs/                      # Documentação do projeto
+├── venv/ ou .venv/            # Ambiente virtual Python
+├── manage.py                  # Script de gerenciamento Django
+├── db.sqlite3                 # Banco de dados SQLite (desenvolvimento)
+├── requirements.txt           # Dependências Python (Django, Gunicorn, etc.)
+└── README.md                  # Este arquivo
 
-/var/log/openmind-ai/          # Logs estruturados
-├── app.log                    # Logs gerais da aplicação
-├── errors.log                 # Apenas erros
-├── access.log                 # Logs de requisições HTTP
-├── analysis.log               # Logs de análises de imagens
-└── metrics.log                # Logs de métricas de performance
+/data/                         # Diretórios de dados e imagens dos projetos
+├── vitrinezap/
+│   └── images/                # Imagens do VitrineZap
+│       ├── uploads/           # Imagens enviadas pelos usuários
+│       ├── produtos/          # Imagens organizadas por categoria
+│       │   ├── perfumaria/    # Imagens de perfumes
+│       │   ├── cosmeticos/    # Imagens de cosméticos
+│       │   └── outros/        # Outras categorias
+│       ├── temp/              # Arquivos temporários
+│       ├── thumbnails/        # Miniaturas geradas
+│       ├── README.md          # Documentação
+│       ├── .gitignore         # Configuração Git
+│       └── setup_permissions.sh  # Script de permissões
+│
+├── motopro/
+│   └── images/                # Imagens do MotoPro
+│       ├── uploads/
+│       ├── produtos/
+│       │   ├── perfumaria/
+│       │   ├── cosmeticos/
+│       │   └── outros/
+│       ├── temp/
+│       ├── thumbnails/
+│       ├── README.md
+│       ├── .gitignore
+│       └── setup_permissions.sh
+│
+├── eventix/
+│   └── images/                # Imagens do Eventix
+│       ├── uploads/
+│       ├── produtos/
+│       │   ├── perfumaria/
+│       │   ├── cosmeticos/
+│       │   └── outros/
+│       ├── temp/
+│       ├── thumbnails/
+│       ├── README.md
+│       ├── .gitignore
+│       └── setup_permissions.sh
+│
+└── sparkscore/
+    └── images/                # Imagens do SparkScore
+        ├── uploads/
+        ├── produtos/
+        │   ├── perfumaria/
+        │   ├── cosmeticos/
+        │   └── outros/
+        ├── temp/
+        ├── thumbnails/
+        ├── README.md
+        ├── .gitignore
+        └── setup_permissions.sh
 ```
+
+**Nota**: Cada projeto possui sua própria estrutura de diretórios para armazenamento de imagens, organizadas por categoria e tipo de arquivo. Os diretórios são criados automaticamente e incluem scripts de configuração de permissões.
 
 ---
 

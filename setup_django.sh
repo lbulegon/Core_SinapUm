@@ -20,10 +20,10 @@ source venv/bin/activate
 # Instalar/atualizar dependências
 echo "📥 Instalando dependências..."
 pip install --upgrade pip
-if [ -f "requirements_django.txt" ]; then
-    pip install -r requirements_django.txt
+if [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
 else
-    pip install Django>=4.2.0 gunicorn whitenoise
+    pip install Django>=4.2.0 gunicorn whitenoise cryptography>=41.0.0
 fi
 
 # Verificar instalação
