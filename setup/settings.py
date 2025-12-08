@@ -124,3 +124,33 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # OpenMind AI Configuration
 OPENMIND_AI_URL = 'http://127.0.0.1:8000'
 OPENMIND_AI_KEY = 'om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1'
+
+# CrewAI Configuration (para orquestração de agentes)
+# IMPORTANTE: O CrewAI usa OpenMind.org como backend LLM!
+# OpenMind.org oferece acesso a múltiplos modelos (OpenAI, Anthropic, Gemini, etc.)
+# através de uma API unificada, usando a mesma chave do OpenMind AI.
+CREWAI_CONFIG = {
+    'default_llm': 'openmind',  # Usa OpenMind.org como backend
+    'temperature': 0.7,
+    'max_iterations': 3,
+}
+
+# OpenMind.org Configuration (para CrewAI LLM backend)
+# Usa a MESMA chave do OpenMind AI - não precisa de chaves separadas!
+OPENMIND_ORG_BASE_URL = 'https://api.openmind.org/api/core/openai'
+OPENMIND_ORG_API_KEY = OPENMIND_AI_KEY  # Mesma chave!
+OPENMIND_ORG_MODEL = 'gpt-4o'  # Pode ser: claude-3-opus, gemini-pro, etc.
+
+# OpenAI API Key (fallback, caso não use OpenMind.org)
+import os
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# Agnos Configuration (para orquestração de alto nível)
+AGNOS_CONFIG = {
+    'enabled': True,  # Habilitar quando Agnos estiver disponível
+    'default_workflow': 'analise_completa_produto',
+    'state_persistence': True,
+    'state_backend': 'memory',  # ou 'redis', 'database'
+    'max_concurrent_crews': 3,
+    'timeout': 300,  # segundos
+}

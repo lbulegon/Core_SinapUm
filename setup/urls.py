@@ -20,12 +20,45 @@ from django.conf import settings
 from django.conf.urls.static import static
 from app_sinapum import views
 
+# Importar views do CrewAI (com try/except para não quebrar se CrewAI não estiver instalado)
+try:
+    from app_sinapum import views_crewai as crewai_views
+    CREWAI_AVAILABLE = True
+except ImportError:
+    CREWAI_AVAILABLE = False
+    crewai_views = None
+
+# Importar views do Agnos (com try/except para não quebrar se Agnos não estiver instalado)
+try:
+    from app_sinapum import views_agnos as agnos_views
+    AGNOS_AVAILABLE = True
+except ImportError:
+    AGNOS_AVAILABLE = False
+    agnos_views = None
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('analyze/', views.analyze_image, name='analyze_image'),
     path('analyze/save-product/', views.save_product_json, name='save_product_json'),
+    path('analyze/add-images-ajax/', views.handle_add_images_ajax, name='add_images_ajax'),
+    path('analyze/reanalyze-ajax/', views.handle_reanalyze, name='reanalyze_ajax'),
     path('admin/', admin.site.urls),
 ]
+
+# Adicionar rotas do CrewAI se disponível
+if CREWAI_AVAILABLE and crewai_views:
+    urlpatterns += [
+        path('analyze/crewai/', crewai_views.analyze_with_crewai, name='analyze_crewai'),
+        path('api/crewai/analyze/', crewai_views.api_analyze_crewai, name='api_crewai_analyze'),
+    ]
+
+# Adicionar rotas do Agnos se disponível
+if AGNOS_AVAILABLE and agnos_views:
+    urlpatterns += [
+        path('analyze/agnos/', agnos_views.analyze_with_agnos, name='analyze_agnos'),
+        path('api/agnos/analyze/', agnos_views.api_analyze_agnos, name='api_agnos_analyze'),
+        path('api/agnos/validate/', agnos_views.api_validate_agnos, name='api_agnos_validate'),
+    ]
 
 # Servir arquivos de mídia em desenvolvimento
 if settings.DEBUG:

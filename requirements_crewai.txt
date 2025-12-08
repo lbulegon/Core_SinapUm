@@ -1,0 +1,20 @@
+# Dependências para integração CrewAI + OpenMind + Django
+
+# CrewAI Core
+crewai>=0.28.0
+crewai[tools]>=0.28.0
+
+# LangChain (dependência do CrewAI)
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-community>=0.0.20
+
+# OpenAI (para usar com CrewAI)
+openai>=1.0.0
+
+# Outras ferramentas úteis
+python-dotenv>=1.0.0
+
+# Requests (já deve estar instalado, mas garantindo)
+requests>=2.31.0
+

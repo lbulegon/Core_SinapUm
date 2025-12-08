@@ -197,3 +197,12 @@ temp/
 # Outros projetos (se houver)
 # ============================================
 openmind-ai/
+
+# ============================================
+# Pasta data - MANTER VISÍVEL (não ignorar)
+# ============================================
+# A pasta data/ deve ser visível no repositório
+# Se estiver sendo ignorada por algum padrão acima, 
+# esta exceção a torna visível:
+!data/
+!data/**
