@@ -49,7 +49,8 @@ O **SinapUm** é um servidor VPS Ubuntu configurado para executar o **OpenMind A
 - **Sistema Operacional**: Ubuntu Server
 - **Usuário**: `root`
 - **Caminho da Aplicação**: `/root/SinapUm`
-- **Porta da Aplicação**: `8000` (configurável)
+- **Porta Django**: `80` (servidor principal)
+- **Porta OpenMind AI**: `8000` (API de análise de imagens)
 - **Framework**: Django
 
 ### Acesso SSH

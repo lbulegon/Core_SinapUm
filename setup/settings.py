@@ -119,7 +119,16 @@ STATIC_URL = 'static/'
 
 # Media files (Uploaded files)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# Usar /data/vitrinezap/images/ para imagens do VitrineZap
+# Fallback para media/ local se /data não estiver disponível
+import os
+VITRINEZAP_IMAGES_PATH = Path('/data/vitrinezap/images')
+if VITRINEZAP_IMAGES_PATH.exists():
+    MEDIA_ROOT = VITRINEZAP_IMAGES_PATH
+    # Criar subdiretório uploads se não existir
+    (MEDIA_ROOT / 'uploads').mkdir(parents=True, exist_ok=True)
+else:
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 # OpenMind AI Configuration
 OPENMIND_AI_URL = 'http://127.0.0.1:8000'
