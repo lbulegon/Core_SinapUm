@@ -62,6 +62,8 @@ services:
       - CACHE_REDIS_URI=redis://redis:6379/6
       - CACHE_REDIS_PREFIX_KEY=evolution
 
-      # Logs úteis p/ auditoria e troubleshooting
-      - LOG_LEVEL=ERROR,WARN,INFO,WEBHOOKS
+      # Logs EXTREMAMENTE detalhados para debug do QR Code
+      - LOG_LEVEL=ERROR,WARN,INFO,DEBUG,LOG,VERBOSE,DARK,WEBHOOKS
+      - LOG_COLOR=true
+      - LOG_BAILEYS=debug
 
