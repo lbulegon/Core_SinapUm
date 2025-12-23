@@ -1,14 +1,15 @@
 [Unit]
-Description=SinapUm Django - Página Inicial do Servidor
+Description=MCP SinapUm - Master Control Program
 After=network.target
 
 [Service]
-Type=notify
+Type=simple
 User=root
-WorkingDirectory=/root/SinapUm/setup
-Environment="PATH=/root/SinapUm/venv/bin"
+WorkingDirectory=/root/MCP_SinapUm
+Environment="PATH=/root/MCP_SinapUm/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/root/MCP_SinapUm"
 Environment="DJANGO_SETTINGS_MODULE=setup.settings"
-ExecStart=/root/SinapUm/venv/bin/gunicorn setup.wsgi:application --bind 0.0.0.0:80 --workers 3 --timeout 120 --access-logfile - --error-logfile -
+ExecStart=/root/MCP_SinapUm/.venv/bin/python3 -m gunicorn setup.wsgi:application --bind 0.0.0.0:5000 --workers 3 --timeout 120 --access-logfile - --error-logfile -
 Restart=always
 RestartSec=10
 

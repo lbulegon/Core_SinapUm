@@ -81,7 +81,6 @@ ssh root@69.169.102.84
 ├── docs/                      # Documentação do projeto
 ├── venv/ ou .venv/            # Ambiente virtual Python
 ├── manage.py                  # Script de gerenciamento Django
-├── db.sqlite3                 # Banco de dados SQLite (desenvolvimento)
 ├── requirements.txt           # Dependências Python (Django, Gunicorn, etc.)
 └── README.md                  # Este arquivo
 
@@ -241,6 +240,16 @@ ssh root@69.169.102.84
 # Conectar ao servidor
 ssh root@69.169.102.84
 
+
+```bash
+cd /root/Core_SinapUm/services/openmind_service
+docker compose down
+ocker compose build
+
+
+ docker logs openmind_service --tail 100 -f
+
+
 # Atualizar sistema
 apt update && apt upgrade -y
 
@@ -341,6 +350,12 @@ systemctl status openmind-ai
 ```
 
 ---
+
+
+
+
+
+
 
 ## ⚙️ Configuração
 

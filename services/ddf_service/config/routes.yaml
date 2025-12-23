@@ -1,0 +1,30 @@
+# Regras de roteamento: categoria -> provider padrão
+# O sistema escolhe o primeiro provider da lista como padrão
+# Mas pode ser sobrescrito por score ou contexto
+
+default_routes:
+  ideias: chatgpt
+  chatbot: monica
+  ui_ux: galileo_ai
+  apresentacao: gamma
+  website: framer
+  marketing: adcopy
+  imagem: midjourney
+  automacao: zapier
+  escrita: claude
+  voz_para_texto: descript
+  texto_para_voz: elevenlabs
+  video: runway
+  blogging: chatgpt
+  reunioes: fireflies
+  design: canva
+  ai_detector: gptzero
+
+# Regras de fallback (se o provider padrão falhar)
+fallback_routes:
+  ideias: [gemini, claude, perplexity]
+  chatbot: [grok, poe, copilot]
+  imagem: [stable_diffusion, leonardo_ai, adobe_firefly]
+  escrita: [chatgpt, jasper, copy_ai]
+  video: [luma, pika, sora]
+

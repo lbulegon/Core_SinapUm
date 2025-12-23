@@ -2,6 +2,7 @@
 # Python - Arquivos gerados e compilados
 # ============================================
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -27,6 +28,7 @@ MANIFEST
 *.pyc
 *.pyo
 *.pyd
+*.pdb
 
 # ============================================
 # Virtual Environment
@@ -36,7 +38,9 @@ env/
 ENV/
 env.bak/
 venv.bak/
-.venv
+.venv/
+venv/
+**/.venv/
 
 # ============================================
 # Django - Arquivos do projeto
@@ -46,32 +50,40 @@ venv.bak/
 *.db
 db.sqlite3
 db.sqlite3-journal
+*.sqlite
+*.sqlite-journal
 
-# Arquivos estáticos e mídia
+# Arquivos estáticos e mídia (gerados/compilados)
 staticfiles/
 static/
 media/
-/staticfiles/
-/static/
-/media/
+**/staticfiles/
+**/static/
+**/media/
+# Manter apenas diretórios vazios se necessário
+!static/.gitkeep
+!media/.gitkeep
+# Ignorar todo conteúdo de staticfiles (gerado pelo collectstatic)
+staticfiles/**
+!staticfiles/.gitkeep
 
-# Arquivos gerados
+# Arquivos gerados pelo Django
 *.pot
 *.mo
 local_settings.py
 settings_local.py
+*.log
 
-# Projeto Django - Setup (manter estrutura, ignorar apenas arquivos gerados)
-setup/db.sqlite3
-setup/staticfiles/
-setup/media/
-setup/**/__pycache__/
-setup/*.log
+# Migrações - MANTER (não ignorar migrações)
+# !**/migrations/
+# !**/migrations/*.py
 
 # ============================================
-# Projeto Django antigo - REMOVIDO (ignorar se recriado)
+# Docker
 # ============================================
-sinapum_project/
+.dockerignore
+docker-compose.override.yml
+docker-compose.local.yml
 
 # ============================================
 # Logs
@@ -79,7 +91,13 @@ sinapum_project/
 *.log
 *.log.*
 logs/
+**/logs/
 /var/log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # ============================================
 # Ambiente e variáveis de ambiente
@@ -87,9 +105,16 @@ logs/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.test
 *.env
+**/.env
+# Manter apenas exemplos
 !ENV_EXAMPLE.txt
 !ENV_EXAMPLE.txt.example
+!.env.example
+!**/.env.example
 
 # ============================================
 # IDEs e editores
@@ -101,6 +126,12 @@ logs/
 *~
 *.sublime-project
 *.sublime-workspace
+.project
+.classpath
+.settings/
+*.iml
+*.ipr
+*.iws
 
 # ============================================
 # Arquivos do sistema operacional
@@ -129,22 +160,31 @@ backups/
 backup/
 *.tar.gz
 *.zip
+*.rar
+*.7z
 
 # ============================================
 # Testes e cobertura
 # ============================================
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
 .hypothesis/
 *.cover
 *.py,cover
+.hypothesis/
+.pytest_cache/
+test-results/
+coverage/
 
 # ============================================
 # Jupyter Notebook
 # ============================================
 .ipynb_checkpoints
+**/.ipynb_checkpoints
+*.ipynb_checkpoints
 
 # ============================================
 # Ferramentas Python
@@ -154,6 +194,8 @@ htmlcov/
 .dmypy.json
 dmypy.json
 .pyre/
+.pytype/
+cython_debug/
 celerybeat-schedule
 celerybeat.pid
 
@@ -161,8 +203,16 @@ celerybeat.pid
 # Node.js (se usar frontend)
 # ============================================
 node_modules/
-npm-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
 
 # ============================================
 # Arquivos de saída dos testes de imagem/JSON
@@ -178,31 +228,172 @@ image_content_analysis_report.txt
 *.key
 *.pem
 *.secret
+*.crt
+*.cer
+*.der
+*.csr
+secrets/
+**/secrets/
 
 # ============================================
 # Arquivos do servidor
 # ============================================
 *.pid
 *.sock
+*.socket
 
 # ============================================
 # Cache e arquivos temporários
 # ============================================
 *.cache
 .cache/
+.cache/**
+**/.cache/
+**/.cache/**
 tmp/
 temp/
+.tmp/
+**/tmp/
+**/temp/
+# Ignorar qualquer pasta cache em qualquer nível
+**/cache/
+**/cache/**
+
+# ============================================
+# OpenMind AI Service
+# ============================================
+services/openmind_service/.env
+services/openmind_service/__pycache__/
+services/openmind_service/**/__pycache__/
+services/openmind_service/*.log
+services/openmind_service/media/
+services/openmind_service/static/
+
+# ============================================
+# DDF Service
+# ============================================
+services/ddf_service/.env
+services/ddf_service/__pycache__/
+services/ddf_service/**/__pycache__/
+services/ddf_service/*.log
+
+# ============================================
+# Evolution API Service e outros serviços
+# ============================================
+# Ignorar TODOS os dados de runtime dos serviços
+services/**/pg_data/
+services/**/mongo_data/
+services/**/redis_data/
+services/**/data/
+services/**/*_data/
+services/**/instances/
+services/**/storage/
+
+# Arquivos de configuração e logs
+services/**/.env
+services/**/__pycache__/
+services/**/*.log
+services/**/*.pid
+services/**/*.sock
+
+# Manter apenas arquivos de configuração importantes
+!services/**/docker-compose.yml
+!services/**/Dockerfile
+!services/**/README.md
+!services/**/*.sh
+!services/**/*.py
+!services/**/*.md
+
+# ============================================
+# Outros serviços
+# ============================================
+services/*/__pycache__/
+services/*/**.pyc
+services/*/.env
+services/*/*.log
+
+# ============================================
+# Arquivos de migração temporários
+# ============================================
+# Manter migrações reais, mas ignorar temporários
+**/migrations/__pycache__/
+**/migrations/*.pyc
+
+# ============================================
+# Arquivos de documentação gerados
+# ============================================
+docs/_build/
+docs/.doctrees/
+*.pdf
+*.epub
+
+# ============================================
+# Arquivos de compilação e build
+# ============================================
+*.o
+*.a
+*.dylib
+*.exe
+*.out
+*.app
+*.msi
+*.dmg
+*.rpm
+*.deb
 
 # ============================================
 # Outros projetos (se houver)
 # ============================================
 openmind-ai/
+sinapum_project/
 
 # ============================================
-# Pasta data - MANTER VISÍVEL (não ignorar)
+# Arquivos específicos do projeto
 # ============================================
-# A pasta data/ deve ser visível no repositório
-# Se estiver sendo ignorada por algum padrão acima, 
-# esta exceção a torna visível:
-!data/
-!data/**
+# Manter data/ mas ignorar conteúdo gerado
+data/*.log
+data/**/*.log
+data/tmp/
+data/temp/
+data/cache/
+
+# Manter analiseJSON/ mas ignorar arquivos gerados
+analiseJSON/*.tmp
+analiseJSON/*.temp
+
+# ============================================
+# Arquivos de sistema e processamento
+# ============================================
+*.swp
+*.swo
+*~
+.#*
+#*
+.#*
+
+# ============================================
+# Arquivos de configuração local
+# ============================================
+local_config.py
+settings_local.py
+local_settings.py
+dev_settings.py
+production_settings.py
+
+# ============================================
+# Arquivos de deployment específicos
+# ============================================
+*.service
+!sinapum-django.service.example
+deploy_*.sh
+deploy_*.ps1
+!deploy_*.sh.example
+!deploy_*.ps1.example
+
+# ============================================
+# Exceções - Manter arquivos importantes
+# ============================================
+# Manter estrutura de diretórios importantes
+!**/migrations/.gitkeep
+!**/static/.gitkeep
+!**/media/.gitkeep

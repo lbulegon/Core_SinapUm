@@ -1,0 +1,146 @@
+{% extends "admin/login.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Estilos customizados para o login do admin */
+    body.login {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        min-height: 100vh;
+    }
+    
+    #header {
+        background: transparent !important;
+        border-bottom: none !important;
+        padding: 20px 0 !important;
+        text-align: center;
+    }
+    
+    #header h1 {
+        color: #fff !important;
+        font-size: 32px !important;
+        font-weight: 600 !important;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0 !important;
+    }
+    
+    #header h1 a {
+        color: #fff !important;
+        text-decoration: none;
+    }
+    
+    /* Esconder elementos de tema duplicados */
+    #header .theme-toggle,
+    #header .theme-switcher,
+    .theme-toggle-wrapper {
+        display: none !important;
+    }
+    
+    #content {
+        padding: 20px;
+    }
+    
+    #content-main {
+        max-width: 400px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        padding: 40px;
+    }
+    
+    #login-form {
+        width: 100%;
+    }
+    
+    #login-form .form-row {
+        margin-bottom: 20px;
+    }
+    
+    #login-form label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    
+    #login-form input[type="text"],
+    #login-form input[type="password"] {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 16px;
+        border: 2px solid #e1e8ed;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+    
+    #login-form input[type="text"]:focus,
+    #login-form input[type="password"]:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .submit-row {
+        margin-top: 30px;
+        text-align: center;
+        padding: 0;
+    }
+    
+    .submit-row input[type="submit"] {
+        width: 100%;
+        padding: 14px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .submit-row input[type="submit"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    
+    .submit-row input[type="submit"]:active {
+        transform: translateY(0);
+    }
+    
+    .errornote {
+        background: #fee;
+        border: 1px solid #fcc;
+        color: #c33;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+    
+    .form-row .help,
+    .form-row .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 8px;
+        display: block;
+    }
+    
+    /* Melhorar responsividade */
+    @media (max-width: 480px) {
+        #content-main {
+            padding: 30px 20px;
+        }
+        
+        #header h1 {
+            font-size: 24px !important;
+        }
+    }
+</style>
+{% endblock %}

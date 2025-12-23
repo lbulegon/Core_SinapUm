@@ -1,0 +1,69 @@
+# Configuração dos Orbitais - SparkScore
+# Orbitais são camadas funcionais de análise semiótica e psicodinâmica
+
+orbitals:
+  - id: 0
+    name: "Ruído"
+    description: "Estímulo não integrado - Pré-significação"
+    function: "Filtro de ruído / descarte"
+    motor: "noise_filter"
+    ppa_relation: null
+    
+  - id: 1
+    name: "Reconhecimento"
+    description: "Já vi isso antes - Familiaridade"
+    function: "Similaridade / memória curta"
+    motor: "similarity_engine"
+    ppa_relation: null
+    
+  - id: 2
+    name: "Expectativa"
+    description: "Antecipação - PPA nasce aqui"
+    function: "Motor de PPA"
+    motor: "ppa_engine"
+    ppa_relation: "nasce"
+    
+  - id: 3
+    name: "Alinhamento"
+    description: "Coerência simbólica - Confiança"
+    function: "Coerência simbólica"
+    motor: "coherence_engine"
+    ppa_relation: "validado"
+    
+  - id: 4
+    name: "Engajamento"
+    description: "Vínculo ativo - Decisão"
+    function: "Call-to-Action"
+    motor: "engagement_engine"
+    ppa_relation: "ativado"
+    
+  - id: 5
+    name: "Memória"
+    description: "Fixação simbólica - Retenção"
+    function: "Retenção / repetição"
+    motor: "retention_engine"
+    ppa_relation: null
+    
+  - id: 6
+    name: "Efeito Mandela"
+    description: "Reescrita coletiva - Mito / Narrativa"
+    function: "Propagação narrativa"
+    motor: "narrative_engine"
+    ppa_relation: "cristalizado"
+
+# Sinais para classificação orbital
+classification_signals:
+  - "familiaridade_percebida"
+  - "coerencia_simbolica"
+  - "antecipacao_ppa"
+  - "intensidade_emocional"
+  - "recorrencia_coletiva"
+  - "tempo_exposicao"
+
+# Relação PPA com Orbitais
+ppa_flow:
+  nasce: 2
+  validado: 3
+  ativado: 4
+  cristalizado: 6
+

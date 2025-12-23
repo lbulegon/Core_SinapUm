@@ -7,9 +7,12 @@ try:
 except ImportError:
     POSTGRES_AVAILABLE = False
 import json
+import logging
 from django.conf import settings
 import base64
 import hashlib
+
+logger = logging.getLogger(__name__)
 
 # Tentar importar cryptography, se não estiver disponível, usar encoding simples
 try:
@@ -225,7 +228,7 @@ class CadastroMeta(models.Model):
 
 
 class ProdutoJSON(models.Model):
-    """Model para armazenar produtos completos em formato JSON (PostgreSQL JSONB ou SQLite JSON)"""
+    """Model para armazenar produtos completos em formato JSON (PostgreSQL JSONB)"""
     dados_json = models.JSONField(help_text="Dados completos do produto no formato modelo.json")
     nome_produto = models.CharField(max_length=500, db_index=True, help_text="Nome do produto para busca rápida")
     marca = models.CharField(max_length=200, db_index=True, null=True, blank=True)
@@ -269,6 +272,7 @@ class ServicoExterno(models.Model):
         ('azure', 'Azure'),
         ('google', 'Google Cloud'),
         ('firebase', 'Firebase'),
+        ('railway', 'Railway'),
         ('digitalocean', 'DigitalOcean'),
         ('linode', 'Linode'),
         # VPS e Hospedagem
@@ -562,3 +566,212 @@ class ServicoExterno(models.Model):
                     setattr(self, campo, self._encrypt(valor))
         
         super().save(*args, **kwargs)
+
+
+class Sistema(models.Model):
+    """Model para cadastro de sistemas/aplicativos que utilizam os prompts"""
+    
+    nome = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Nome do sistema/aplicativo (ex: 'MotoPro', 'VitrineZap', 'Évora')"
+    )
+    codigo = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Código único do sistema (ex: 'motopro', 'vitrinezap', 'evora') - usado para identificação programática"
+    )
+    descricao = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Descrição do sistema e seu propósito"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        help_text="Indica se o sistema está ativo e em uso"
+    )
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Observações sobre o sistema"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Sistema"
+        verbose_name_plural = "Sistemas"
+        ordering = ['nome']
+        indexes = [
+            models.Index(fields=['codigo', 'ativo']),
+            models.Index(fields=['nome']),
+        ]
+    
+    def __str__(self):
+        status = "✓" if self.ativo else "✗"
+        return f"{status} {self.nome} ({self.codigo})"
+
+
+class PromptTemplate(models.Model):
+    """Model para armazenar templates de prompts usados pelos serviços de IA"""
+    
+    TIPO_PROMPT_CHOICES = [
+        ('analise_imagem_produto', 'Análise de Imagem de Produto'),
+        ('extracao_json', 'Extração de JSON'),
+        ('classificacao_categoria', 'Classificação de Categoria'),
+        ('processamento_texto', 'Processamento de Texto'),
+        ('traducao', 'Tradução'),
+        ('resumo', 'Resumo'),
+        ('outro', 'Outro'),
+    ]
+    
+    sistema = models.ForeignKey(
+        'Sistema',
+        on_delete=models.CASCADE,
+        related_name='prompts',
+        null=True,
+        blank=True,
+        help_text="Sistema/aplicativo ao qual este prompt pertence"
+    )
+    
+    nome = models.CharField(
+        max_length=200,
+        help_text="Nome identificador do prompt (ex: 'analise_produto_v1')"
+    )
+    descricao = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Descrição do que este prompt faz e quando deve ser usado"
+    )
+    tipo_prompt = models.CharField(
+        max_length=50,
+        choices=TIPO_PROMPT_CHOICES,
+        default='outro',
+        help_text="Tipo/categoria do prompt"
+    )
+    prompt_text = models.TextField(
+        help_text="Texto completo do prompt que será enviado para a IA"
+    )
+    versao = models.CharField(
+        max_length=20,
+        default='1.0',
+        help_text="Versão do prompt (ex: '1.0', '1.1', '2.0')"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        help_text="Indica se este prompt está ativo e pode ser usado pelos serviços"
+    )
+    eh_padrao = models.BooleanField(
+        default=False,
+        help_text="Indica se este é o prompt padrão para o tipo. Apenas um prompt por tipo pode ser padrão."
+    )
+    parametros = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Parâmetros/configurações adicionais em formato JSON (ex: temperatura, max_tokens, etc)"
+    )
+    exemplos = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Exemplos de uso ou outputs esperados"
+    )
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Observações sobre o prompt, mudanças recentes, testes realizados, etc"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Template de Prompt"
+        verbose_name_plural = "Templates de Prompts"
+        ordering = ['sistema', 'tipo_prompt', '-eh_padrao', '-versao', 'nome']
+        unique_together = [['sistema', 'nome']]  # Nome único por sistema
+        indexes = [
+            models.Index(fields=['sistema', 'tipo_prompt', 'ativo', 'eh_padrao']),
+            models.Index(fields=['sistema', 'nome']),
+            models.Index(fields=['tipo_prompt', 'ativo', 'eh_padrao']),
+        ]
+    
+    def __str__(self):
+        status = "✓" if self.ativo else "✗"
+        padrao = " [PADRÃO]" if self.eh_padrao else ""
+        sistema_nome = self.sistema.nome if self.sistema else "Sem sistema"
+        return f"{status} [{sistema_nome}] {self.nome} v{self.versao} ({self.get_tipo_prompt_display()}){padrao}"
+    
+    def save(self, *args, **kwargs):
+        """Override do save para garantir que apenas um prompt seja padrão por tipo e sistema"""
+        if self.eh_padrao:
+            # Desativar outros prompts padrão do mesmo tipo e sistema
+            PromptTemplate.objects.filter(
+                sistema=self.sistema,
+                tipo_prompt=self.tipo_prompt,
+                eh_padrao=True
+            ).exclude(pk=self.pk if self.pk else None).update(eh_padrao=False)
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_prompt_ativo(cls, tipo_prompt, sistema=None, nome=None):
+        """
+        Retorna o prompt ativo para um tipo específico e sistema
+        
+        Args:
+            tipo_prompt: Tipo do prompt a buscar
+            sistema: Sistema/aplicativo (pode ser objeto Sistema, código do sistema, ou None)
+                     Se None, busca prompts sem sistema associado (legado)
+            nome: Nome específico do prompt (opcional). Se não fornecido, retorna o padrão.
+            
+        Returns:
+            PromptTemplate ou None
+        """
+        # Resolver sistema se fornecido como string (código) ou objeto
+        sistema_obj = None
+        if sistema:
+            if isinstance(sistema, str):
+                try:
+                    sistema_obj = Sistema.objects.get(codigo=sistema, ativo=True)
+                except Sistema.DoesNotExist:
+                    logger.warning(f"Sistema com código '{sistema}' não encontrado ou inativo")
+                    return None
+            elif isinstance(sistema, Sistema):
+                sistema_obj = sistema
+            else:
+                logger.warning(f"Tipo de sistema inválido: {type(sistema)}")
+                return None
+        
+        if nome:
+            try:
+                if sistema_obj:
+                    return cls.objects.get(sistema=sistema_obj, nome=nome, ativo=True)
+                else:
+                    # Buscar por nome sem sistema (pode ser legado)
+                    return cls.objects.get(nome=nome, ativo=True, sistema__isnull=True)
+            except cls.DoesNotExist:
+                return None
+        
+        # Buscar o prompt padrão ativo do tipo e sistema
+        query = cls.objects.filter(tipo_prompt=tipo_prompt, ativo=True, eh_padrao=True)
+        if sistema_obj:
+            query = query.filter(sistema=sistema_obj)
+        else:
+            # Se sistema não fornecido, buscar prompts sem sistema (legado)
+            query = query.filter(sistema__isnull=True)
+        
+        try:
+            return query.get()
+        except cls.DoesNotExist:
+            # Se não houver padrão, buscar qualquer prompt ativo do tipo e sistema
+            query = cls.objects.filter(tipo_prompt=tipo_prompt, ativo=True)
+            if sistema_obj:
+                query = query.filter(sistema=sistema_obj)
+            else:
+                query = query.filter(sistema__isnull=True)
+            return query.first()
+    
+    def get_prompt_text_com_parametros(self):
+        """
+        Retorna o texto do prompt com parâmetros aplicados se necessário
+        Pode ser estendido para incluir formatação dinâmica
+        """
+        return self.prompt_text

@@ -21,7 +21,6 @@ Projeto Django completo configurado para rodar na **porta 80** como página inic
 │   │   │   └── index.html         # ✅ Página inicial linda
 │   │   └── static/home/           # Arquivos estáticos
 │   ├── manage.py                  # Gerenciador Django
-│   └── db.sqlite3                 # Banco de dados
 ├── venv/                          # Ambiente virtual (será criado)
 ├── setup_django.sh                # ✅ Script de instalação
 ├── sinapum-django.service         # ✅ Serviço systemd

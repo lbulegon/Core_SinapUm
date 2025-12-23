@@ -1,0 +1,51 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Melhorias sutis e funcionais */
+    #header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    #header h1 a {
+        color: #fff !important;
+    }
+    
+    #user-tools {
+        color: #fff !important;
+    }
+    
+    #user-tools a {
+        color: #fff !important;
+    }
+    
+    /* Esconder apenas os toggles de tema duplicados que causam problemas */
+    .theme-toggle-wrapper,
+    button.theme-toggle {
+        display: none !important;
+    }
+    
+    /* Melhorias mínimas nos módulos */
+    .module {
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .module h2 {
+        background: #417690 !important;
+        color: #fff !important;
+    }
+</style>
+{% endblock %}

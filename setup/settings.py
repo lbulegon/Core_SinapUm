@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^_*fwd08xsh)gnlcpq8ggpj3br9+2=$6qno@r_fjcr=0*g!w4^'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-^_*fwd08xsh)gnlcpq8ggpj3br9+2=$6qno@r_fjcr=0*g!w4^')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['69.169.102.84', 'localhost', '127.0.0.1']
+# ALLOWED_HOSTS - suporta variável de ambiente para Docker
+ALLOWED_HOSTS_ENV = os.environ.get('ALLOWED_HOSTS', '')
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',')]
+else:
+    ALLOWED_HOSTS = ['69.169.102.84', 'localhost', '127.0.0.1', 'web', '0.0.0.0']
 
 
 # Application definition
@@ -38,10 +44,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'app_sinapum',
+    'app_mcp_tool_registry',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise para servir arquivos estáticos
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -55,7 +63,7 @@ ROOT_URLCONF = 'setup.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'setup' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -73,12 +81,43 @@ WSGI_APPLICATION = 'setup.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+from urllib.parse import urlparse
+
+# Configuração do banco - SEMPRE PostgreSQL
+# Usar variáveis de ambiente ou valores padrão
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+if DATABASE_URL:
+    # Usar PostgreSQL via DATABASE_URL
+    parsed = urlparse(DATABASE_URL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': parsed.path[1:],  # Remove a barra inicial
+            'USER': parsed.username,
+            'PASSWORD': parsed.password,
+            'HOST': parsed.hostname or os.environ.get('POSTGRES_HOST', 'localhost'),
+            'PORT': parsed.port or os.environ.get('POSTGRES_PORT', '5432'),
+            'OPTIONS': {
+                'connect_timeout': 10,
+            },
+        }
     }
-}
+else:
+    # PostgreSQL usando variáveis de ambiente individuais
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'mcp_sinapum'),
+            'USER': os.environ.get('POSTGRES_USER', 'mcp_user'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'mcp_password_change_me'),
+            'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+            'OPTIONS': {
+                'connect_timeout': 10,
+            },
+        }
+    }
 
 
 # Password validation
@@ -115,13 +154,21 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Diretório onde collectstatic vai coletar os arquivos
+
+# Diretórios adicionais para arquivos estáticos (opcional)
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',  # Se houver um diretório static na raiz
+]
+
+# WhiteNoise para servir arquivos estáticos em produção
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files (Uploaded files)
 MEDIA_URL = '/media/'
 # Usar /data/vitrinezap/images/ para imagens do VitrineZap
 # Fallback para media/ local se /data não estiver disponível
-import os
 VITRINEZAP_IMAGES_PATH = Path('/data/vitrinezap/images')
 if VITRINEZAP_IMAGES_PATH.exists():
     MEDIA_ROOT = VITRINEZAP_IMAGES_PATH
@@ -131,8 +178,8 @@ else:
     MEDIA_ROOT = BASE_DIR / 'media'
 
 # OpenMind AI Configuration
-OPENMIND_AI_URL = 'http://127.0.0.1:8000'
-OPENMIND_AI_KEY = 'om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1'
+OPENMIND_AI_URL = os.environ.get('OPENMIND_AI_URL', 'http://127.0.0.1:8001')
+OPENMIND_AI_KEY = os.environ.get('OPENMIND_AI_KEY', 'om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1')
 
 # CrewAI Configuration (para orquestração de agentes)
 # IMPORTANTE: O CrewAI usa OpenMind.org como backend LLM!
@@ -151,7 +198,6 @@ OPENMIND_ORG_API_KEY = OPENMIND_AI_KEY  # Mesma chave!
 OPENMIND_ORG_MODEL = 'gpt-4o'  # Pode ser: claude-3-opus, gemini-pro, etc.
 
 # OpenAI API Key (fallback, caso não use OpenMind.org)
-import os
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
 # Agnos Configuration (para orquestração de alto nível)
@@ -163,3 +209,17 @@ AGNOS_CONFIG = {
     'max_concurrent_crews': 3,
     'timeout': 300,  # segundos
 }
+
+# Sistema Configuration (para identificação do sistema/aplicativo)
+# Usado para buscar prompts do PostgreSQL (PromptTemplate) por sistema
+# Valores possíveis: 'evora', 'vitrinezap', 'motopro', etc.
+# Deve corresponder ao campo 'codigo' do modelo Sistema em app_sinapum.models
+SISTEMA_CODIGO = os.environ.get('SISTEMA_CODIGO', 'evora')
+
+# Prompt Registry Configuration
+# Integração entre PromptTemplate (PostgreSQL) e ToolVersion.prompt_ref (MCP Tool Registry)
+# O campo prompt_ref no ToolVersion pode referenciar:
+# - Nome do PromptTemplate (ex: "analise_produto_v1")
+# - Sistema.codigo + PromptTemplate.nome (ex: "evora:analise_produto_v1")
+# - Sistema.codigo + PromptTemplate.tipo_prompt (ex: "evora:analise_imagem_produto")
+PROMPT_REF_FORMAT = os.environ.get('PROMPT_REF_FORMAT', 'sistema:nome')  # 'nome', 'sistema:nome', 'sistema:tipo'

@@ -16,7 +16,6 @@
 │   │   ├── templates/home/        # Template HTML moderno
 │   │   └── static/home/           # Arquivos estáticos
 │   ├── manage.py                  # Gerenciador Django
-│   └── db.sqlite3                 # Banco de dados
 ├── venv/                          # Ambiente virtual (será criado)
 ├── setup_django.sh                # ✅ Script de instalação
 ├── sinapum-django.service         # ✅ Serviço systemd
@@ -86,7 +85,7 @@
 O arquivo `.gitignore` está configurado para:
 - ✅ Ignorar `sinapum_project/` completamente
 - ✅ Ignorar arquivos gerados do Django
-- ✅ Ignorar banco de dados SQLite
+- ✅ Banco de dados PostgreSQL (via Docker)
 - ✅ Ignorar arquivos estáticos coletados
 - ✅ Ignorar ambiente virtual
 - ✅ Ignorar logs e arquivos temporários

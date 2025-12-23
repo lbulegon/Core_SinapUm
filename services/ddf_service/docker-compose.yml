@@ -1,0 +1,46 @@
+services:
+  ddf_api:
+    build: .
+    container_name: ddf_api
+    ports:
+      - "8005:8005"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://ddf:ddf@postgres:5432/ddf
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PATH=/app/storage
+      - PORT=8005
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./storage:/app/storage
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ddf_redis
+    ports:
+      - "6380:6379"  # Porta 6380 no host para não conflitar com Redis do Evolution (6379)
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: ddf_postgres
+    environment:
+      POSTGRES_DB: ddf
+      POSTGRES_USER: ddf
+      POSTGRES_PASSWORD: ddf
+    ports:
+      - "5434:5432"  # Porta 5434 no host para não conflitar (5432=Core_SinapUm, 5433=Evolution)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+

@@ -1,0 +1,44 @@
+# Políticas de segurança e limites
+
+security:
+  # Categorias que exigem aprovação manual
+  require_approval:
+    - ai_detector
+    - marketing
+  
+  # Categorias bloqueadas (se necessário)
+  blocked:
+    []
+
+# Limites de uso
+limits:
+  # Limite de requisições por minuto por categoria
+  rate_limits:
+    video: 5
+    imagem: 20
+    escrita: 50
+    ideias: 100
+    default: 100
+  
+  # Timeout por categoria (segundos)
+  timeouts:
+    video: 300
+    imagem: 60
+    escrita: 30
+    ideias: 10
+    default: 30
+
+# Configurações de qualidade
+quality:
+  # Priorizar qualidade sobre velocidade
+  prioritize_quality:
+    - imagem
+    - video
+    - design
+  
+  # Priorizar velocidade sobre qualidade
+  prioritize_speed:
+    - chatbot
+    - escrita
+    - ideias
+

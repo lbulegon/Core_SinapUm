@@ -1,0 +1,114 @@
+"""
+OpenMind AI Server - FastAPI Application
+Servidor de IA para análise de imagens de produtos
+"""
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+import logging
+import os
+
+from app.core.config import settings
+from app.api.v1.endpoints import analyze, agent
+from app.models.schemas import HealthResponse
+
+# Configurar logging
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+# Criar aplicação FastAPI
+app = FastAPI(
+    title="OpenMind AI Server",
+    description="Servidor de IA para análise de imagens de produtos",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Configurar CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Registrar rotas
+app.include_router(
+    analyze.router,
+    prefix="/api/v1",
+    tags=["Análise"]
+)
+
+app.include_router(
+    agent.router,
+    prefix="/api/v1",
+    tags=["Agente"]
+)
+
+# Servir arquivos de mídia (imagens salvas)
+media_root = Path(settings.MEDIA_ROOT)
+if media_root.exists():
+    app.mount(settings.MEDIA_URL, StaticFiles(directory=str(media_root), html=False), name="media")
+    logger.info(f"Servindo arquivos de mídia de: {media_root}")
+    logger.info(f"URL de mídia: {settings.MEDIA_URL}")
+else:
+    logger.warning(f"Diretório de mídia não encontrado: {media_root}")
+    # Criar diretório se não existir
+    media_root.mkdir(parents=True, exist_ok=True)
+    app.mount(settings.MEDIA_URL, StaticFiles(directory=str(media_root), html=False), name="media")
+    logger.info(f"Diretório de mídia criado: {media_root}")
+
+
+@app.get("/", response_model=dict)
+async def root():
+    """Root endpoint"""
+    return {
+        "service": "OpenMind AI Server",
+        "version": "1.0.0",
+        "description": "Servidor de IA para análise de imagens de produtos",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """Health check endpoint"""
+    return HealthResponse(
+        status="healthy",
+        version="1.0.0",
+        service="OpenMind AI Server"
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Handler global de exceções"""
+    logger.error(f"Erro não tratado: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": "Erro interno do servidor",
+            "error_code": "INTERNAL_ERROR"
+        }
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host=settings.OPENMIND_AI_HOST,
+        port=settings.OPENMIND_AI_PORT,
+        reload=True
+    )
+

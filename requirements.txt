@@ -171,3 +171,4 @@ yarl==1.22.0
 youtube-transcript-api==1.2.3
 zipp==3.23.0
 zstandard==0.25.0
+psycopg2-binary==2.9.9

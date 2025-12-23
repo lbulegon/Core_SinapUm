@@ -4,7 +4,7 @@ services:
     container_name: postgres_evolution
     restart: always
     ports:
-      - "5433:5432"  # Porta 5433 no host para não conflitar com PostgreSQL do MCP_SinapUm (5432)
+      - "5433:5432"  # Porta 5433 no host para não conflitar com PostgreSQL do Core_SinapUm (5432)
     environment:
       POSTGRES_DB: evolution
       POSTGRES_USER: evolution

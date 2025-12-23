@@ -8,7 +8,9 @@ from .models import (
     ProdutoViagem,
     CadastroMeta,
     ProdutoJSON,
-    ServicoExterno
+    ServicoExterno,
+    Sistema,
+    PromptTemplate
 )
 
 
@@ -291,3 +293,74 @@ class ServicoExternoAdmin(admin.ModelAdmin):
         """Campos readonly que dependem do objeto"""
         readonly = list(self.readonly_fields)
         return readonly
+
+
+@admin.register(Sistema)
+class SistemaAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'codigo', 'ativo', 'criado_em', 'atualizado_em']
+    list_filter = ['ativo', 'criado_em', 'atualizado_em']
+    search_fields = ['nome', 'codigo', 'descricao']
+    readonly_fields = ['criado_em', 'atualizado_em']
+    
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('nome', 'codigo', 'descricao')
+        }),
+        ('Status', {
+            'fields': ('ativo',)
+        }),
+        ('Observações', {
+            'fields': ('observacoes',),
+            'classes': ('collapse',)
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(PromptTemplate)
+class PromptTemplateAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'sistema', 'tipo_prompt', 'versao', 'ativo', 'eh_padrao', 'criado_em', 'atualizado_em']
+    list_filter = ['sistema', 'tipo_prompt', 'ativo', 'eh_padrao', 'criado_em', 'atualizado_em']
+    search_fields = ['nome', 'descricao', 'prompt_text', 'tipo_prompt', 'observacoes', 'sistema__nome', 'sistema__codigo']
+    readonly_fields = ['criado_em', 'atualizado_em']
+    
+    fieldsets = (
+        ('Sistema e Identificação', {
+            'fields': ('sistema', 'nome', 'tipo_prompt', 'descricao', 'versao'),
+            'description': '⚠️ O sistema identifica qual aplicativo usa este prompt. O nome do prompt deve ser único dentro do mesmo sistema.'
+        }),
+        ('Status e Configuração', {
+            'fields': ('ativo', 'eh_padrao'),
+            'description': '⚠️ Apenas um prompt por tipo e sistema pode ser marcado como padrão. Ao marcar este como padrão, os outros do mesmo tipo e sistema serão desmarcados automaticamente.'
+        }),
+        ('Prompt', {
+            'fields': ('prompt_text',),
+            'description': 'Texto completo do prompt que será enviado para a IA'
+        }),
+        ('Parâmetros e Configurações', {
+            'fields': ('parametros',),
+            'description': 'Parâmetros adicionais em formato JSON (ex: {"temperature": 0.3, "max_tokens": 4000})',
+            'classes': ('collapse',)
+        }),
+        ('Documentação', {
+            'fields': ('exemplos', 'observacoes'),
+            'description': 'Exemplos de uso e observações sobre o prompt',
+            'classes': ('collapse',)
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Otimizar queries com select_related se necessário"""
+        qs = super().get_queryset(request)
+        return qs
+    
+    def save_model(self, request, obj, form, change):
+        """Override para garantir lógica de prompt padrão"""
+        super().save_model(request, obj, form, change)

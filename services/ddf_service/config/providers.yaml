@@ -1,0 +1,117 @@
+# Registry de IAs - Classificação completa baseada no PDF
+# Estrutura: categoria -> lista de providers disponíveis
+
+ideias:
+  - chatgpt
+  - gemini
+  - claude
+  - perplexity
+  - copilot
+
+chatbot:
+  - monica
+  - grok
+  - poe
+  - copilot
+
+ui_ux:
+  - galileo_ai
+  - khroma
+  - uizard
+  - visily
+  - visualeyes
+
+apresentacao:
+  - gamma
+  - tome
+  - beautiful_ai
+  - slidebean
+  - pitch
+
+website:
+  - dora
+  - durable
+  - wegic
+  - framer
+  - 10web
+
+marketing:
+  - adcopy
+  - predis_ai
+  - howler_ai
+  - bardeen_ai
+  - adcreative
+
+imagem:
+  - midjourney
+  - nano_banana
+  - stable_diffusion
+  - leonardo_ai
+  - adobe_firefly
+
+automacao:
+  - zapier
+  - make
+  - phrasee
+  - outreach
+  - clickup
+
+escrita:
+  - jasper
+  - rytr
+  - textblaze
+  - sudowrite
+  - claude
+  - chatgpt
+  - copy_ai
+  - writer
+
+voz_para_texto:
+  - fluently_ai
+  - descript
+  - rev_ai
+  - clipto
+  - textcortex
+
+texto_para_voz:
+  - elevenlabs
+  - murf_ai
+  - speechify
+  - deepgram
+  - lovo
+
+video:
+  - sora
+  - pika
+  - runway
+  - luma
+  - kling
+
+blogging:
+  - chatgpt
+  - jasper
+  - claude
+  - copy_ai
+  - writer
+
+reunioes:
+  - tldv
+  - krisp
+  - otter
+  - avoma
+  - fireflies
+
+design:
+  - canva
+  - figma_ai
+  - looka
+  - clipdrop
+  - autodraw
+
+ai_detector:
+  - gptzero
+  - originality_ai
+  - turnitin
+  - copyleaks
+  - zerogpt
+

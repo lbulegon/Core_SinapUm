@@ -1,18 +1,30 @@
 """
 Serviços para integração com OpenMind AI
 """
+import json
 import requests
 import logging
 from django.conf import settings
 from .utils import transform_evora_to_modelo_json
+from .models import PromptTemplate
 
 logger = logging.getLogger(__name__)
 
 OPENMIND_AI_URL = getattr(settings, 'OPENMIND_AI_URL', 'http://127.0.0.1:8000')
 OPENMIND_AI_KEY = getattr(settings, 'OPENMIND_AI_KEY', None)
 
+# Prompt fallback mínimo (usado apenas quando não há prompt no banco de dados)
+# Este é um prompt genérico básico para garantir que o sistema funcione
+# RECOMENDA-SE sempre cadastrar prompts específicos no admin para melhor qualidade
+FALLBACK_PROMPT_ANALISE_PRODUTO = (
+    "Analise esta imagem de produto e retorne um JSON estruturado com todas as informações visíveis. "
+    "Inclua: nome, descrição, categoria, marca, código de barras (se visível), preço (se visível), "
+    "características, especificações técnicas, cores, materiais e qualquer outra informação relevante. "
+    "Seja detalhado e extraia todas as informações possíveis da imagem."
+)
 
-def analyze_image_with_openmind(image_file, image_path=None, image_url=None):
+
+def analyze_image_with_openmind(image_file, image_path=None, image_url=None, prompt=None):
     """
     Analisa uma imagem usando o OpenMind AI Server.
     
@@ -20,11 +32,45 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None):
         image_file: Arquivo de imagem (Django UploadedFile)
         image_path: Caminho relativo da imagem salva (ex: "media/uploads/uuid.jpg")
         image_url: URL completa da imagem (ex: "http://host:port/media/uploads/uuid.jpg")
+        prompt: Prompt customizado (opcional). Se None, busca do banco de dados.
     
     Returns:
         dict: Resposta da API do OpenMind AI com image_url e image_path incluídos se fornecidos
     """
     try:
+        # Buscar prompt do banco de dados se não foi fornecido
+        if prompt is None:
+            # Buscar sistema do settings ou usar 'evora' como padrão
+            sistema_codigo = getattr(settings, 'SISTEMA_CODIGO', 'evora')
+            prompt_template = PromptTemplate.get_prompt_ativo('analise_imagem_produto', sistema=sistema_codigo)
+            if prompt_template:
+                prompt = prompt_template.get_prompt_text_com_parametros()
+                sistema_nome = prompt_template.sistema.nome if prompt_template.sistema else 'Sem sistema'
+                # Extrair parâmetros do prompt se disponíveis
+                prompt_params = prompt_template.parametros if hasattr(prompt_template, 'parametros') and prompt_template.parametros else {}
+                logger.info(
+                    f"✅ [PROMPT DO BANCO] Sistema: {sistema_nome} | "
+                    f"Prompt: {prompt_template.nome} (v{prompt_template.versao}) | "
+                    f"Tipo: analise_imagem_produto | "
+                    f"Parâmetros: {prompt_params}"
+                )
+            else:
+                # Fallback: prompt genérico mínimo (apenas para garantir que o sistema funcione)
+                prompt = FALLBACK_PROMPT_ANALISE_PRODUTO
+                prompt_params = {}  # Sem parâmetros quando usa fallback
+                
+                warning_msg = (
+                    f"⚠️ [FALLBACK ATIVO] Nenhum prompt ativo encontrado no banco de dados!\n"
+                    f"   Sistema buscado: '{sistema_codigo}'\n"
+                    f"   Tipo de prompt: 'analise_imagem_produto'\n"
+                    f"   Ação: Usando prompt fallback genérico mínimo\n"
+                    f"   ⚠️ RECOMENDAÇÃO: Cadastre um prompt específico no admin Django para melhor qualidade das análises.\n"
+                    f"   📍 Acesse: Admin > Templates de Prompts > Adicionar novo prompt"
+                )
+                logger.warning(warning_msg)
+                # Também logar no console para visibilidade
+                print(f"\n{'='*80}\n{warning_msg}\n{'='*80}\n")
+        
         url = f"{OPENMIND_AI_URL}/api/v1/analyze-product-image"
         
         headers = {}
@@ -35,8 +81,35 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None):
             'image': (image_file.name, image_file.read(), image_file.content_type)
         }
         
-        logger.info(f"Enviando imagem para análise: {image_file.name}")
-        response = requests.post(url, files=files, headers=headers, timeout=60)
+        # Prompt deve sempre estar presente (vem do banco ou fallback)
+        if not prompt or not prompt.strip():
+            error_msg = "Prompt não encontrado. Não é possível analisar a imagem sem um prompt."
+            logger.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg,
+                'error_code': 'PROMPT_REQUIRED'
+            }
+        
+        # Adicionar prompt e parâmetros como form data
+        data = {
+            'prompt': prompt.strip()
+        }
+        # Adicionar parâmetros se disponíveis
+        if prompt_params:
+            data['prompt_params'] = json.dumps(prompt_params)
+        
+        # Verificar se está usando fallback para incluir no log
+        is_fallback = prompt == FALLBACK_PROMPT_ANALISE_PRODUTO
+        prompt_source = "FALLBACK" if is_fallback else "BANCO DE DADOS"
+        
+        logger.info(
+            f"📤 Enviando imagem para análise: {image_file.name} | "
+            f"Prompt: {prompt_source} ({len(prompt)} caracteres)"
+        )
+        
+        # Timeout otimizado: 30 segundos (reduzido de 60)
+        response = requests.post(url, files=files, data=data, headers=headers, timeout=30)
         
         # Verificar se a resposta é JSON válido
         content_type = response.headers.get('Content-Type', '')
@@ -46,7 +119,16 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None):
                 # Verificar se o Content-Type indica JSON
                 if 'application/json' in content_type:
                     result = response.json()
-                    logger.info(f"Análise concluída com sucesso: {result.get('success', False)}")
+                    
+                    # Adicionar informação sobre o prompt usado (se foi fallback)
+                    if prompt == FALLBACK_PROMPT_ANALISE_PRODUTO:
+                        result['prompt_used'] = 'fallback'
+                        result['prompt_warning'] = (
+                            'Este resultado foi gerado usando um prompt fallback genérico. '
+                            'Para melhor qualidade, cadastre um prompt específico no admin Django.'
+                        )
+                    
+                    logger.info(f"✅ Análise concluída com sucesso: {result.get('success', False)}")
                     
                     # Transformar dados ÉVORA para formato modelo.json
                     if result.get('success') and result.get('data'):
@@ -74,7 +156,16 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None):
                     # Tentar parsear mesmo sem Content-Type correto
                     try:
                         result = response.json()
-                        logger.info(f"Análise concluída com sucesso: {result.get('success', False)}")
+                        
+                        # Adicionar informação sobre o prompt usado (se foi fallback)
+                        if prompt == FALLBACK_PROMPT_ANALISE_PRODUTO:
+                            result['prompt_used'] = 'fallback'
+                            result['prompt_warning'] = (
+                                'Este resultado foi gerado usando um prompt fallback genérico. '
+                                'Para melhor qualidade, cadastre um prompt específico no admin Django.'
+                            )
+                        
+                        logger.info(f"✅ Análise concluída com sucesso: {result.get('success', False)}")
                         
                         # Transformar dados ÉVORA para formato modelo.json
                         if result.get('success') and result.get('data'):

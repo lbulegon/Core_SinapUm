@@ -1,0 +1,10 @@
+services:
+  sparkscore_api:
+    build: .
+    container_name: sparkscore_api
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+    restart: unless-stopped
+

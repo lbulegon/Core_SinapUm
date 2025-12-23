@@ -15,10 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from app_sinapum import views
+from app_sinapum import views_core
 
 # Importar views do CrewAI (com try/except para não quebrar se CrewAI não estiver instalado)
 try:
@@ -44,6 +45,10 @@ urlpatterns = [
     path('analyze/reanalyze-ajax/', views.handle_reanalyze, name='reanalyze_ajax'),
     # API REST endpoint para análise de imagens (usado pelo Évora)
     path('api/v1/analyze-product-image', views.api_analyze_product_image, name='api_analyze_product_image'),
+    # Core Registry endpoints (MCP) - Novo app_mcp_tool_registry
+    path('core/', include('app_mcp_tool_registry.urls')),
+    # Health check (mantido para compatibilidade)
+    path('health', views_core.health_check, name='health_check'),
     path('admin/', admin.site.urls),
 ]
 
@@ -64,4 +69,6 @@ if AGNOS_AVAILABLE and agnos_views:
 
 # Servir arquivos de mídia (necessário para servir imagens salvas)
 # Em produção, considere usar nginx ou outro servidor web para servir arquivos estáticos
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
