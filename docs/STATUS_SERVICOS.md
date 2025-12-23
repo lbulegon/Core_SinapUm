@@ -1,102 +1,84 @@
-# Status dos Serviços MCP SinapUm
+# 📊 Status dos Serviços - Core_SinapUm
 
-## ✅ Todos os Serviços Estão Rodando!
+## ✅ Serviços Rodando
 
-### 📦 Containers Ativos
+1. **mcp_sinapum_db** (PostgreSQL)
+   - Status: Up 19 minutes (healthy)
+   - Porta: 5432
 
-| Serviço | Container | Porta | Status |
-|---------|-----------|-------|--------|
-| **Evolution API** | `evolution_api` | 8004 | ✅ Up |
-| **PostgreSQL Evolution** | `postgres_evolution` | 5433 | ✅ Up |
-| **Redis Evolution** | `redis_evolution` | 6379 | ✅ Up |
-| **SparkScore** | `sparkscore_api` | 8006 | ✅ Up |
-| **DDF** | `ddf_api` | 8005 | ✅ Up |
-| **PostgreSQL DDF** | `ddf_postgres` | 5434 | ✅ Up |
-| **Redis DDF** | `ddf_redis` | 6380 | ✅ Up |
+2. **openmind_service** (OpenMind AI)
+   - Status: Up 2 hours (healthy)
+   - Porta: 8001
 
-## 🔍 Verificar Status
+## ⚠️ Serviços Criados mas Não Rodando
 
-### Ver containers rodando
+1. **mcp_sinapum_web** (Django Core Registry)
+   - Status: Created (não iniciado)
+   - Ação: Precisa iniciar
 
+2. **mcp_sinapum_openmind** (OpenMind do Core)
+   - Status: Created (não iniciado)
+   - Ação: Precisa iniciar
+
+3. **mcp_sinapum_mcp_service** (MCP Service)
+   - Status: Created (não iniciado)
+   - Ação: Precisa iniciar
+
+## ❌ Serviços Não Encontrados
+
+1. **evolution_api** (Evolution API Service)
+   - Status: Container não existe
+   - Ação: Precisa subir
+
+2. **ddf_api** (DDF Service)
+   - Status: Container não existe
+   - Ação: Precisa subir
+
+3. **sparkscore_api** (SparkScore Service)
+   - Status: Container não existe
+   - Ação: Precisa subir
+
+## 🚀 Como Subir Todos os Serviços
+
+### 1. Core_SinapUm (Django + DB + OpenMind)
 ```bash
-docker ps | grep -E "ddf|sparkscore|evolution"
+cd /root/Core_SinapUm
+docker compose up -d
 ```
 
-### Testar endpoints HTTP
+### 2. Serviços Individuais
 
 ```bash
 # Evolution API
-curl http://localhost:8004
+cd /root/Core_SinapUm/services/evolution_api_service
+docker compose up -d
 
-# DDF
-curl http://localhost:8005/health
+# DDF Service
+cd /root/Core_SinapUm/services/ddf_service
+docker compose up -d
 
-# SparkScore
-curl http://localhost:8006/health
+# SparkScore Service
+cd /root/Core_SinapUm/services/sparkscore_service
+docker compose up -d
+
+# MCP Service
+cd /root/Core_SinapUm/services/mcp_service
+docker compose up -d
 ```
 
-### Usar script de verificação
-
+### 3. Ou usar o script principal
 ```bash
-cd /root/MCP_SinapUm/services
-python3 verificar_status.py
+cd /root
+./restart_all_services.sh
 ```
 
-## 📊 Estrutura de Portas
+## 📋 Resumo
 
-```
-8004 → Evolution API
-8005 → DDF API
-8006 → SparkScore API
-5433 → PostgreSQL Evolution
-5434 → PostgreSQL DDF
-6379 → Redis Evolution (interno)
-6380 → Redis DDF (host)
-```
+- **Rodando**: 2 serviços (db, openmind_service)
+- **Criados mas parados**: 3 serviços (web, openmind, mcp_service)
+- **Não existem**: 3 serviços (evolution_api, ddf_api, sparkscore_api)
 
-## 🎯 Próximos Passos
-
-1. ✅ Todos os serviços estão rodando
-2. ✅ Portas configuradas corretamente
-3. ✅ Isolamento entre serviços funcionando
-4. 🔄 Testar integração entre serviços
-5. 🔄 Configurar monitoramento contínuo
-
-## 📝 Comandos Úteis
-
-### Ver logs de um serviço
-
-```bash
-docker logs evolution_api
-docker logs ddf_api
-docker logs sparkscore_api
-```
-
-### Reiniciar um serviço
-
-```bash
-cd /root/MCP_SinapUm/services/<service_name>
-docker compose restart
-```
-
-### Parar todos os serviços
-
-```bash
-cd /root/MCP_SinapUm/services/evolution_api_service && docker compose down
-cd /root/MCP_SinapUm/services/ddf_service && docker compose down
-cd /root/MCP_SinapUm/services/sparkscore_service && docker compose down
-```
-
-### Subir todos os serviços
-
-```bash
-cd /root/MCP_SinapUm/services/evolution_api_service && docker compose up -d
-cd /root/MCP_SinapUm/services/ddf_service && docker compose up -d
-cd /root/MCP_SinapUm/services/sparkscore_service && docker compose up -d
-```
-
----
-
-**Última verificação:** $(date)
-**Status:** ✅ Todos os serviços operacionais
+**Total esperado**: 8 serviços
+**Total rodando**: 2 serviços
+**Ação necessária**: Subir 6 serviços
 
