@@ -9,7 +9,8 @@ import os
 import uuid
 import time
 import logging
-from typing import Dict, Any, Optional
+from datetime import datetime
+from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -37,28 +38,153 @@ app = FastAPI(
 )
 
 # ============================================================================
-# Modelos Pydantic
+# Modelos Pydantic - Context Pack (MCP-Aware)
+# ============================================================================
+
+class ContextPackMeta(BaseModel):
+    """Metadados do Context Pack"""
+    request_id: Optional[str] = Field(None, description="UUID da requisição (gerado se ausente)")
+    trace_id: Optional[str] = Field(None, description="UUID do trace (gerado se ausente)")
+    timestamp: Optional[str] = Field(None, description="ISO8601 timestamp (gerado se ausente)")
+    actor: Optional[Dict[str, Any]] = Field(None, description="Actor: {type: 'user|system|service', id: 'string'}")
+    source: Optional[Dict[str, Any]] = Field(None, description="Source: {channel: 'web|whatsapp|api|admin', conversation_id: 'string'}")
+
+class ContextPackTask(BaseModel):
+    """Task do Context Pack"""
+    name: Optional[str] = None
+    goal: Optional[str] = None
+    constraints: Optional[List[str]] = None
+
+class ContextPackContext(BaseModel):
+    """Context do Context Pack"""
+    history_ref: Optional[Dict[str, Any]] = Field(None, description="History ref: {store: 'postgres', thread_id: 'string', summary_id: 'string'}")
+    user_profile: Optional[Dict[str, Any]] = None
+    domain_profile: Optional[Dict[str, Any]] = None
+
+class ContextPackState(BaseModel):
+    """State do Context Pack"""
+    state_ref: Optional[Dict[str, Any]] = Field(None, description="State ref: {store: 'redis|postgres', key: 'string', ttl_sec: 3600}")
+    snapshot: Optional[Dict[str, Any]] = None
+
+class ContextPackIntent(BaseModel):
+    """Intent do Context Pack"""
+    current: Optional[str] = None
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
+    candidates: Optional[List[Dict[str, Any]]] = None
+
+class ContextPackResponseContract(BaseModel):
+    """Response Contract do Context Pack"""
+    mode: Optional[str] = Field(None, description="tool_call|message|json")
+    language: Optional[str] = Field(None, description="pt-BR, en-US, etc")
+
+class ContextPack(BaseModel):
+    """Context Pack completo (MCP-Aware)"""
+    meta: Optional[ContextPackMeta] = None
+    task: Optional[ContextPackTask] = None
+    context: Optional[ContextPackContext] = None
+    state: Optional[ContextPackState] = None
+    intent: Optional[ContextPackIntent] = None
+    policies: Optional[List[str]] = None
+    response_contract: Optional[ContextPackResponseContract] = None
+
+# ============================================================================
+# Modelos Pydantic - Request/Response
 # ============================================================================
 
 class ToolCallRequest(BaseModel):
-    """Request para chamada de tool"""
+    """Request para chamada de tool (compatível com formato legado e MCP-aware)"""
     tool: str = Field(..., description="Nome da tool (ex: vitrinezap.analisar_produto)")
     version: Optional[str] = Field(None, description="Versão da tool (opcional, usa current se não fornecido)")
+    context_pack: Optional[ContextPack] = Field(None, description="Context Pack MCP-aware (opcional)")
     input: Dict[str, Any] = Field(..., description="Input da tool")
 
+class ErrorDetail(BaseModel):
+    """Detalhes estruturados de erro"""
+    code: str = Field(..., description="Código do erro")
+    message: str = Field(..., description="Mensagem do erro")
+    details: Optional[Dict[str, Any]] = Field(None, description="Detalhes adicionais")
+
 class ToolCallResponse(BaseModel):
-    """Response de chamada de tool"""
+    """Response de chamada de tool (padronizado)"""
     request_id: str
+    trace_id: Optional[str] = None
     tool: str
     version: str
     ok: bool
     output: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    error: Optional[ErrorDetail] = None
     latency_ms: int
 
 # ============================================================================
 # Helpers
 # ============================================================================
+
+def generate_minimal_context_pack(request_id: Optional[str] = None, trace_id: Optional[str] = None) -> ContextPack:
+    """
+    Gera um Context Pack mínimo quando não fornecido na requisição.
+    
+    Args:
+        request_id: UUID da requisição (gerado se None)
+        trace_id: UUID do trace (gerado se None)
+    
+    Returns:
+        ContextPack com valores padrão
+    """
+    if request_id is None:
+        request_id = str(uuid.uuid4())
+    if trace_id is None:
+        trace_id = str(uuid.uuid4())
+    
+    return ContextPack(
+        meta=ContextPackMeta(
+            request_id=request_id,
+            trace_id=trace_id,
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            actor={"type": "service", "id": "mcp_service"},
+            source={"channel": "api", "conversation_id": None}
+        ),
+        task=None,
+        context=None,
+        state=None,
+        intent=None,
+        policies=None,
+        response_contract=ContextPackResponseContract(mode="json", language="pt-BR")
+    )
+
+def normalize_context_pack(context_pack: Optional[ContextPack], request_id: Optional[str] = None, trace_id: Optional[str] = None) -> ContextPack:
+    """
+    Normaliza um Context Pack, garantindo request_id e trace_id.
+    
+    Args:
+        context_pack: Context Pack fornecido (pode ser None)
+        request_id: UUID da requisição (gerado se None)
+        trace_id: UUID do trace (gerado se None)
+    
+    Returns:
+        ContextPack normalizado com request_id e trace_id garantidos
+    """
+    if context_pack is None:
+        return generate_minimal_context_pack(request_id, trace_id)
+    
+    # Garantir que meta existe
+    if context_pack.meta is None:
+        context_pack.meta = ContextPackMeta()
+    
+    # Garantir request_id e trace_id
+    if not context_pack.meta.request_id:
+        context_pack.meta.request_id = request_id or str(uuid.uuid4())
+    if not context_pack.meta.trace_id:
+        context_pack.meta.trace_id = trace_id or str(uuid.uuid4())
+    if not context_pack.meta.timestamp:
+        context_pack.meta.timestamp = datetime.utcnow().isoformat() + "Z"
+    
+    # Valores padrão para meta se ausentes
+    if not context_pack.meta.actor:
+        context_pack.meta.actor = {"type": "service", "id": "mcp_service"}
+    if not context_pack.meta.source:
+        context_pack.meta.source = {"channel": "api", "conversation_id": None}
+    
+    return context_pack
 
 def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> None:
     """
@@ -70,32 +196,78 @@ def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> None:
     except ValidationError as e:
         raise ValueError(f"Schema validation failed: {e.message}")
 
-def execute_runtime_openmind_http(config: Dict[str, Any], input_data: Dict[str, Any]) -> Dict[str, Any]:
+def execute_runtime_openmind_http(
+    config: Dict[str, Any], 
+    input_data: Dict[str, Any],
+    prompt_text: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Executa runtime openmind_http.
     
     Config esperado:
     {
-        "url": "http://openmind:8001/agent/run",
-        "agent": "vitrinezap_product_analyst",
-        "timeout_s": 45
+        "url": "http://openmind:8001/api/v1/analyze-product-image",
+        "timeout_s": 60
     }
+    
+    Args:
+        config: Configurações do runtime
+        input_data: Dados de entrada (deve conter image_base64 ou image_url)
+        prompt_text: Texto do prompt (resolvido do prompt_ref) - será passado para o OpenMind
     """
-    url = config.get("url", f"{OPENMIND_SERVICE_URL}/agent/run")
-    agent = config.get("agent", "default")
-    timeout = config.get("timeout_s", 45)
+    url = config.get("url", f"{OPENMIND_SERVICE_URL}/api/v1/analyze-product-image")
+    timeout = config.get("timeout_s", 60)
     
-    payload = {
-        "agent": agent,
-        "input": input_data
-    }
+    # Extrair imagem do input_data
+    image_base64 = input_data.get("image_base64")
+    image_url = input_data.get("image_url")
+    prompt_params = input_data.get("prompt_params", {})
     
-    logger.info(f"Chamando OpenMind HTTP: {url} com agent={agent}")
+    if not image_base64 and not image_url:
+        raise ValueError("input_data deve conter 'image_base64' ou 'image_url'")
+    
+    # Preparar dados para multipart/form-data
+    files = {}
+    data = {}
+    
+    if image_base64:
+        # Se for base64, decodificar e criar arquivo em memória
+        import base64
+        from io import BytesIO
+        
+        # Remover prefixo data:image se existir
+        if ',' in image_base64:
+            image_base64 = image_base64.split(',')[1]
+        
+        try:
+            image_bytes = base64.b64decode(image_base64)
+            image_file = BytesIO(image_bytes)
+            files['image'] = ('image.jpg', image_file, 'image/jpeg')
+        except Exception as e:
+            raise ValueError(f"Erro ao decodificar image_base64: {str(e)}")
+    elif image_url:
+        # Se for URL, passar como parâmetro
+        data['image_url'] = image_url
+    
+    # Adicionar prompt se disponível
+    if prompt_text:
+        data['prompt'] = prompt_text
+        logger.info(f"Passando prompt para OpenMind ({len(prompt_text)} caracteres)")
+    
+    # Adicionar prompt_params se disponível
+    if prompt_params:
+        import json
+        data['prompt_params'] = json.dumps(prompt_params)
+    
+    logger.info(f"Chamando OpenMind HTTP: {url}")
+    if prompt_text:
+        logger.info(f"Prompt incluído: {len(prompt_text)} caracteres")
     
     try:
         response = requests.post(
             url,
-            json=payload,
+            files=files if files else None,
+            data=data,
             timeout=timeout
         )
         response.raise_for_status()
@@ -220,7 +392,7 @@ def execute_runtime(
         prompt_text: Texto do prompt (resolvido do prompt_ref) - usado para runtime "prompt"
     """
     if runtime == "openmind_http":
-        return execute_runtime_openmind_http(config, input_data)
+        return execute_runtime_openmind_http(config, input_data, prompt_text=prompt_text)
     elif runtime == "prompt":
         return execute_runtime_prompt(config, input_data, prompt_text)
     elif runtime == "noop":
@@ -234,6 +406,7 @@ def execute_runtime(
 
 def log_tool_call(
     request_id: str,
+    trace_id: Optional[str],
     tool: str,
     version: str,
     client_key: str,
@@ -242,21 +415,42 @@ def log_tool_call(
     latency_ms: int,
     input_payload: Optional[Dict[str, Any]] = None,
     output_payload: Optional[Dict[str, Any]] = None,
-    error_payload: Optional[str] = None
+    error_payload: Optional[Any] = None,
+    context_pack: Optional[ContextPack] = None
 ):
     """
     Registra log de chamada no Core Registry.
+    
+    Args:
+        request_id: UUID da requisição
+        trace_id: UUID do trace (opcional, será incluído no payload)
+        tool: Nome da tool
+        version: Versão da tool
+        client_key: Chave do cliente
+        ok: Sucesso/falha
+        status_code: Código HTTP
+        latency_ms: Latência em milissegundos
+        input_payload: Payload de entrada
+        output_payload: Payload de saída
+        error_payload: Payload de erro (pode ser string ou dict)
+        context_pack: Context Pack completo (opcional)
     """
     try:
+        # Enriquecer input_payload com context_pack se disponível
+        enriched_input = input_payload.copy() if input_payload else {}
+        if context_pack:
+            enriched_input["_context_pack"] = context_pack.dict(exclude_none=True)
+        
         log_payload = {
             "request_id": request_id,
+            "trace_id": trace_id,  # Novo campo
             "tool": tool,
             "version": version,
             "client_key": client_key,
             "ok": ok,
             "status_code": status_code,
             "latency_ms": latency_ms,
-            "input_payload": input_payload,
+            "input_payload": enriched_input,
             "output_payload": output_payload,
             "error_payload": error_payload
         }
@@ -335,30 +529,39 @@ async def call_tool(
     x_sinapum_key: Optional[str] = Header(None, alias="X-SINAPUM-KEY")
 ):
     """
-    Chama uma tool específica.
+    Chama uma tool específica (MCP-aware).
+    
+    Suporta dois formatos:
+    1. Formato legado: {tool, version?, input}
+    2. Formato MCP-aware: {tool, version?, context_pack?, input}
     
     Fluxo completo:
-    1. Autentica client (API key)
-    2. Chama Django /core/tools/resolve
-    3. Valida input_schema
-    4. Executa runtime
-    5. Valida output_schema
-    6. Grava log no Django
-    7. Responde no formato MCP padrão
+    1. Normaliza context_pack (gera request_id/trace_id se ausentes)
+    2. Autentica client (API key)
+    3. Chama Django /core/tools/resolve (opcionalmente envia context_pack)
+    4. Valida input_schema
+    5. Executa runtime
+    6. Valida output_schema
+    7. Grava log no Django (com trace_id e context_pack)
+    8. Responde no formato MCP padrão (com erro estruturado se falhar)
     """
-    request_id = str(uuid.uuid4())
     start_time = time.time()
     client_key = None
     tool_name = None
     tool_version = None
     status_code = 200
-    error_message = None
+    error_detail: Optional[ErrorDetail] = None
     output_data = None
     
+    # 1. Normalizar context_pack (garantir request_id e trace_id)
+    context_pack = normalize_context_pack(request.context_pack)
+    request_id = context_pack.meta.request_id
+    trace_id = context_pack.meta.trace_id
+    
+    logger.info(f"[{request_id}][{trace_id}] Chamando tool: {request.tool} v{request.version or 'current'}")
+    
     try:
-        logger.info(f"[{request_id}] Chamando tool: {request.tool} v{request.version or 'current'}")
-        
-        # 1. Consultar Core Registry para resolver a tool
+        # 2. Consultar Core Registry para resolver a tool
         resolve_payload = {
             "tool": request.tool,
             "input": request.input
@@ -367,11 +570,17 @@ async def call_tool(
         if request.version:
             resolve_payload["version"] = request.version
         
+        # Opcionalmente enviar context_pack ao Core Registry (se aceitar)
+        # Por enquanto, mantemos compatibilidade: Core Registry não precisa aceitar ainda
+        # Mas podemos incluir em um campo opcional para futuro
+        if context_pack:
+            resolve_payload["_context_pack"] = context_pack.dict(exclude_none=True)
+        
         headers = {}
         if x_sinapum_key:
             headers["X-SINAPUM-KEY"] = x_sinapum_key
         
-        logger.info(f"[{request_id}] Resolvendo tool no Core: {SINAPUM_CORE_URL}/core/tools/resolve")
+        logger.info(f"[{request_id}][{trace_id}] Resolvendo tool no Core: {SINAPUM_CORE_URL}/core/tools/resolve")
         
         resolve_response = requests.post(
             f"{SINAPUM_CORE_URL}/core/tools/resolve",
@@ -391,43 +600,57 @@ async def call_tool(
         output_schema = execution_plan.get("output_schema", {})
         prompt_text = execution_plan.get("prompt_text")  # Prompt resolvido do prompt_ref
         
-        logger.info(f"[{request_id}] Tool resolvida: {tool_name}@{tool_version} runtime={runtime}")
+        logger.info(f"[{request_id}][{trace_id}] Tool resolvida: {tool_name}@{tool_version} runtime={runtime}")
         if prompt_text:
-            logger.info(f"[{request_id}] Prompt disponível: {len(prompt_text)} caracteres")
+            logger.info(f"[{request_id}][{trace_id}] Prompt disponível: {len(prompt_text)} caracteres")
         
-        # 2. Validar input_schema
+        # 3. Validar input_schema
         if input_schema:
             try:
                 validate_json_schema(request.input, input_schema)
-                logger.info(f"[{request_id}] Input validado contra schema")
+                logger.info(f"[{request_id}][{trace_id}] Input validado contra schema")
             except ValueError as e:
-                error_message = f"Input validation failed: {str(e)}"
+                error_detail = ErrorDetail(
+                    code="INPUT_VALIDATION_FAILED",
+                    message=f"Input validation failed: {str(e)}",
+                    details={"schema": input_schema, "input": request.input}
+                )
                 status_code = 400
-                raise ValueError(error_message)
+                raise ValueError(str(e))
         
-        # 3. Executar runtime (passa prompt_text para runtime "prompt")
+        # 4. Executar runtime (passa prompt_text para runtime "prompt")
         if runtime:
-            logger.info(f"[{request_id}] Executando runtime: {runtime}")
-            output_data = execute_runtime(runtime, config, request.input, prompt_text=prompt_text)
-            logger.info(f"[{request_id}] Runtime executado com sucesso")
+            logger.info(f"[{request_id}][{trace_id}] Executando runtime: {runtime}")
+            try:
+                output_data = execute_runtime(runtime, config, request.input, prompt_text=prompt_text)
+                logger.info(f"[{request_id}][{trace_id}] Runtime executado com sucesso")
+            except Exception as e:
+                error_detail = ErrorDetail(
+                    code="RUNTIME_EXECUTION_ERROR",
+                    message=f"Runtime '{runtime}' execution failed: {str(e)}",
+                    details={"runtime": runtime, "config": config}
+                )
+                status_code = 500
+                raise
         else:
             output_data = {"message": "No runtime specified"}
         
-        # 4. Validar output_schema
+        # 5. Validar output_schema
         if output_schema and output_data:
             try:
                 validate_json_schema(output_data, output_schema)
-                logger.info(f"[{request_id}] Output validado contra schema")
+                logger.info(f"[{request_id}][{trace_id}] Output validado contra schema")
             except ValueError as e:
-                logger.warning(f"[{request_id}] Output validation failed (não crítico): {e}")
+                logger.warning(f"[{request_id}][{trace_id}] Output validation failed (não crítico): {e}")
                 # Não falhamos aqui, apenas logamos
         
-        # 5. Calcular latency
+        # 6. Calcular latency
         latency_ms = int((time.time() - start_time) * 1000)
         
-        # 6. Registrar log (assíncrono, não bloqueia)
+        # 7. Registrar log (assíncrono, não bloqueia)
         log_tool_call(
             request_id=request_id,
+            trace_id=trace_id,
             tool=tool_name,
             version=tool_version,
             client_key=client_key,
@@ -435,12 +658,14 @@ async def call_tool(
             status_code=status_code,
             latency_ms=latency_ms,
             input_payload=request.input,
-            output_payload=output_data
+            output_payload=output_data,
+            context_pack=context_pack
         )
         
-        # 7. Retornar resposta
+        # 8. Retornar resposta
         return ToolCallResponse(
             request_id=request_id,
+            trace_id=trace_id,
             tool=tool_name,
             version=tool_version,
             ok=True,
@@ -450,14 +675,22 @@ async def call_tool(
     
     except requests.exceptions.HTTPError as e:
         status_code = e.response.status_code if e.response else 500
-        error_message = f"Core Registry error: {str(e)}"
-        logger.error(f"[{request_id}] {error_message}")
+        error_detail = ErrorDetail(
+            code="CORE_REGISTRY_ERROR",
+            message=f"Core Registry error: {str(e)}",
+            details={
+                "status_code": e.response.status_code if e.response else None,
+                "response": e.response.text if e.response else None
+            }
+        )
+        logger.error(f"[{request_id}][{trace_id}] {error_detail.message}")
         
         latency_ms = int((time.time() - start_time) * 1000)
         
         # Registrar log de erro
         log_tool_call(
             request_id=request_id,
+            trace_id=trace_id,
             tool=tool_name or request.tool,
             version=tool_version or request.version or "unknown",
             client_key=client_key or "unknown",
@@ -465,21 +698,40 @@ async def call_tool(
             status_code=status_code,
             latency_ms=latency_ms,
             input_payload=request.input,
-            error_payload=error_message
+            error_payload=error_detail.dict(),
+            context_pack=context_pack
         )
         
-        raise HTTPException(status_code=status_code, detail=error_message)
+        # Retornar resposta de erro estruturada
+        return JSONResponse(
+            status_code=status_code,
+            content=ToolCallResponse(
+                request_id=request_id,
+                trace_id=trace_id,
+                tool=tool_name or request.tool,
+                version=tool_version or request.version or "unknown",
+                ok=False,
+                error=error_detail,
+                latency_ms=latency_ms
+            ).dict()
+        )
     
     except ValueError as e:
         status_code = 400
-        error_message = str(e)
-        logger.error(f"[{request_id}] {error_message}")
+        if not error_detail:
+            error_detail = ErrorDetail(
+                code="VALIDATION_ERROR",
+                message=str(e),
+                details={}
+            )
+        logger.error(f"[{request_id}][{trace_id}] {error_detail.message}")
         
         latency_ms = int((time.time() - start_time) * 1000)
         
         # Registrar log de erro
         log_tool_call(
             request_id=request_id,
+            trace_id=trace_id,
             tool=tool_name or request.tool,
             version=tool_version or request.version or "unknown",
             client_key=client_key or "unknown",
@@ -487,21 +739,39 @@ async def call_tool(
             status_code=status_code,
             latency_ms=latency_ms,
             input_payload=request.input,
-            error_payload=error_message
+            error_payload=error_detail.dict(),
+            context_pack=context_pack
         )
         
-        raise HTTPException(status_code=status_code, detail=error_message)
+        # Retornar resposta de erro estruturada
+        return JSONResponse(
+            status_code=status_code,
+            content=ToolCallResponse(
+                request_id=request_id,
+                trace_id=trace_id,
+                tool=tool_name or request.tool,
+                version=tool_version or request.version or "unknown",
+                ok=False,
+                error=error_detail,
+                latency_ms=latency_ms
+            ).dict()
+        )
     
     except Exception as e:
         status_code = 500
-        error_message = f"Internal error: {str(e)}"
-        logger.error(f"[{request_id}] {error_message}", exc_info=True)
+        error_detail = ErrorDetail(
+            code="INTERNAL_ERROR",
+            message=f"Internal error: {str(e)}",
+            details={"exception_type": type(e).__name__}
+        )
+        logger.error(f"[{request_id}][{trace_id}] {error_detail.message}", exc_info=True)
         
         latency_ms = int((time.time() - start_time) * 1000)
         
         # Registrar log de erro
         log_tool_call(
             request_id=request_id,
+            trace_id=trace_id,
             tool=tool_name or request.tool,
             version=tool_version or request.version or "unknown",
             client_key=client_key or "unknown",
@@ -509,10 +779,23 @@ async def call_tool(
             status_code=status_code,
             latency_ms=latency_ms,
             input_payload=request.input,
-            error_payload=error_message
+            error_payload=error_detail.dict(),
+            context_pack=context_pack
         )
         
-        raise HTTPException(status_code=status_code, detail=error_message)
+        # Retornar resposta de erro estruturada
+        return JSONResponse(
+            status_code=status_code,
+            content=ToolCallResponse(
+                request_id=request_id,
+                trace_id=trace_id,
+                tool=tool_name or request.tool,
+                version=tool_version or request.version or "unknown",
+                ok=False,
+                error=error_detail,
+                latency_ms=latency_ms
+            ).dict()
+        )
 
 # ============================================================================
 # Main

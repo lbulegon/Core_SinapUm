@@ -83,24 +83,43 @@ def resolve_prompt_from_ref(prompt_ref, config=None):
             logger.warning(f"Prompt não encontrado para prompt_ref '{prompt_ref}'")
             return None
         else:
-            # Formato simples: apenas nome (buscar no sistema padrão)
+            # Formato simples: apenas nome (buscar no sistema padrão ou global)
             sistema_codigo = getattr(settings, 'SISTEMA_CODIGO', 'evora')
+            sistema = None
+            
             try:
                 sistema = Sistema.objects.get(codigo=sistema_codigo, ativo=True)
+                logger.info(f"Buscando prompt '{prompt_ref}' no sistema '{sistema_codigo}'")
             except Sistema.DoesNotExist:
-                logger.warning(f"Sistema padrão '{sistema_codigo}' não encontrado para prompt_ref '{prompt_ref}'")
-                return None
+                logger.info(f"Sistema padrão '{sistema_codigo}' não encontrado, buscando prompt global")
             
-            prompt = PromptTemplate.objects.filter(
-                sistema=sistema,
-                nome=prompt_ref,
-                ativo=True
-            ).first()
+            # Se tem sistema, tentar buscar nele primeiro
+            if sistema:
+                # Tentar buscar por nome primeiro
+                prompt = PromptTemplate.objects.filter(
+                    sistema=sistema,
+                    nome=prompt_ref,
+                    ativo=True
+                ).first()
+                
+                if prompt:
+                    logger.info(f"✅ Prompt encontrado por nome no sistema '{sistema_codigo}'")
+                    return prompt.get_prompt_text_com_parametros()
+                
+                # Se não encontrou por nome, tentar como tipo_prompt
+                prompt = PromptTemplate.get_prompt_ativo(prompt_ref, sistema=sistema)
+                if prompt:
+                    logger.info(f"✅ Prompt encontrado por tipo_prompt no sistema '{sistema_codigo}'")
+                    return prompt.get_prompt_text_com_parametros()
             
+            # Se não encontrou com sistema ou não tem sistema, tentar global (sem sistema)
+            logger.info(f"Buscando prompt '{prompt_ref}' globalmente (sem sistema)")
+            prompt = PromptTemplate.get_prompt_ativo(prompt_ref, sistema=None)
             if prompt:
+                logger.info(f"✅ Prompt encontrado globalmente")
                 return prompt.get_prompt_text_com_parametros()
             
-            logger.warning(f"Prompt '{prompt_ref}' não encontrado no sistema '{sistema_codigo}'")
+            logger.warning(f"Prompt '{prompt_ref}' não encontrado (sistema '{sistema_codigo}' nem globalmente)")
             return None
             
     except Exception as e:
