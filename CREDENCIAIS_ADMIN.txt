@@ -1,0 +1,81 @@
+═══════════════════════════════════════════════════════════════
+  CREDENCIAIS DO DJANGO ADMIN - Core_SinapUm
+═══════════════════════════════════════════════════════════════
+
+📍 URL do Admin:
+   http://69.169.102.84:5000/admin/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SUPERUSUÁRIOS DISPONÍVEIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  Usuário: admin
+   Email: admin@sinapum.com
+   Senha: admin123
+
+2️⃣  Usuário: lbulegon
+   Email: lbulegon@example.com
+   Senha: admin123
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ STATUS DE VERIFICAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Containers rodando corretamente
+✅ Usuários existem e estão ativos
+✅ Autenticação testada e funcionando no shell
+✅ Servidor respondendo (HTTP 200)
+✅ Senhas resetadas e verificadas
+✅ PROBLEMA DE COOKIES CORRIGIDO (SESSION_COOKIE_SECURE ajustado para HTTP)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔧 PROBLEMA RESOLVIDO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  PROBLEMA IDENTIFICADO E CORRIGIDO:
+   - SESSION_COOKIE_SECURE estava como True (requer HTTPS)
+   - Servidor está rodando em HTTP
+   - Cookies de sessão não eram salvos pelo navegador
+   - Após login bem-sucedido, sessão não persistia
+
+✅ SOLUÇÃO APLICADA:
+   - SESSION_COOKIE_SECURE e CSRF_COOKIE_SECURE ajustados para False
+   - Container reiniciado
+   - Agora os cookies funcionam em HTTP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⚠️  SE AINDA NÃO CONSEGUIR LOGAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Limpe o cache do navegador (Ctrl+Shift+Delete)
+2. Use uma janela anônima/privada (Ctrl+Shift+N no Chrome)
+3. Tente em outro navegador
+4. Verifique se não há extensões bloqueando cookies/JavaScript
+5. Certifique-se de estar usando a URL correta: http://69.169.102.84:5000/admin/
+
+⚠️  Altere a senha padrão após o primeiro acesso!
+
+Para alterar a senha:
+1. Acesse: http://69.169.102.84:5000/admin/
+2. Faça login com uma das credenciais acima
+3. Vá em "Usuários" → Selecione seu usuário → "Alterar senha"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔧 COMANDOS ÚTEIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Resetar senha de um usuário existente:
+docker compose exec web python manage.py shell -c "from django.contrib.auth.models import User; u = User.objects.get(username='admin'); u.set_password('nova_senha'); u.save()"
+
+# Criar novo superusuário:
+docker compose exec web python manage.py createsuperuser
+
+# Listar todos os superusuários:
+docker compose exec web python manage.py shell -c "from django.contrib.auth.models import User; [print(f'{u.username} ({u.email})') for u in User.objects.filter(is_superuser=True)]"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📅 Última atualização: 27/12/2025
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+

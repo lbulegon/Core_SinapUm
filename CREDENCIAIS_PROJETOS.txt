@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════════════════
+  CREDENCIAIS DE PROJETOS - Lead Registry
+═══════════════════════════════════════════════════════════════
+
+📍 URL da API:
+   http://69.169.102.84:5000/api/leads/capture
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  CREDENCIAIS ATIVAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+CARTELA
+   Project Key:    cartela
+   Project Secret: 93ca23c62b7dda907994c83e277c77a146c7fa298f486fd756b15a2bd12dba33
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:59
+   Atualizado em:  27/12/2025 03:04:59
+
+DOCK_CANGO
+   Project Key:    dock_cango
+   Project Secret: c3023f5489ae5162576e7ec58cbc8b8b08c32a44a661b34690728b56ecc6297b
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:59
+   Atualizado em:  27/12/2025 03:04:59
+
+EVENTIX
+   Project Key:    eventix
+   Project Secret: 9089f03a4c521d28684a22a7cd1c0813dcc7b278340ed935eb832a16be51a93a
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:59
+   Atualizado em:  27/12/2025 03:04:59
+
+EVORA
+   Project Key:    evora
+   Project Secret: 056851d9aaed12441cbd0ce9e8690ad169b8a583d5ef1f0a4f653f5fcf1a892e
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:59
+   Atualizado em:  27/12/2025 03:04:59
+
+MOTOPRO
+   Project Key:    motopro
+   Project Secret: 71dcb442e3bfad280cfafea86c6e4efbf9fd0ac78835f393616f26e88282630d
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:59
+   Atualizado em:  27/12/2025 03:04:59
+
+MRFOO
+   Project Key:    mrfoo
+   Project Secret: dbde98779b348b4f3889857b460f2f44b2c24fe74f96f8d692af9ebac6e2aa69
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:59
+   Atualizado em:  27/12/2025 03:04:59
+
+VITRINEZAP
+   Project Key:    vitrinezap
+   Project Secret: eedd77ee8313b691a7498ae0e4ae7809725e24727225f739caf45770d9548aed
+   Status:         ✅ Ativo
+   Criado em:      27/12/2025 03:04:18
+   Atualizado em:  27/12/2025 03:04:59
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ⚠️  IMPORTANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  Mantenha as Project Secrets em local seguro!
+⚠️  Não compartilhe essas chaves publicamente!
+⚠️  Use variáveis de ambiente para armazenar os secrets nos projetos.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📚 DOCUMENTAÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Para mais informações sobre como usar essas credenciais, consulte:
+   /root/Core_SinapUm/app_leads/ORIENTACOES.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

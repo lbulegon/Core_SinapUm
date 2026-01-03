@@ -1,0 +1,2 @@
+"""Event emitter para analytics"""
+

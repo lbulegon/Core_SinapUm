@@ -1,0 +1,30 @@
+# Read more about SSH config files: https://linux.die.net/man/5/ssh_config
+Host alias
+    HostName WhereIT-001
+    User lbulegon
+
+
+Host SinapUm433
+  HostName 69.169.102.84
+  User root
+  Port 443
+  ServerAliveInterval 15
+  ServerAliveCountMax 6
+  TCPKeepAlive yes
+  IPQoS none
+  Compression yes
+
+  # força tunnel mais resiliente
+  ControlMaster auto
+  ControlPersist 10m
+  ControlPath ~/.ssh/cm-%r@%h:%p
+
+
+
+Host Laniake
+    HostName 69.164.247.243
+    User root
+    # Nota: A senha não pode ser armazenada no SSH config por segurança
+    # Senha: Ljb#215195
+    # Use: ssh sinapum (e digite a senha quando solicitado)
+    # Ou configure chaves SSH para acesso sem senha

@@ -4,10 +4,10 @@ from .models import ClientApp, Tool, ToolVersion, ToolCallLog
 
 @admin.register(ClientApp)
 class ClientAppAdmin(admin.ModelAdmin):
-    list_display = ['key', 'name', 'is_active', 'created_at']
-    list_filter = ['is_active', 'created_at']
+    list_display = ['key', 'name', 'is_active', 'api_key']
+    list_filter = ['is_active']
     search_fields = ['key', 'name']
-    readonly_fields = ['api_key', 'created_at']
+    readonly_fields = ['api_key']
 
 
 @admin.register(Tool)

@@ -94,15 +94,29 @@ def analyze_image(request):
             
             produto_data = result.get('data', {})
             
-            # Transformar e adicionar caminho da imagem
-            from .utils import transform_evora_to_modelo_json
+            # A função analyze_image_with_openmind já retorna o JSON transformado no formato modelo.json
+            # com prompt_info incluído no cadastro_meta. Não precisamos transformar novamente.
+            # Apenas garantir que o formato está correto
             if produto_data and result.get('success'):
+                # Se ainda não estiver no formato modelo.json (caso raro), transformar
+                # Mas isso não deve acontecer, pois analyze_image_with_openmind já faz a transformação
                 if 'produto' not in produto_data or 'produto_generico_catalogo' not in produto_data:
-                    produto_data = transform_evora_to_modelo_json(
-                        produto_data,
-                        image_filename=image_file.name,
-                        image_path=image_path
-                    )
+                    from .utils import transform_evora_to_modelo_json
+                    # Tentar extrair prompt_info do resultado se disponível
+                    prompt_info = None
+                    if 'prompt_info' in result:
+                        prompt_info = result['prompt_info']
+                    elif produto_data.get('cadastro_meta', {}).get('prompt_usado'):
+                        # Se já tem prompt_usado, não precisa transformar novamente
+                        pass
+                    else:
+                        # Fallback: transformar sem prompt_info (não ideal, mas necessário)
+                        produto_data = transform_evora_to_modelo_json(
+                            produto_data,
+                            image_filename=image_file.name,
+                            image_path=image_path,
+                            prompt_info=prompt_info
+                        )
                 
                 if 'produto' in produto_data:
                     if 'imagens' not in produto_data['produto']:

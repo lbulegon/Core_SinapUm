@@ -38,16 +38,37 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
         dict: Resposta da API do OpenMind AI com image_url e image_path incluídos se fornecidos
     """
     try:
+        # Inicializar prompt_info como None
+        prompt_info = None
+        
         # Buscar prompt do banco de dados se não foi fornecido
         if prompt is None:
-            # Buscar sistema do settings ou usar 'evora' como padrão
-            sistema_codigo = getattr(settings, 'SISTEMA_CODIGO', 'evora')
-            prompt_template = PromptTemplate.get_prompt_ativo('analise_imagem_produto', sistema=sistema_codigo)
+            # Primeiro tentar buscar global (sem sistema) - mais confiável
+            prompt_template = PromptTemplate.get_prompt_ativo('analise_imagem_produto', sistema=None)
+            
+            # Se não encontrou global, tentar sistema específico
+            if not prompt_template:
+                sistema_codigo = getattr(settings, 'SISTEMA_CODIGO', 'evora')
+                logger.info(f"Prompt não encontrado globalmente, tentando sistema '{sistema_codigo}'...")
+                try:
+                    prompt_template = PromptTemplate.get_prompt_ativo('analise_imagem_produto', sistema=sistema_codigo)
+                except:
+                    prompt_template = None
+            
             if prompt_template:
                 prompt = prompt_template.get_prompt_text_com_parametros()
-                sistema_nome = prompt_template.sistema.nome if prompt_template.sistema else 'Sem sistema'
+                sistema_nome = prompt_template.sistema.nome if prompt_template.sistema else 'Global (sem sistema)'
                 # Extrair parâmetros do prompt se disponíveis
                 prompt_params = prompt_template.parametros if hasattr(prompt_template, 'parametros') and prompt_template.parametros else {}
+                # Armazenar informações do prompt para incluir no cadastro_meta
+                prompt_info = {
+                    'nome': prompt_template.nome,
+                    'versao': prompt_template.versao,
+                    'fonte': 'PostgreSQL',
+                    'sistema': sistema_nome,
+                    'tipo_prompt': prompt_template.tipo_prompt,
+                    'parametros': prompt_params
+                }
                 logger.info(
                     f"✅ [PROMPT DO BANCO] Sistema: {sistema_nome} | "
                     f"Prompt: {prompt_template.nome} (v{prompt_template.versao}) | "
@@ -58,10 +79,18 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
                 # Fallback: prompt genérico mínimo (apenas para garantir que o sistema funcione)
                 prompt = FALLBACK_PROMPT_ANALISE_PRODUTO
                 prompt_params = {}  # Sem parâmetros quando usa fallback
+                prompt_info = {
+                    'nome': 'FALLBACK',
+                    'versao': '1.0.0',
+                    'fonte': 'Código (fallback)',
+                    'sistema': None,
+                    'tipo_prompt': 'analise_imagem_produto',
+                    'parametros': {}
+                }
                 
                 warning_msg = (
                     f"⚠️ [FALLBACK ATIVO] Nenhum prompt ativo encontrado no banco de dados!\n"
-                    f"   Sistema buscado: '{sistema_codigo}'\n"
+                    f"   Sistema buscado: '{sistema_codigo}' e globalmente\n"
                     f"   Tipo de prompt: 'analise_imagem_produto'\n"
                     f"   Ação: Usando prompt fallback genérico mínimo\n"
                     f"   ⚠️ RECOMENDAÇÃO: Cadastre um prompt específico no admin Django para melhor qualidade das análises.\n"
@@ -70,6 +99,27 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
                 logger.warning(warning_msg)
                 # Também logar no console para visibilidade
                 print(f"\n{'='*80}\n{warning_msg}\n{'='*80}\n")
+        else:
+            # Se prompt foi fornecido como parâmetro, criar prompt_info básico
+            prompt_info = {
+                'nome': 'Fornecido como parâmetro',
+                'versao': 'N/A',
+                'fonte': 'Parâmetro da função',
+                'sistema': None,
+                'tipo_prompt': 'analise_imagem_produto',
+                'parametros': {}
+            }
+        
+        # Garantir que prompt_info existe mesmo se não foi definido acima
+        if prompt_info is None:
+            prompt_info = {
+                'nome': 'Desconhecido',
+                'versao': 'N/A',
+                'fonte': 'Não informado',
+                'sistema': None,
+                'tipo_prompt': 'analise_imagem_produto',
+                'parametros': {}
+            }
         
         url = f"{OPENMIND_AI_URL}/api/v1/analyze-product-image"
         
@@ -133,23 +183,34 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
                     # Transformar dados ÉVORA para formato modelo.json
                     if result.get('success') and result.get('data'):
                         try:
+                            # prompt_info já foi garantido acima, usar diretamente
                             modelo_json = transform_evora_to_modelo_json(
                                 result['data'],
                                 image_filename=image_file.name,
-                                image_path=image_path
+                                image_path=image_path,
+                                prompt_info=prompt_info
                             )
                             # Substituir data pelo formato modelo.json
                             result['data'] = modelo_json
+                            # Incluir prompt_info no retorno para referência (opcional)
+                            result['prompt_info'] = prompt_info
                             logger.info("Dados transformados para formato modelo.json")
                         except Exception as transform_error:
                             logger.error(f"Erro ao transformar dados: {str(transform_error)}", exc_info=True)
                             # Continuar com dados originais se houver erro na transformação
+                            # Mas ainda tentar incluir prompt_info
+                            if 'prompt_info' in locals():
+                                result['prompt_info'] = prompt_info
                     
                     # Adicionar image_url e image_path à resposta se fornecidos
                     if image_url:
                         result['image_url'] = image_url
                     if image_path:
                         result['image_path'] = image_path
+                    
+                    # Garantir que prompt_info está no retorno
+                    if 'prompt_info' in locals() and 'prompt_info' not in result:
+                        result['prompt_info'] = prompt_info
                     
                     return result
                 else:

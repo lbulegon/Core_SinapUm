@@ -599,6 +599,7 @@ async def call_tool(
         input_schema = execution_plan.get("input_schema", {})
         output_schema = execution_plan.get("output_schema", {})
         prompt_text = execution_plan.get("prompt_text")  # Prompt resolvido do prompt_ref
+        prompt_info = execution_plan.get("prompt_info")  # Informações completas do prompt
         
         logger.info(f"[{request_id}][{trace_id}] Tool resolvida: {tool_name}@{tool_version} runtime={runtime}")
         if prompt_text:
@@ -624,6 +625,30 @@ async def call_tool(
             try:
                 output_data = execute_runtime(runtime, config, request.input, prompt_text=prompt_text)
                 logger.info(f"[{request_id}][{trace_id}] Runtime executado com sucesso")
+                
+                # Adicionar informações do prompt no cadastro_meta se o output tiver essa estrutura
+                if isinstance(output_data, dict) and output_data.get('data') and isinstance(output_data['data'], dict):
+                    if 'cadastro_meta' in output_data['data']:
+                        if prompt_info:
+                            output_data['data']['cadastro_meta']['prompt_usado'] = {
+                                'nome': prompt_info.get('nome', 'Desconhecido'),
+                                'versao': prompt_info.get('versao', 'N/A'),
+                                'fonte': prompt_info.get('fonte', 'Não informado'),
+                                'sistema': prompt_info.get('sistema'),
+                                'tipo_prompt': prompt_info.get('tipo_prompt', 'analise_imagem_produto'),
+                                'parametros': prompt_info.get('parametros', {}),
+                                'prompt_ref': prompt_info.get('prompt_ref')
+                            }
+                        else:
+                            output_data['data']['cadastro_meta']['prompt_usado'] = {
+                                'nome': 'Desconhecido',
+                                'versao': 'N/A',
+                                'fonte': 'Não informado',
+                                'sistema': None,
+                                'tipo_prompt': 'analise_imagem_produto',
+                                'parametros': {},
+                                'prompt_ref': execution_plan.get('prompt_ref')
+                            }
             except Exception as e:
                 error_detail = ErrorDetail(
                     code="RUNTIME_EXECUTION_ERROR",

@@ -36,7 +36,8 @@ services:
       - OPENMIND_AI_PORT=8001
       - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.org/v1}
       - OPENMIND_ORG_MODEL=${OPENMIND_ORG_MODEL:-gpt-4o}
-      - OPENMIND_AI_API_KEY=${OPENMIND_AI_KEY:-}
+      # OPENMIND_AI_API_KEY vem do env_file (.env), não sobrescrever aqui
+      # Se precisar sobrescrever, use: - OPENMIND_AI_API_KEY=${OPENMIND_AI_KEY:-valor_do_env_file}
     volumes:
       - openmind_images:/data/vitrinezap/images:rw
       - openmind_logs:/var/log/openmind-ai:rw
@@ -76,6 +77,9 @@ services:
       - OPENMIND_AI_URL=${OPENMIND_AI_URL:-http://openmind:8001}
       - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,69.169.102.84}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
+      - DDF_BASE_URL=${DDF_BASE_URL:-http://ddf_service:8005}
+      - MCP_MAX_INPUT_BYTES=${MCP_MAX_INPUT_BYTES:-10485760}
     depends_on:
       db:
         condition: service_healthy
@@ -86,6 +90,260 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MCP Service (FastAPI) - Gateway MCP
+  mcp_service:
+    build:
+      context: ./services/mcp_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_mcp
+    ports:
+      - "7010:7010"
+    environment:
+      - SINAPUM_CORE_URL=http://web:5000
+      - OPENMIND_SERVICE_URL=http://openmind:8001
+      - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
+    depends_on:
+      web:
+        condition: service_healthy
+      openmind:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # DDF Service (FastAPI) - Detect & Delegate Framework
+  ddf_service:
+    build:
+      context: ./services/ddf_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_ddf
+    ports:
+      - "8005:8005"
+    env_file:
+      - ./services/ddf_service/.env
+    environment:
+      - DATABASE_URL=postgresql://ddf:ddf@ddf_postgres:5432/ddf
+      - REDIS_URL=redis://ddf_redis:6379/0
+      - STORAGE_PATH=/app/storage
+      - PORT=8005
+      - OPENMIND_BASE_URL=http://openmind:8001
+    depends_on:
+      ddf_redis:
+        condition: service_started
+      ddf_postgres:
+        condition: service_healthy
+      openmind:
+        condition: service_healthy
+    volumes:
+      - ddf_storage:/app/storage
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # DDF Redis
+  ddf_redis:
+    image: redis:7-alpine
+    container_name: mcp_sinapum_ddf_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - ddf_redis_data:/data
+    networks:
+      - mcp_network
+    restart: unless-stopped
+
+  # DDF PostgreSQL
+  ddf_postgres:
+    image: postgres:15-alpine
+    container_name: mcp_sinapum_ddf_postgres
+    environment:
+      POSTGRES_DB: ddf
+      POSTGRES_USER: ddf
+      POSTGRES_PASSWORD: ddf
+    ports:
+      - "5434:5432"
+    volumes:
+      - ddf_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ddf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # iFood Service (FastAPI)
+  ifood_service:
+    build:
+      context: ./services/ifood_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_ifood
+    ports:
+      - "7020:7020"
+    environment:
+      - IFOOD_CLIENT_ID=${IFOOD_CLIENT_ID:-}
+      - IFOOD_CLIENT_SECRET=${IFOOD_CLIENT_SECRET:-}
+      - IFOOD_AUTH_BASE_URL=${IFOOD_AUTH_BASE_URL:-https://auth.ifood.com.br}
+      - IFOOD_API_BASE_URL=${IFOOD_API_BASE_URL:-https://merchant-api.ifood.com.br}
+      - IFOOD_REDIRECT_URI=${IFOOD_REDIRECT_URI:-http://localhost:7020/oauth/callback}
+      - CORE_INTERNAL_BASE_URL=http://web:5000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
+      - REDIS_URL=${REDIS_URL:-}
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7020/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Chatwoot - Customer Support Platform
+  chatwoot_postgres:
+    image: pgvector/pgvector:pg16
+    container_name: mcp_sinapum_chatwoot_postgres
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=chatwoot
+      - POSTGRES_PASSWORD=${CHATWOOT_POSTGRES_PASSWORD:-V$*@eSmnpmYfecMh!j0q%Kccq$6n4LhL}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - chatwoot_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatwoot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chatwoot_redis:
+    image: redis:7-alpine
+    container_name: mcp_sinapum_chatwoot_redis
+    command: ["sh", "-c", "redis-server --requirepass \"${CHATWOOT_REDIS_PASSWORD:-8gnMzCwQI8LTLzJ2v1moAtCl0tHUZqtB}\""]
+    volumes:
+      - chatwoot_redis_data:/data
+    ports:
+      - "6381:6379"
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${CHATWOOT_REDIS_PASSWORD:-8gnMzCwQI8LTLzJ2v1moAtCl0tHUZqtB}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  chatwoot_rails:
+    image: chatwoot/chatwoot:latest
+    container_name: mcp_sinapum_chatwoot_rails
+    env_file:
+      - ./services/chatwoot/.env
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - POSTGRES_HOST=chatwoot_postgres
+      - POSTGRES_USERNAME=chatwoot
+      - POSTGRES_PASSWORD=${CHATWOOT_POSTGRES_PASSWORD:-V$*@eSmnpmYfecMh!j0q%Kccq$6n4LhL}
+      - REDIS_URL=redis://:${CHATWOOT_REDIS_PASSWORD:-8gnMzCwQI8LTLzJ2v1moAtCl0tHUZqtB}@chatwoot_redis:6379
+      - REDIS_PASSWORD=${CHATWOOT_REDIS_PASSWORD:-8gnMzCwQI8LTLzJ2v1moAtCl0tHUZqtB}
+    volumes:
+      - chatwoot_storage_data:/app/storage
+    ports:
+      - "3001:3000"
+    depends_on:
+      chatwoot_postgres:
+        condition: service_healthy
+      chatwoot_redis:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  chatwoot_sidekiq:
+    image: chatwoot/chatwoot:latest
+    container_name: mcp_sinapum_chatwoot_sidekiq
+    env_file:
+      - ./services/chatwoot/.env
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - POSTGRES_HOST=chatwoot_postgres
+      - POSTGRES_USERNAME=chatwoot
+      - POSTGRES_PASSWORD=${CHATWOOT_POSTGRES_PASSWORD:-V$*@eSmnpmYfecMh!j0q%Kccq$6n4LhL}
+      - REDIS_URL=redis://:${CHATWOOT_REDIS_PASSWORD:-8gnMzCwQI8LTLzJ2v1moAtCl0tHUZqtB}@chatwoot_redis:6379
+      - REDIS_PASSWORD=${CHATWOOT_REDIS_PASSWORD:-8gnMzCwQI8LTLzJ2v1moAtCl0tHUZqtB}
+    volumes:
+      - chatwoot_storage_data:/app/storage
+    depends_on:
+      chatwoot_postgres:
+        condition: service_healthy
+      chatwoot_redis:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+
+  # ShopperBot Service - IA Vendedora para VitrineZap
+  shopperbot_service:
+    build:
+      context: ./services/shopperbot_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_shopperbot
+    ports:
+      - "7030:7030"
+    environment:
+      - PORT=7030
+      - DEBUG=${SHOPPERBOT_DEBUG:-False}
+      - STORAGE_PATH=/app/storage
+      - LOG_LEVEL=${SHOPPERBOT_LOG_LEVEL:-INFO}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-mcp_user}:${POSTGRES_PASSWORD:-mcp_password_change_me}@db:5432/${POSTGRES_DB:-mcp_sinapum}
+    volumes:
+      - shopperbot_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7030/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -103,6 +361,20 @@ volumes:
   openmind_images:
     driver: local
   openmind_logs:
+    driver: local
+  ddf_storage:
+    driver: local
+  ddf_redis_data:
+    driver: local
+  ddf_postgres_data:
+    driver: local
+  chatwoot_postgres_data:
+    driver: local
+  chatwoot_redis_data:
+    driver: local
+  chatwoot_storage_data:
+    driver: local
+  shopperbot_storage:
     driver: local
 
 networks:

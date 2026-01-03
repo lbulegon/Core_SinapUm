@@ -145,6 +145,10 @@ class ImageAnalyzer:
             
             content = api_response["choices"][0]["message"]["content"]
             
+            # Log da resposta bruta (primeiros 1000 caracteres para debug)
+            logger.info(f"📥 Resposta bruta da API (primeiros 1000 chars): {content[:1000]}")
+            logger.info(f"📥 Tamanho total da resposta: {len(content)} caracteres")
+            
             # Tentar parsear JSON da resposta
             # A resposta pode vir com markdown code blocks
             content_clean = content.strip()
@@ -161,7 +165,19 @@ class ImageAnalyzer:
             try:
                 # Tentar parsear como JSON
                 result = json.loads(content_clean)
-                logger.info("Análise de imagem concluída com sucesso")
+                logger.info("✅ JSON parseado com sucesso")
+                # Log detalhado do resultado para debug
+                logger.info(f"📊 Resultado parseado - Chaves: {list(result.keys())}")
+                logger.info(f"📊 Nome: '{result.get('nome', 'N/A')}', Marca: '{result.get('marca', 'N/A')}', Categoria: '{result.get('categoria', 'N/A')}'")
+                logger.info(f"📊 Descrição (primeiros 200 chars): '{result.get('descricao', 'N/A')[:200]}'")
+                
+                # Verificar se o resultado está vazio ou genérico
+                nome_val = result.get('nome', '').strip()
+                marca_val = result.get('marca', '').strip()
+                if not nome_val or nome_val.lower() in ['produto não identificado', 'n/a', '']:
+                    logger.warning("⚠️ ATENÇÃO: Campo 'nome' está vazio ou genérico na resposta da API!")
+                if not marca_val or marca_val.lower() in ['marca não identificada', 'n/a', '']:
+                    logger.warning("⚠️ ATENÇÃO: Campo 'marca' está vazio ou genérico na resposta da API!")
             except json.JSONDecodeError as e:
                 # Se não for JSON válido, tentar extrair JSON do texto
                 logger.warning(f"Resposta não é JSON puro, tentando extrair: {str(e)}")
@@ -190,11 +206,20 @@ class ImageAnalyzer:
                     }
             
             # Garantir que campos essenciais existam
-            if "nome" not in result or not result.get("nome"):
+            # Mas verificar se o prompt pediu para não usar valores genéricos
+            prompt_proibe_genericos = "NUNCA use" in analysis_prompt or "não use" in analysis_prompt.lower()
+            
+            if "nome" not in result or not result.get("nome") or result.get("nome", "").strip() == "":
+                if prompt_proibe_genericos:
+                    logger.error("❌ ERRO: Prompt proíbe valores genéricos, mas API retornou 'nome' vazio!")
                 result["nome"] = "Produto não identificado"
-            if "descricao" not in result or not result.get("descricao"):
+            if "descricao" not in result or not result.get("descricao") or result.get("descricao", "").strip() == "":
+                if prompt_proibe_genericos:
+                    logger.error("❌ ERRO: Prompt proíbe valores genéricos, mas API retornou 'descricao' vazia!")
                 result["descricao"] = "Descrição não disponível"
-            if "categoria" not in result or not result.get("categoria"):
+            if "categoria" not in result or not result.get("categoria") or result.get("categoria", "").strip() == "":
+                if prompt_proibe_genericos:
+                    logger.error("❌ ERRO: Prompt proíbe valores genéricos, mas API retornou 'categoria' vazia!")
                 result["categoria"] = "Geral"
             
             # Adicionar metadados

@@ -99,6 +99,7 @@ class ToolVersion(models.Model):
 class ToolCallLog(models.Model):
     """Log de chamadas de tools para auditoria"""
     request_id = models.CharField(max_length=64, db_index=True)
+    trace_id = models.CharField(max_length=64, db_index=True, blank=True, null=True)  # Novo campo MCP-aware
     tool = models.CharField(max_length=160)
     version = models.CharField(max_length=30)
 
@@ -119,6 +120,12 @@ class ToolCallLog(models.Model):
         verbose_name = 'Tool Call Log'
         verbose_name_plural = 'Tool Call Logs'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['request_id']),
+            models.Index(fields=['trace_id']),
+            models.Index(fields=['tool', 'version']),
+            models.Index(fields=['created_at']),
+        ]
 
     def __str__(self):
         return f"{self.tool}@{self.version} - {self.request_id}"

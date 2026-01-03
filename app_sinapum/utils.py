@@ -4,9 +4,12 @@ Utilitários para transformação de dados
 from datetime import datetime
 from typing import Dict, Any, Optional
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-def transform_evora_to_modelo_json(evora_data: Dict[str, Any], image_filename: str = None, image_path: str = None) -> Dict[str, Any]:
+def transform_evora_to_modelo_json(evora_data: Dict[str, Any], image_filename: str = None, image_path: str = None, prompt_info: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     Transforma dados no formato ÉVORA para o formato modelo.json
     
@@ -14,10 +17,20 @@ def transform_evora_to_modelo_json(evora_data: Dict[str, Any], image_filename: s
         evora_data: Dados no formato ÉVORA retornados pelo OpenMind AI
         image_filename: Nome do arquivo de imagem (opcional)
         image_path: Caminho completo da imagem salva no servidor (ex: "media/uploads/nome.jpg")
+        prompt_info: Informações do prompt usado (opcional): {nome, versao, fonte, sistema, tipo_prompt, parametros}
     
     Returns:
         dict: Dados no formato modelo.json
     """
+    # Verificar se já está no formato modelo.json completo
+    if 'produto' in evora_data and isinstance(evora_data['produto'], dict):
+        # Já está no formato modelo.json - apenas adicionar prompt_info se necessário
+        logger.info("✅ Dados já estão no formato modelo.json completo")
+        if prompt_info and 'cadastro_meta' in evora_data:
+            if 'prompt_usado' not in evora_data['cadastro_meta']:
+                evora_data['cadastro_meta']['prompt_usado'] = prompt_info
+        return evora_data
+    
     # Extrair dados do formato ÉVORA
     nome_produto = evora_data.get('nome_produto', 'Produto não identificado')
     
@@ -266,7 +279,15 @@ def transform_evora_to_modelo_json(evora_data: Dict[str, Any], image_filename: s
         "data_captura": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fonte": f"Análise automática de imagem: {image_path or image_filename or 'uploaded_image'}",
         "confianca_da_leitura": 0.95,  # Valor padrão, pode ser ajustado
-        "detalhes_rotulo": {}
+        "detalhes_rotulo": {},
+        "prompt_usado": prompt_info if prompt_info else {
+            "nome": "Desconhecido",
+            "versao": "N/A",
+            "fonte": "Não informado",
+            "sistema": None,
+            "tipo_prompt": "analise_imagem_produto",
+            "parametros": {}
+        }
     }
     
     # Adicionar informações enriquecidas do cadastro_meta se disponíveis
@@ -278,7 +299,13 @@ def transform_evora_to_modelo_json(evora_data: Dict[str, Any], image_filename: s
     detalhes_rotulo = {}
     
     # Procurar por informações de origem
-    pais_origem = evora_data.get('pais_origem') or evora_data.get('caracteristicas', {}).get('fabricacao', {}).get('pais')
+    # caracteristicas já foi processado acima e pode ser dict ou lista
+    # Se for lista, já foi convertido para dict vazio
+    pais_origem = evora_data.get('pais_origem')
+    if not pais_origem and isinstance(caracteristicas, dict):
+        fabricacao = caracteristicas.get('fabricacao', {})
+        if isinstance(fabricacao, dict):
+            pais_origem = fabricacao.get('pais')
     if pais_origem:
         detalhes_rotulo['origem'] = pais_origem
     

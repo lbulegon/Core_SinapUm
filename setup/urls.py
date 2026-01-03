@@ -20,6 +20,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from app_sinapum import views
 from app_sinapum import views_core
+from app_sinapum import views_evolution
 
 # Importar views do CrewAI (com try/except para não quebrar se CrewAI não estiver instalado)
 try:
@@ -47,8 +48,19 @@ urlpatterns = [
     path('api/v1/analyze-product-image', views.api_analyze_product_image, name='api_analyze_product_image'),
     # Core Registry endpoints (MCP) - Novo app_mcp_tool_registry
     path('core/', include('app_mcp_tool_registry.urls')),
+    # Integração iFood (API interna)
+    path('', include('app_ifood_integration.urls')),
+    # Lead Registry - Sistema central de captação de leads
+    path('', include('app_leads.urls')),
     # Health check (mantido para compatibilidade)
     path('health', views_core.health_check, name='health_check'),
+    # Evolution API / WhatsApp Integration
+    path('whatsapp/', views_evolution.whatsapp_connect, name='whatsapp_connect'),
+    path('whatsapp/api/create-instance/', views_evolution.whatsapp_create_instance, name='whatsapp_create_instance'),
+    path('whatsapp/api/get-qrcode/', views_evolution.whatsapp_get_qrcode, name='whatsapp_get_qrcode'),
+    path('whatsapp/api/get-status/', views_evolution.whatsapp_get_status, name='whatsapp_get_status'),
+    path('whatsapp/api/delete-instance/', views_evolution.whatsapp_delete_instance, name='whatsapp_delete_instance'),
+    path('whatsapp/api/restart-instance/', views_evolution.whatsapp_restart_instance, name='whatsapp_restart_instance'),
     path('admin/', admin.site.urls),
 ]
 

@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'app_sinapum',
     'app_mcp_tool_registry',
+    'app_ifood_integration',
+    'app_leads',  # Lead Registry - Sistema central de captação
 ]
 
 MIDDLEWARE = [
@@ -216,6 +218,44 @@ AGNOS_CONFIG = {
 # Deve corresponder ao campo 'codigo' do modelo Sistema em app_sinapum.models
 SISTEMA_CODIGO = os.environ.get('SISTEMA_CODIGO', 'evora')
 
+# ============================================================================
+# HTTPS / SSL Configuration
+# ============================================================================
+# Quando usar Nginx como proxy reverso, o Django detecta HTTPS através do
+# header X-Forwarded-Proto enviado pelo Nginx.
+# 
+# IMPORTANTE: Django/Gunicorn NÃO serve HTTPS diretamente.
+# Use Nginx como proxy reverso para terminar SSL/TLS.
+# ============================================================================
+
+# Django confia no header X-Forwarded-Proto do proxy reverso (Nginx)
+# Isso permite que Django saiba que está atrás de HTTPS mesmo recebendo HTTP interno
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Não fazer redirect aqui (Nginx já faz redirect HTTP → HTTPS)
+# Se True, Django tentaria fazer redirect, mas Nginx já faz isso
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() in ('true', '1', 'yes')
+
+# Cookies seguros (apenas via HTTPS)
+# Em desenvolvimento ou HTTP, desabilitar para permitir cookies
+# Em produção com HTTPS, habilitar via variável de ambiente
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1', 'yes')
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False').lower() in ('true', '1', 'yes')
+
+# HSTS (HTTP Strict Transport Security)
+# Força navegadores a usar HTTPS por 1 ano
+SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))  # 1 ano
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() in ('true', '1', 'yes')
+SECURE_HSTS_PRELOAD = os.environ.get('SECURE_HSTS_PRELOAD', 'True').lower() in ('true', '1', 'yes')
+
+# Outras configurações de segurança
+SECURE_CONTENT_TYPE_NOSNIFF = os.environ.get('SECURE_CONTENT_TYPE_NOSNIFF', 'True').lower() in ('true', '1', 'yes')
+SECURE_BROWSER_XSS_FILTER = os.environ.get('SECURE_BROWSER_XSS_FILTER', 'True').lower() in ('true', '1', 'yes')
+X_FRAME_OPTIONS = os.environ.get('X_FRAME_OPTIONS', 'DENY')  # 'DENY', 'SAMEORIGIN', ou 'ALLOWALL'
+
+# Nota: Em desenvolvimento (DEBUG=True), algumas dessas configurações podem ser relaxadas
+# para facilitar o desenvolvimento. Em produção, todas devem estar ativas.
+
 # Prompt Registry Configuration
 # Integração entre PromptTemplate (PostgreSQL) e ToolVersion.prompt_ref (MCP Tool Registry)
 # O campo prompt_ref no ToolVersion pode referenciar:
@@ -223,3 +263,31 @@ SISTEMA_CODIGO = os.environ.get('SISTEMA_CODIGO', 'evora')
 # - Sistema.codigo + PromptTemplate.nome (ex: "evora:analise_produto_v1")
 # - Sistema.codigo + PromptTemplate.tipo_prompt (ex: "evora:analise_imagem_produto")
 PROMPT_REF_FORMAT = os.environ.get('PROMPT_REF_FORMAT', 'sistema:nome')  # 'nome', 'sistema:nome', 'sistema:tipo'
+
+# MCP Tool Registry Configuration
+# Limite máximo de tamanho de input em bytes (padrão: 10MB)
+MCP_MAX_INPUT_BYTES = int(os.environ.get('MCP_MAX_INPUT_BYTES', 10485760))  # 10MB
+
+# DDF Service Configuration (para runtime ddf)
+DDF_BASE_URL = os.environ.get('DDF_BASE_URL', 'http://ddf_service:8005')
+DDF_TIMEOUT = int(os.environ.get('DDF_TIMEOUT', 60))  # segundos
+
+# MCP Service Configuration (para delegação opcional)
+MCP_SERVICE_URL = os.environ.get('MCP_SERVICE_URL', 'http://mcp_service:7010')
+
+# Evolution API Configuration (WhatsApp Integration)
+# Detectar automaticamente se está em container ou host
+# Em container Docker: usar 'http://evolution_api:8080'
+# No host: usar 'http://127.0.0.1:8004'
+import socket
+try:
+    # Tentar resolver 'evolution_api' (só funciona dentro da rede Docker)
+    socket.gethostbyname('evolution_api')
+    DEFAULT_EVOLUTION_API_URL = 'http://evolution_api:8080'
+except socket.gaierror:
+    # Se não conseguir resolver, estamos no host
+    DEFAULT_EVOLUTION_API_URL = 'http://127.0.0.1:8004'
+
+EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL', DEFAULT_EVOLUTION_API_URL)
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg')
+EVOLUTION_INSTANCE_NAME = os.environ.get('EVOLUTION_INSTANCE_NAME', 'core_sinapum')

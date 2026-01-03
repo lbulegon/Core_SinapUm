@@ -1,0 +1,180 @@
+services:
+  # Banco de dados PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: mcp_sinapum_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_sinapum}
+      POSTGRES_USER: ${POSTGRES_USER:-mcp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcp_password_change_me}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mcp_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mcp_network
+    restart: unless-stopped
+
+  # OpenMind AI Service
+  openmind:
+    build:
+      context: ./services/openmind_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_openmind
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./services/openmind_service/.env
+    environment:
+      - OPENMIND_AI_HOST=0.0.0.0
+      - OPENMIND_AI_PORT=8001
+      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.org/v1}
+      - OPENMIND_ORG_MODEL=${OPENMIND_ORG_MODEL:-gpt-4o}
+      - OPENMIND_AI_API_KEY=${OPENMIND_AI_KEY:-}
+    volumes:
+      - openmind_images:/data/vitrinezap/images:rw
+      - openmind_logs:/var/log/openmind-ai:rw
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Aplicação Django MCP SinapUm (Core Registry)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_web
+    command: gunicorn setup.wsgi:application --bind 0.0.0.0:5000 --workers 3 --timeout 120 --access-logfile - --error-logfile -
+    volumes:
+      - .:/app
+      - media_data:/app/media
+      - static_data:/app/static
+      - vitrinezap_images:/data/vitrinezap/images
+    # Remover exposição direta da porta 5000 (nginx vai fazer proxy)
+    expose:
+      - "5000"
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me-in-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-mcp_user}:${POSTGRES_PASSWORD:-mcp_password_change_me}@db:5432/${POSTGRES_DB:-mcp_sinapum}
+      - POSTGRES_DB=${POSTGRES_DB:-mcp_sinapum}
+      - POSTGRES_USER=${POSTGRES_USER:-mcp_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mcp_password_change_me}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - OPENMIND_AI_URL=${OPENMIND_AI_URL:-http://openmind:8001}
+      - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,69.169.102.84}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
+    depends_on:
+      db:
+        condition: service_healthy
+      openmind:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # iFood Service (FastAPI)
+  ifood_service:
+    build:
+      context: ./services/ifood_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_ifood
+    expose:
+      - "7020"
+    environment:
+      - IFOOD_CLIENT_ID=${IFOOD_CLIENT_ID:-}
+      - IFOOD_CLIENT_SECRET=${IFOOD_CLIENT_SECRET:-}
+      - IFOOD_AUTH_BASE_URL=${IFOOD_AUTH_BASE_URL:-https://auth.ifood.com.br}
+      - IFOOD_API_BASE_URL=${IFOOD_API_BASE_URL:-https://merchant-api.ifood.com.br}
+      - IFOOD_REDIRECT_URI=${IFOOD_REDIRECT_URI:-https://seu-dominio.com/ifood/oauth/callback}
+      - CORE_INTERNAL_BASE_URL=http://web:5000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
+      - REDIS_URL=${REDIS_URL:-}
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7020/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx (Proxy Reverso + SSL)
+  nginx:
+    image: nginx:alpine
+    container_name: mcp_sinapum_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      - static_data:/app/staticfiles:ro
+      - media_data:/app/media:ro
+    depends_on:
+      - web
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  # Certbot (Renovação automática de certificados Let's Encrypt)
+  certbot:
+    image: certbot/certbot
+    container_name: mcp_sinapum_certbot
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - mcp_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  media_data:
+    driver: local
+  static_data:
+    driver: local
+  vitrinezap_images:
+    driver: local
+  openmind_images:
+    driver: local
+  openmind_logs:
+    driver: local
+  certbot_conf:
+    driver: local
+  certbot_www:
+    driver: local
+
+networks:
+  mcp_network:
+    driver: bridge
+

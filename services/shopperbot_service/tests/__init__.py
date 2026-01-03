@@ -1,0 +1,2 @@
+"""Tests para ShopBot Service"""
+

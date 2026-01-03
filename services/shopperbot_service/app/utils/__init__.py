@@ -1,0 +1,2 @@
+"""Utilities para ShopBot Service"""
+
