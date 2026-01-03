@@ -263,7 +263,7 @@ services:
     image: chatwoot/chatwoot:latest
     container_name: mcp_sinapum_chatwoot_rails
     env_file:
-      - ./services/chatwoot/.env
+      - ./services/chatwoot_service/.env
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
@@ -298,7 +298,7 @@ services:
     image: chatwoot/chatwoot:latest
     container_name: mcp_sinapum_chatwoot_sidekiq
     env_file:
-      - ./services/chatwoot/.env
+      - ./services/chatwoot_service/.env
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
@@ -344,6 +344,28 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7030/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # SparkScore Service - Sistema de Análise Psicológica e Semiótica
+  sparkscore_service:
+    build:
+      context: ./services/sparkscore_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_sparkscore
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+      - DEBUG=${SPARKSCORE_DEBUG:-False}
+      - LOG_LEVEL=${SPARKSCORE_LOG_LEVEL:-INFO}
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
       interval: 30s
       timeout: 10s
       retries: 3
