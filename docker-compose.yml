@@ -80,6 +80,15 @@ services:
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
       - DDF_BASE_URL=${DDF_BASE_URL:-http://ddf_service:8005}
       - MCP_MAX_INPUT_BYTES=${MCP_MAX_INPUT_BYTES:-10485760}
+      # ARQUITETURA NOVA - Feature Flags
+      - FEATURE_EVOLUTION_MULTI_TENANT=${FEATURE_EVOLUTION_MULTI_TENANT:-true}
+      - FEATURE_OPENMIND_ENABLED=${FEATURE_OPENMIND_ENABLED:-true}
+      - EVOLUTION_BASE_URL=${EVOLUTION_BASE_URL:-http://69.169.102.84:8004}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg}
+      - OPENMIND_BASE_URL=${OPENMIND_BASE_URL:-http://openmind:8001}
+      - OPENMIND_TOKEN=${OPENMIND_TOKEN:-}
+      - VITRINEZAP_BASE_URL=${VITRINEZAP_BASE_URL:-https://evora-product.up.railway.app}
+      - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -288,7 +297,7 @@ services:
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

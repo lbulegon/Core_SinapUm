@@ -54,15 +54,53 @@ urlpatterns = [
     path('', include('app_leads.urls')),
     # Health check (mantido para compatibilidade)
     path('health', views_core.health_check, name='health_check'),
-    # Evolution API / WhatsApp Integration
+    # Evolution API / WhatsApp Integration (legado)
     path('whatsapp/', views_evolution.whatsapp_connect, name='whatsapp_connect'),
     path('whatsapp/api/create-instance/', views_evolution.whatsapp_create_instance, name='whatsapp_create_instance'),
     path('whatsapp/api/get-qrcode/', views_evolution.whatsapp_get_qrcode, name='whatsapp_get_qrcode'),
     path('whatsapp/api/get-status/', views_evolution.whatsapp_get_status, name='whatsapp_get_status'),
     path('whatsapp/api/delete-instance/', views_evolution.whatsapp_delete_instance, name='whatsapp_delete_instance'),
     path('whatsapp/api/restart-instance/', views_evolution.whatsapp_restart_instance, name='whatsapp_restart_instance'),
+    # WhatsApp Gateway - Nova arquitetura plugável
+    path('api/whatsapp/', include('app_whatsapp.api.urls')),
+    # Creative Engine - Motor de criativos
+    path('api/creative-engine/', include('app_creative_engine.api.urls')),
     path('admin/', admin.site.urls),
 ]
+
+# ============================================================================
+# ARQUITETURA NOVA - WhatsApp Gateway Multi-tenant
+# ============================================================================
+# URLs da nova arquitetura (com feature flags)
+# ANTIGO: /whatsapp/api/* e /api/whatsapp/* (mantidos acima)
+# NOVO: /webhooks/evolution/*, /console/*, /ai/*, /mcp/*
+# ============================================================================
+
+# Feature flags (verificar se estão habilitadas)
+FEATURE_EVOLUTION_MULTI_TENANT = getattr(settings, 'FEATURE_EVOLUTION_MULTI_TENANT', False)
+
+if FEATURE_EVOLUTION_MULTI_TENANT:
+    # Gateway WhatsApp
+    urlpatterns += [
+        path('', include('app_whatsapp_gateway.urls')),
+    ]
+    
+    # Console de Conversas
+    urlpatterns += [
+        path('', include('app_conversations.urls')),
+    ]
+    
+    # AI Bridge (se habilitado)
+    FEATURE_OPENMIND_ENABLED = getattr(settings, 'FEATURE_OPENMIND_ENABLED', False)
+    if FEATURE_OPENMIND_ENABLED:
+        urlpatterns += [
+            path('ai/', include('app_ai_bridge.urls')),
+        ]
+    
+    # MCP Tools (se habilitado)
+    urlpatterns += [
+        path('mcp/', include('app_mcp.urls')),
+    ]
 
 # Adicionar rotas do CrewAI se disponível
 if CREWAI_AVAILABLE and crewai_views:

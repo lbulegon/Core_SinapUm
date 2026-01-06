@@ -34,6 +34,30 @@ else:
     ALLOWED_HOSTS = ['69.169.102.84', 'localhost', '127.0.0.1', 'web', '0.0.0.0']
 
 
+# ============================================================================
+# Feature Flags - Nova Arquitetura WhatsApp
+# ============================================================================
+FEATURE_EVOLUTION_MULTI_TENANT = os.environ.get('FEATURE_EVOLUTION_MULTI_TENANT', 'False').lower() in ('true', '1', 'yes')
+FEATURE_OPENMIND_ENABLED = os.environ.get('FEATURE_OPENMIND_ENABLED', 'False').lower() in ('true', '1', 'yes')
+FEATURE_CONSOLE_ENABLED = os.environ.get('FEATURE_CONSOLE_ENABLED', 'False').lower() in ('true', '1', 'yes')
+
+# Evolution API - Nova Arquitetura
+EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_BASE_URL', 'http://69.169.102.84:8004')
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg')
+EVOLUTION_TIMEOUT = int(os.environ.get('EVOLUTION_TIMEOUT', '30'))
+
+# WhatsApp Gateway - Provider Selection
+WHATSAPP_PROVIDER = os.environ.get('WHATSAPP_PROVIDER', 'simulated')  # simulated|cloud|baileys|evolution
+
+# OpenMind AI - Nova Arquitetura
+OPENMIND_BASE_URL = os.environ.get('OPENMIND_BASE_URL', 'http://69.169.102.84:8001')
+OPENMIND_TOKEN = os.environ.get('OPENMIND_TOKEN', '')
+
+# VitrineZap API - Para MCP Tools
+# NOTA: Évora/VitrineZap está no Railway, não no servidor SinapUm
+VITRINEZAP_BASE_URL = os.environ.get('VITRINEZAP_BASE_URL', 'https://evora-product.up.railway.app')
+INTERNAL_API_TOKEN = os.environ.get('INTERNAL_API_TOKEN', '')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -43,10 +67,20 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',  # Django REST Framework
     'app_sinapum',
     'app_mcp_tool_registry',
     'app_ifood_integration',
     'app_leads',  # Lead Registry - Sistema central de captação
+    # ============================================================================
+    # ARQUITETURA NOVA - WhatsApp Gateway Multi-tenant
+    # ============================================================================
+    'app_whatsapp_gateway',  # Gateway Evolution multi-tenant (legado)
+    'app_whatsapp',  # WhatsApp Gateway plugável (nova arquitetura)
+    'app_creative_engine',  # Creative Engine - Motor de criativos
+    'app_conversations',  # Conversas e sugestões de IA
+    'app_ai_bridge',  # Ponte com OpenMind
+    'app_mcp',  # Tools MCP para IA
 ]
 
 MIDDLEWARE = [
