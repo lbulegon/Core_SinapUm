@@ -1,0 +1,110 @@
+# =============================================================================
+# WhatsApp Integration - Variáveis de Ambiente
+# =============================================================================
+# Configurações para integração WhatsApp no Core_SinapUm
+# Adicione estas variáveis ao docker-compose.yml ou arquivo .env
+# =============================================================================
+
+# =============================================================================
+# WhatsApp Gateway - Provider Selection
+# =============================================================================
+# Provider principal do WhatsApp
+# Opções: legacy, simulated, noop, evolution, cloud, baileys
+# Default: legacy (usa Evolution API via wrapper)
+WHATSAPP_PROVIDER=legacy
+
+# Provider do gateway (camada de abstração)
+# Opções: legacy, simulated, noop, evolution, cloud, baileys
+# Default: legacy
+WHATSAPP_GATEWAY_PROVIDER=legacy
+
+# =============================================================================
+# WhatsApp Gateway - Configurações de Envio
+# =============================================================================
+# Habilitar envio de mensagens reais
+# False = não envia mensagens (modo seguro para dev/teste)
+# True = envia mensagens reais (usar apenas em produção)
+WHATSAPP_SEND_ENABLED=False
+
+# Modo Shadow - loga envios sem enviar mensagens reais
+# True = modo shadow ativo (recomendado para dev/teste)
+# False = modo normal (envia mensagens se SEND_ENABLED=True)
+WHATSAPP_SHADOW_MODE=True
+
+# Lista de shoppers habilitados (separados por vírgula)
+# Se vazio, todos os shoppers podem usar WhatsApp
+# Exemplo: shopper_123,shopper_456
+WHATSAPP_ENABLED_SHOPPERS=
+
+# =============================================================================
+# WhatsApp Canonical Events v1.0
+# =============================================================================
+# Habilitar eventos canônicos (normalização de eventos WhatsApp)
+# True = eventos canônicos habilitados
+# False = eventos canônicos desabilitados
+WHATSAPP_CANONICAL_EVENTS_ENABLED=True
+
+# Modo Shadow para eventos canônicos
+# True = eventos são logados mas não processados (recomendado para dev/teste)
+# False = eventos são processados normalmente
+WHATSAPP_CANONICAL_SHADOW_MODE=True
+
+# =============================================================================
+# WhatsApp Routing
+# =============================================================================
+# Habilitar roteamento de mensagens WhatsApp
+# True = roteamento habilitado (atribui mensagens a SKMs)
+# False = roteamento desabilitado
+WHATSAPP_ROUTING_ENABLED=False
+
+# Habilitar roteamento para grupos WhatsApp
+# True = roteamento de grupos habilitado
+# False = roteamento de grupos desabilitado
+WHATSAPP_GROUP_ROUTING_ENABLED=False
+
+# Política de atribuição de mensagens
+# Opções: default, round_robin, sticky, shadow
+# Default: default
+WHATSAPP_ASSIGNMENT_POLICY=default
+
+# =============================================================================
+# WhatsApp Simulator
+# =============================================================================
+# Habilitar simulador de mensagens (para testes)
+# True = simulador habilitado (mensagens são gravadas em banco, não enviadas)
+# False = simulador desabilitado
+WHATSAPP_SIM_ENABLED=True
+
+# =============================================================================
+# Configurações Recomendadas por Ambiente
+# =============================================================================
+
+# DESENVOLVIMENTO (Dev/Teste)
+# ---------------------------
+# WHATSAPP_PROVIDER=simulated
+# WHATSAPP_GATEWAY_PROVIDER=simulated
+# WHATSAPP_SEND_ENABLED=False
+# WHATSAPP_SHADOW_MODE=True
+# WHATSAPP_CANONICAL_EVENTS_ENABLED=True
+# WHATSAPP_CANONICAL_SHADOW_MODE=True
+# WHATSAPP_ROUTING_ENABLED=False
+# WHATSAPP_SIM_ENABLED=True
+
+# PRODUÇÃO
+# --------
+# WHATSAPP_PROVIDER=legacy
+# WHATSAPP_GATEWAY_PROVIDER=legacy
+# WHATSAPP_SEND_ENABLED=True
+# WHATSAPP_SHADOW_MODE=False
+# WHATSAPP_CANONICAL_EVENTS_ENABLED=True
+# WHATSAPP_CANONICAL_SHADOW_MODE=False
+# WHATSAPP_ROUTING_ENABLED=True
+# WHATSAPP_SIM_ENABLED=False
+
+# =============================================================================
+# Notas
+# =============================================================================
+# - Todas as variáveis são opcionais (têm valores padrão)
+# - Valores padrão são seguros para desenvolvimento (shadow mode ativo)
+# - Para produção, ajuste WHATSAPP_SEND_ENABLED=True e WHATSAPP_SHADOW_MODE=False
+# - Use WHATSAPP_ENABLED_SHOPPERS para habilitar apenas shoppers específicos
