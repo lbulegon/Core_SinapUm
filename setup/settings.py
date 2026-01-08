@@ -46,8 +46,23 @@ EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_BASE_URL', 'http://69.169.102.84:
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg')
 EVOLUTION_TIMEOUT = int(os.environ.get('EVOLUTION_TIMEOUT', '30'))
 
-# WhatsApp Gateway - Provider Selection
+# WhatsApp Gateway - Provider Selection (app_whatsapp)
 WHATSAPP_PROVIDER = os.environ.get('WHATSAPP_PROVIDER', 'simulated')  # simulated|cloud|baileys|evolution
+
+# WhatsApp Gateway - Camada de Abstração Padrão (core/services/whatsapp)
+WHATSAPP_GATEWAY_PROVIDER = os.environ.get('WHATSAPP_GATEWAY_PROVIDER', 'legacy')  # legacy|simulated|noop|evolution|cloud|baileys
+WHATSAPP_SEND_ENABLED = os.environ.get('WHATSAPP_SEND_ENABLED', 'True').lower() in ('true', '1', 'yes')
+WHATSAPP_SHADOW_MODE = os.environ.get('WHATSAPP_SHADOW_MODE', 'False').lower() in ('true', '1', 'yes')
+WHATSAPP_ENABLED_SHOPPERS = os.environ.get('WHATSAPP_ENABLED_SHOPPERS', '').split(',') if os.environ.get('WHATSAPP_ENABLED_SHOPPERS') else []
+
+# WhatsApp Canonical Events v1.0
+WHATSAPP_CANONICAL_EVENTS_ENABLED = os.environ.get('WHATSAPP_CANONICAL_EVENTS_ENABLED', 'False').lower() in ('true', '1', 'yes')
+WHATSAPP_CANONICAL_SHADOW_MODE = os.environ.get('WHATSAPP_CANONICAL_SHADOW_MODE', 'False').lower() in ('true', '1', 'yes')
+
+# WhatsApp Routing
+WHATSAPP_ROUTING_ENABLED = os.environ.get('WHATSAPP_ROUTING_ENABLED', 'False').lower() in ('true', '1', 'yes')
+WHATSAPP_GROUP_ROUTING_ENABLED = os.environ.get('WHATSAPP_GROUP_ROUTING_ENABLED', 'False').lower() in ('true', '1', 'yes')
+WHATSAPP_ASSIGNMENT_POLICY = os.environ.get('WHATSAPP_ASSIGNMENT_POLICY', 'default')  # default|round_robin|sticky|shadow
 
 # OpenMind AI - Nova Arquitetura
 OPENMIND_BASE_URL = os.environ.get('OPENMIND_BASE_URL', 'http://69.169.102.84:8001')
@@ -81,6 +96,18 @@ INSTALLED_APPS = [
     'app_conversations',  # Conversas e sugestões de IA
     'app_ai_bridge',  # Ponte com OpenMind
     'app_mcp',  # Tools MCP para IA
+    # ============================================================================
+    # WhatsApp Gateway - Camada de Abstração Padrão
+    # ============================================================================
+    'core.services.whatsapp.apps.WhatsAppGatewayConfig',  # Gateway WhatsApp (apenas para migrations)
+    # ============================================================================
+    # WhatsApp Events - Eventos Canônicos e Roteamento
+    # ============================================================================
+    'app_whatsapp_events',  # Eventos canônicos WhatsApp
+    # ============================================================================
+    # Feature Flags & Rollout Manager
+    # ============================================================================
+    'core.services.feature_flags.apps.FeatureFlagsConfig',  # Feature Flags com rollout gradual
 ]
 
 MIDDLEWARE = [
