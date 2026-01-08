@@ -1,69 +1,103 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: postgres_evolution
-    restart: always
-    ports:
-      - "5433:5432"  # Porta 5433 no host para não conflitar com PostgreSQL do Core_SinapUm (5432)
-    environment:
-      POSTGRES_DB: evolution
-      POSTGRES_USER: evolution
-      POSTGRES_PASSWORD: I4FD1_hihwvGc3BpZ0nEd7xnengVrnRh
-    volumes:
-      - ./pg_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    container_name: redis_evolution
-    restart: always
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - ./redis_data:/data
-
-  evolution_api:
-    image: atendai/evolution-api:v2.1.1
-    container_name: evolution_api
-    restart: always
-    depends_on:
-      - postgres
-      - redis
+  evolution-api:
+    # Opção 1: Usar build customizado (se necessário manter Dockerfile)
+    build:
+      context: .
+      dockerfile: Dockerfile.evolution
+    # Opção 2: Usar imagem diretamente (RECOMENDADO - mais simples)
+    # Descomente a linha abaixo e comente o bloco 'build:' acima para usar imagem direta:
+    # image: atendai/evolution-api:latest
+    container_name: evolution-api
+    restart: unless-stopped
     ports:
       - "8004:8080"
-    volumes:
-      # Persistência das instâncias/sessões (arquivos/credenciais locais)
-      - ./instances:/evolution/instances
     environment:
-      # --- Server ---
-      - SERVER_URL=http://69.169.102.84:8004
-      - TZ=America/Sao_Paulo
-
-      # --- Auth ---
-      - AUTHENTICATION_API_KEY=GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg
+      # Configurações básicas
+      SERVER_URL: http://69.169.102.84:8004
+      PORT: 8080
       
-      # --- WhatsApp Session Config ---
-      - CONFIG_SESSION_PHONE_VERSION=2.3000.1015901307
+      # Autenticação
+      AUTHENTICATION_API_KEY: GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg
+      
+      # Database - PostgreSQL (usando container existente via host)
+      DATABASE_ENABLED: true
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:I4FD1_hihwvGc3BpZ0nEd7xnengVrnRh@host.docker.internal:5433/evolution
+      
+      # Redis (serviço local no mesmo docker-compose)
+      CACHE_REDIS_ENABLED: true
+      CACHE_REDIS_URI: redis://redis:6379/0
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: false
+      CACHE_LOCAL_ENABLED: false
+      
+      # Configurações de instância
+      CONFIG_SESSION_PHONE_CLIENT: Chrome
+      CONFIG_SESSION_PHONE_NAME: Evolution API
+      # Versão do WhatsApp Web
+      # TESTADO: 2.2413.51, 2.3000.1015901307, auto-detecção - nenhum resolveu
+      # RECOMENDAÇÃO: Atualizar Evolution API para v2.3.5+ que não precisa desta variável
+      # Se necessário, use o script scripts/get_wa_version.sh para obter versão atual
+      CONFIG_SESSION_PHONE_VERSION: 2.3000.1015901307
+      
+      # QR Code
+      QRCODE_LIMIT: 30
+      QRCODE_COLOR: '#198754'
+      
+      # Webhook - Habilitado para receber eventos de QR code
+      WEBHOOK_GLOBAL_ENABLED: true
+      WEBHOOK_GLOBAL_URL: http://host.docker.internal:8000/api/whatsapp/webhook/evolution/
+      
+      # WebSocket - Habilitado para receber eventos de QR code
+      WEBSOCKET_ENABLED: true
+      WEBSOCKET_GLOBAL_EVENTS: true
+      
+      # Logs (nível apropriado para produção)
+      LOG_LEVEL: INFO
+      LOG_COLOR: true
+      LOG_BAILEYS: info
+      # Para debug detalhado, altere LOG_BAILEYS para: debug
+      
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - evolution-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-      # --- Persistent Storage (DB) ---
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:I4FD1_hihwvGc3BpZ0nEd7xnengVrnRh@postgres:5432/evolution?schema=public
+  redis:
+    image: redis:7-alpine
+    container_name: evolution_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - evolution_redis_data:/data
+    networks:
+      - evolution-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
-      # O que salvar (mensagens, instâncias, auditoria/histórico)
-      - DATABASE_SAVE_DATA_INSTANCE=true
-      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
-      - DATABASE_SAVE_MESSAGE_UPDATE=true
-      - DATABASE_SAVE_DATA_CONTACTS=true
-      - DATABASE_SAVE_DATA_CHATS=true
-      - DATABASE_SAVE_DATA_LABELS=true
-      - DATABASE_SAVE_DATA_HISTORIC=true
+volumes:
+  evolution_instances:
+  evolution_store:
+  evolution_redis_data:
 
-      # --- Cache / Redis ---
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379/6
-      - CACHE_REDIS_PREFIX_KEY=evolution
-
-      # Logs EXTREMAMENTE detalhados para debug do QR Code
-      - LOG_LEVEL=ERROR,WARN,INFO,DEBUG,LOG,VERBOSE,DARK,WEBHOOKS
-      - LOG_COLOR=true
-      - LOG_BAILEYS=debug
-
+networks:
+  evolution-network:
+    driver: bridge

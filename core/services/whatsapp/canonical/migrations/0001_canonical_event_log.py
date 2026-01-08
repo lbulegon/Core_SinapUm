@@ -1,0 +1,64 @@
+# Generated migration - CanonicalEventLog
+
+from django.db import migrations, models
+import uuid
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='CanonicalEventLog',
+            fields=[
+                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('event_id', models.CharField(db_index=True, help_text='ID único do evento', max_length=255, unique=True)),
+                ('event_type', models.CharField(db_index=True, help_text='Tipo do evento canônico', max_length=50)),
+                ('event_source', models.CharField(db_index=True, help_text='Fonte do evento (provider)', max_length=50)),
+                ('instance_key', models.CharField(db_index=True, help_text='Chave da instância WhatsApp', max_length=255)),
+                ('timestamp', models.DateTimeField(db_index=True, help_text='Timestamp do evento')),
+                ('from_number', models.CharField(blank=True, db_index=True, help_text='Número de origem', max_length=20, null=True)),
+                ('to_number', models.CharField(blank=True, db_index=True, help_text='Número de destino', max_length=20, null=True)),
+                ('payload', models.JSONField(blank=True, default=dict, help_text='Payload específico do evento')),
+                ('message_id', models.CharField(blank=True, db_index=True, help_text='ID da mensagem', max_length=255, null=True)),
+                ('correlation_id', models.CharField(blank=True, db_index=True, help_text='ID de correlação', max_length=255, null=True)),
+                ('shopper_id', models.CharField(blank=True, db_index=True, help_text='ID do shopper', max_length=255, null=True)),
+                ('skm_id', models.CharField(blank=True, db_index=True, help_text='SKM ID', max_length=255, null=True)),
+                ('raw_payload', models.JSONField(blank=True, default=dict, help_text='Payload bruto do provider')),
+                ('provider_event_id', models.CharField(blank=True, db_index=True, help_text='ID do evento no provider', max_length=255, null=True)),
+                ('provider_message_id', models.CharField(blank=True, db_index=True, help_text='ID da mensagem no provider', max_length=255, null=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
+                ('processed_at', models.DateTimeField(blank=True, help_text='Timestamp de processamento', null=True)),
+            ],
+            options={
+                'verbose_name': 'Evento Canônico WhatsApp',
+                'verbose_name_plural': 'Eventos Canônicos WhatsApp',
+                'db_table': 'core_whatsapp_canonical_event_log',
+                'ordering': ['-timestamp', '-created_at'],
+            },
+        ),
+        migrations.AddIndex(
+            model_name='canonicaleventlog',
+            index=models.Index(fields=['event_type', '-timestamp'], name='core_whatsap_event_t_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='canonicaleventlog',
+            index=models.Index(fields=['event_source', '-timestamp'], name='core_whatsap_event_s_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='canonicaleventlog',
+            index=models.Index(fields=['instance_key', '-timestamp'], name='core_whatsap_instanc_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='canonicaleventlog',
+            index=models.Index(fields=['from_number', '-timestamp'], name='core_whatsap_from_nu_idx'),
+        ),
+        migrations.AddIndex(
+            model_name='canonicaleventlog',
+            index=models.Index(fields=['shopper_id', '-timestamp'], name='core_whatsap_shopper_idx'),
+        ),
+    ]

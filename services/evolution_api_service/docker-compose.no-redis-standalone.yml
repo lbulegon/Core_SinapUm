@@ -1,0 +1,77 @@
+# docker-compose.no-redis-standalone.yml
+# Versão standalone para testar SEM Redis (teste A/B)
+# Uso: docker compose -f docker-compose.no-redis-standalone.yml up -d
+
+services:
+  evolution-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.evolution
+    container_name: evolution-api
+    restart: unless-stopped
+    ports:
+      - "8004:8080"
+    environment:
+      # Configurações básicas
+      SERVER_URL: http://69.169.102.84:8004
+      PORT: 8080
+      
+      # Autenticação
+      AUTHENTICATION_API_KEY: GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg
+      
+      # Database - PostgreSQL (usando container existente via host)
+      DATABASE_ENABLED: true
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:I4FD1_hihwvGc3BpZ0nEd7xnengVrnRh@host.docker.internal:5433/evolution
+      
+      # Redis DESABILITADO para teste
+      CACHE_REDIS_ENABLED: false
+      CACHE_LOCAL_ENABLED: true
+      CACHE_REDIS_SAVE_INSTANCES: false
+      
+      # Configurações de instância
+      CONFIG_SESSION_PHONE_CLIENT: Chrome
+      CONFIG_SESSION_PHONE_NAME: Evolution API
+      # TESTE: Versão alternativa mencionada em issues do Reddit/GitHub
+      # Formato: 2.3000.1015901307 (resolvido para várias pessoas)
+      CONFIG_SESSION_PHONE_VERSION: 2.3000.1015901307
+      
+      # QR Code
+      QRCODE_LIMIT: 30
+      QRCODE_COLOR: '#198754'
+      
+      # Webhook
+      WEBHOOK_GLOBAL_ENABLED: true
+      WEBHOOK_GLOBAL_URL: http://host.docker.internal:8000/api/whatsapp/webhook/evolution/
+      
+      # WebSocket
+      WEBSOCKET_ENABLED: true
+      WEBSOCKET_GLOBAL_EVENTS: true
+      
+      # Logs (DEBUG para análise)
+      LOG_LEVEL: DEBUG
+      LOG_COLOR: true
+      LOG_BAILEYS: debug
+      
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - evolution-network
+    # SEM depends_on do Redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  evolution_instances:
+  evolution_store:
+
+networks:
+  evolution-network:
+    driver: bridge

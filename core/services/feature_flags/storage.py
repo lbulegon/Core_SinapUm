@@ -23,14 +23,37 @@ class FlagStorage:
     """
     
     def __init__(self):
-        self._use_db = self._check_db_available()
+        self._use_db = None  # Lazy evaluation
+        self._db_checked = False
     
     def _check_db_available(self) -> bool:
-        """Verifica se model FeatureFlagConfig está disponível"""
+        """Verifica se model FeatureFlagConfig está disponível (lazy)"""
+        if self._db_checked:
+            return self._use_db is True
+        
+        self._db_checked = True
         try:
-            from .models import FeatureFlagConfig as FlagModel
-            return True
-        except ImportError:
+            # Usar import local dentro de try-except para evitar recursão
+            # Se houver recursão, não usar DB
+            import sys
+            recursion_limit = sys.getrecursionlimit()
+            sys.setrecursionlimit(100)  # Reduzir temporariamente para detectar recursão
+            
+            try:
+                from .models import FeatureFlagConfig as FlagModel
+                self._use_db = True
+                return True
+            except RecursionError:
+                # Recursão detectada - não usar DB
+                logger.warning("Recursão detectada ao importar FeatureFlagConfig, usando apenas env vars")
+                self._use_db = False
+                return False
+            finally:
+                sys.setrecursionlimit(recursion_limit)
+        except (ImportError, Exception) as e:
+            # Se import falhou por qualquer motivo, usar apenas env vars
+            logger.debug(f"DB não disponível para feature flags: {e}")
+            self._use_db = False
             return False
     
     def get_flag(self, flag_name: str) -> Optional[FeatureFlagConfig]:
@@ -44,7 +67,7 @@ class FlagStorage:
             FeatureFlagConfig ou None
         """
         # Tentar DB primeiro
-        if self._use_db:
+        if self._check_db_available():
             try:
                 from .models import FeatureFlagConfig as FlagModel
                 try:
@@ -60,6 +83,13 @@ class FlagStorage:
                     )
                 except FlagModel.DoesNotExist:
                     pass  # Fallback para env vars
+                except RecursionError:
+                    # Se houver recursão, desabilitar DB e usar env vars
+                    logger.warning("Recursão ao acessar DB, desabilitando DB para esta sessão")
+                    self._use_db = False
+            except RecursionError as e:
+                logger.warning(f"Recursão detectada ao acessar DB: {e}, usando fallback env vars")
+                self._use_db = False
             except Exception as e:
                 logger.warning(f"Erro ao ler flag do DB: {e}, usando fallback env vars")
         
@@ -77,7 +107,7 @@ class FlagStorage:
         Returns:
             True se salvo, False se apenas env vars disponível
         """
-        if not self._use_db:
+        if not self._check_db_available():
             logger.warning(f"DB não disponível, flag {flag_name} não pode ser salva. Use env vars.")
             return False
         
@@ -110,7 +140,7 @@ class FlagStorage:
         flags = {}
         
         # Tentar DB primeiro
-        if self._use_db:
+        if self._check_db_available():
             try:
                 from .models import FeatureFlagConfig as FlagModel
                 for db_flag in FlagModel.objects.filter(active=True):

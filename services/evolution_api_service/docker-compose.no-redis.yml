@@ -1,0 +1,22 @@
+# docker-compose.no-redis.yml
+# Override para testar SEM Redis (teste A/B)
+# Uso: docker compose -f docker-compose.yml -f docker-compose.no-redis.yml up -d
+
+services:
+  evolution-api:
+    environment:
+      # Desabilita Redis e usa cache local
+      CACHE_REDIS_ENABLED: false
+      CACHE_LOCAL_ENABLED: true
+      # Aumenta logs para debug
+      LOG_LEVEL: DEBUG
+      LOG_BAILEYS: debug
+    # Remove dependência do Redis (sobrescreve depends_on do docker-compose.yml)
+    depends_on: []
+
+  # Mantém Redis definido mas desabilita via profile
+  redis:
+    profiles:
+      - disabled
+    # Define um comando que não faz nada para evitar erro
+    command: ["echo", "Redis disabled for testing"]

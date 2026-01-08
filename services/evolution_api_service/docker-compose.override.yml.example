@@ -1,0 +1,25 @@
+# docker-compose.override.yml.example
+# 
+# INSTRUÇÕES:
+# 1. Copie este arquivo para docker-compose.override.yml
+# 2. Use para testar sem Redis (modo DEBUG)
+# 3. Execute: docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# Este arquivo desabilita Redis e usa cache local para testes de isolamento
+
+services:
+  evolution-api:
+    environment:
+      # Desabilita Redis e usa cache local
+      CACHE_REDIS_ENABLED: false
+      CACHE_LOCAL_ENABLED: true
+      # Aumenta logs para debug
+      LOG_LEVEL: DEBUG
+      LOG_BAILEYS: debug
+    # Remove dependência do Redis
+    depends_on: []
+
+  # Comenta o serviço Redis (não será iniciado)
+  # redis:
+  #   profiles:
+  #     - disabled

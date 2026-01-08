@@ -1,0 +1,17 @@
+# Dockerfile customizado para Evolution API
+# Baseado em latest (sempre atualizada)
+# NOTA: Chromium NÃO é necessário - a imagem oficial já inclui o necessário
+# Este Dockerfile mantém apenas para compatibilidade, mas pode ser removido
+# se usar diretamente: image: atendai/evolution-api:latest
+
+# Usando versão latest (sempre atualizada - puxa a versão mais recente disponível)
+FROM atendai/evolution-api:latest
+
+# Se quiser fixar uma versão específica (ex: v2.3.6), descomente e ajuste:
+# FROM atendai/evolution-api:v2.3.6
+
+# Verificar se a imagem base está funcionando
+RUN node --version && npm --version
+
+# NOTA: Chromium não é necessário - Baileys não requer Chromium para QR code
+# A geração de QR code é feita via biblioteca JavaScript, não via browser

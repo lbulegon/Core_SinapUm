@@ -20,6 +20,7 @@ def home(request):
     """View para a página inicial com menu."""
     context = {
         'grafana_url': 'http://69.169.102.84:3000/login',
+        'chatwoot_url': 'http://69.169.102.84:3001',
     }
     return render(request, 'app_sinapum/home.html', context)
 

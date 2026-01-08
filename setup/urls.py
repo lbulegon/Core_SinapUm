@@ -65,6 +65,10 @@ urlpatterns = [
     path('api/whatsapp/', include('app_whatsapp.api.urls')),
     # Creative Engine - Motor de criativos
     path('api/creative-engine/', include('app_creative_engine.api.urls')),
+    # ============================================================================
+    # WhatsApp Canonical Events v1.0
+    # ============================================================================
+    path('api/v1/whatsapp/events/', include('core.services.whatsapp.canonical.urls')),
     path('admin/', admin.site.urls),
 ]
 

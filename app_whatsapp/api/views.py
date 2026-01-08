@@ -64,7 +64,27 @@ def inbound_webhook(request):
     """POST /api/whatsapp/inbound/"""
     router = WhatsAppRouter()
     provider = router.get_provider()
-    result = provider.handle_inbound_webhook(request)
+    
+    # Integrar WebhookCompatLayer para gerar eventos canônicos
+    try:
+        from core.services.whatsapp.canonical.compat import get_webhook_compat_layer
+        compat_layer = get_webhook_compat_layer()
+        
+        # Wrapper do handler original para gerar eventos canônicos
+        original_handler = lambda req, *args, **kwargs: provider.handle_inbound_webhook(req)
+        wrapped_handler = compat_layer.wrap_webhook_handler(
+            original_handler,
+            provider=provider.name,
+            instance_key=request.data.get('instance_key') if hasattr(request, 'data') else None
+        )
+        
+        result = wrapped_handler(request)
+    except Exception as e:
+        # Fallback: executar handler original se compat layer falhar
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Erro ao usar WebhookCompatLayer: {e}, usando handler original")
+        result = provider.handle_inbound_webhook(request)
     
     return Response(result)
 
