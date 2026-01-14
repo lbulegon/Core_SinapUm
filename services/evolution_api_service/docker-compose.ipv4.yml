@@ -1,0 +1,7 @@
+services:
+  evolution-api:
+    environment:
+      # Força o Node a priorizar IPv4 na resolução DNS.
+      # Útil quando o host tem IPv6 inconsistente e o Baileys cai com "Connection Failure"/decodeFrame.
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
+

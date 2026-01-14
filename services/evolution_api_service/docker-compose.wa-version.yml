@@ -1,0 +1,12 @@
+services:
+  evolution-api:
+    environment:
+      # Fixar a versão do WhatsApp Web usada no handshake do Baileys.
+      # Pegue a versão atual em:
+      #   curl -s "https://web.whatsapp.com/check-update?version=0&platform=web"
+      #
+      # Uso:
+      #   export EVOLUTION_WA_VERSION=2.2413.51
+      #   docker compose -f docker-compose.yml -f docker-compose.wa-version.yml up -d
+      CONFIG_SESSION_PHONE_VERSION: "${EVOLUTION_WA_VERSION?Defina EVOLUTION_WA_VERSION, ex 2.2413.51}"
+

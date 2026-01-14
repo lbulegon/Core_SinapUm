@@ -12,11 +12,8 @@ services:
       LOG_LEVEL: DEBUG
       LOG_BAILEYS: debug
     # Remove dependência do Redis (sobrescreve depends_on do docker-compose.yml)
-    depends_on: []
+    depends_on: {}
 
-  # Mantém Redis definido mas desabilita via profile
-  redis:
-    profiles:
-      - disabled
-    # Define um comando que não faz nada para evitar erro
-    command: ["echo", "Redis disabled for testing"]
+  # Observação:
+  # Não desabilitamos o serviço `redis` via `profiles`, pois o compose base usa `depends_on: redis`.
+  # O objetivo deste override é apenas desligar Redis na Evolution (CACHE_REDIS_ENABLED=false) e usar cache local.
