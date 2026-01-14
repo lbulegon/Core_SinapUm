@@ -7,12 +7,10 @@ Models para persistir eventos canônicos.
 import uuid
 from django.db import models
 from django.utils import timezone
-try:
-    from django.contrib.postgres.fields import JSONField
-except ImportError:
-    # Django 3.1+ usa models.JSONField diretamente
-    from django.db import models
-    JSONField = models.JSONField
+
+# Django 5+ removeu django.contrib.postgres.fields.JSONField.
+# Use sempre models.JSONField (compatível com Postgres via JSONB).
+JSONField = models.JSONField
 
 
 class CanonicalEventLog(models.Model):

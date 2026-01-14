@@ -1,11 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, URLValidator
 from django.core.exceptions import ValidationError
-try:
-    from django.contrib.postgres.fields import JSONField as PostgresJSONField
-    POSTGRES_AVAILABLE = True
-except ImportError:
-    POSTGRES_AVAILABLE = False
+# Django 5+ removeu django.contrib.postgres.fields.JSONField.
+# Se precisar de JSONField, use models.JSONField.
+POSTGRES_AVAILABLE = True
 import json
 import logging
 from django.conf import settings
