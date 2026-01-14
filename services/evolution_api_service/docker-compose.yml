@@ -1,12 +1,13 @@
 services:
   evolution-api:
-    # Opção 1: Usar build customizado (se necessário manter Dockerfile)
-    build:
-      context: .
-      dockerfile: Dockerfile.evolution
-    # Opção 2: Usar imagem diretamente (RECOMENDADO - mais simples)
-    # Descomente a linha abaixo e comente o bloco 'build:' acima para usar imagem direta:
-    # image: atendai/evolution-api:latest
+    # RECOMENDADO: usar imagem oficial (evita ficar preso em versões antigas do build local)
+    image: atendai/evolution-api:latest
+    pull_policy: always
+    #
+    # Alternativa (se realmente precisar customizar):
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.evolution
     container_name: evolution-api
     restart: unless-stopped
     ports:
@@ -35,10 +36,11 @@ services:
       CONFIG_SESSION_PHONE_CLIENT: Chrome
       CONFIG_SESSION_PHONE_NAME: Evolution API
       # Versão do WhatsApp Web
-      # TESTADO: 2.2413.51, 2.3000.1015901307, auto-detecção - nenhum resolveu
-      # RECOMENDAÇÃO: Atualizar Evolution API para v2.3.5+ que não precisa desta variável
-      # Se necessário, use o script scripts/get_wa_version.sh para obter versão atual
-      CONFIG_SESSION_PHONE_VERSION: 2.3000.1015901307
+      # IMPORTANTE:
+      # - Em versões mais novas da Evolution API, a versão do WhatsApp Web é auto-detectada.
+      # - Fixar CONFIG_SESSION_PHONE_VERSION pode causar falhas/instabilidade (ex: decodeFrame / QR não gera).
+      # Se precisar forçar versão, habilite manualmente, mas o padrão recomendado é NÃO setar.
+      # CONFIG_SESSION_PHONE_VERSION: 2.3000.1015901307
       
       # QR Code
       QRCODE_LIMIT: 30
@@ -53,9 +55,9 @@ services:
       WEBSOCKET_GLOBAL_EVENTS: true
       
       # Logs (nível apropriado para produção)
-      LOG_LEVEL: INFO
-      LOG_COLOR: true
-      LOG_BAILEYS: info
+      LOG_LEVEL: ${EVOLUTION_LOG_LEVEL:-INFO}
+      LOG_COLOR: "true"
+      LOG_BAILEYS: ${EVOLUTION_LOG_BAILEYS:-info}
       # Para debug detalhado, altere LOG_BAILEYS para: debug
       
     volumes:

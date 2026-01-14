@@ -1,0 +1,9 @@
+services:
+  evolution-api:
+    environment:
+      # Debug geral
+      LOG_LEVEL: DEBUG
+      LOG_COLOR: "true"
+      # Debug do Baileys (QR/handshake)
+      LOG_BAILEYS: debug
+

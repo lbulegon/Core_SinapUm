@@ -55,6 +55,15 @@ docker compose build --no-cache evolution-api
 docker compose up -d
 ```
 
+### 5.1 (Opcional) Habilitar Debug do Baileys (QR/Handshake)
+
+Use o override de debug para aumentar a verbosidade sem mexer no compose principal:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+docker compose logs -f evolution-api
+```
+
 ### 6. Verificar Status
 
 ```bash
@@ -101,6 +110,15 @@ sleep 10
 curl -X GET "http://localhost:8004/instance/connect/$INSTANCE_ID" \
   -H "apikey: GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg" | \
   python3 -c "import sys, json; d=json.load(sys.stdin); qr=d.get('qrcode', {}); print(f\"QR Count: {qr.get('count', 0)}\"); print(f\"Status: {d.get('instance', {}).get('status', 'N/A')}\")"
+```
+
+## 🧰 Script de Diagnóstico (automático)
+
+Cria uma instância e faz polling do `/instance/connect`, além de filtrar os logs por erros comuns:
+
+```bash
+cd /root/Core_SinapUm/services/evolution_api_service
+bash scripts/diagnose_qr.sh
 ```
 
 ## 🧪 Teste A/B: Com e Sem Redis
