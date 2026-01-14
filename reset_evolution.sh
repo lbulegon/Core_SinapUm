@@ -55,21 +55,22 @@ fi
 
 echo ""
 echo "🔄 Reiniciando container Evolution API..."
-cd "$(dirname "$0")"
+# O docker-compose da Evolution API fica em services/evolution_api_service
+cd "$(dirname "$0")/services/evolution_api_service"
 
-# Tentar reiniciar o container
-if docker restart evolution_api 2>/dev/null; then
-    echo "   ✅ Container 'evolution_api' reiniciado"
+# Tentar reiniciar o container (nome real: evolution-api)
+if docker restart evolution-api 2>/dev/null; then
+    echo "   ✅ Container 'evolution-api' reiniciado"
 else
     echo "   ⚠️  Erro ao reiniciar container, tentando via docker compose..."
-    if docker compose restart evolution_api 2>/dev/null; then
+    if docker compose restart evolution-api 2>/dev/null; then
         echo "   ✅ Container reiniciado via docker compose"
     else
         echo "   ❌ Não foi possível reiniciar automaticamente"
         echo "   Execute manualmente:"
-        echo "      docker restart evolution_api"
+        echo "      docker restart evolution-api"
         echo "   ou"
-        echo "      cd /root/Core_SinapUm && docker compose restart evolution_api"
+        echo "      cd /root/Core_SinapUm/services/evolution_api_service && docker compose restart evolution-api"
     fi
 fi
 
