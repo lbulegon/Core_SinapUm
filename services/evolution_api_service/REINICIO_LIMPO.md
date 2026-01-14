@@ -122,6 +122,36 @@ cd /root/Core_SinapUm/services/evolution_api_service
 bash scripts/diagnose_qr.sh
 ```
 
+## 🌐 Destravar QR com Proxy (recomendado quando dá `Connection Failure` / `decodeFrame`)
+
+Quando o Baileys fica em loop de `Connection Failure` e o QR nunca aparece, normalmente é bloqueio/instabilidade de rota/IP.
+Nesses casos, use um proxy (idealmente residencial) e reinicie a instância.
+
+### 1) Exportar variáveis do proxy
+
+```bash
+cd /root/Core_SinapUm/services/evolution_api_service
+export EVOLUTION_API_KEY='SUA_CHAVE_GLOBAL'
+export INSTANCE_NAME='lbulegon'
+export PROXY_PROTOCOL='http'   # ou socks5
+export PROXY_HOST='SEU_HOST'
+export PROXY_PORT='SUA_PORTA'
+export PROXY_USERNAME='SEU_USER'   # opcional
+export PROXY_PASSWORD='SUA_SENHA'  # opcional
+```
+
+### 2) Aplicar e reiniciar
+
+```bash
+bash scripts/set_proxy.sh
+```
+
+### 3) Testar QR
+
+```bash
+bash scripts/diagnose_qr.sh
+```
+
 ## 🔁 Trocar versão da imagem (quando precisar)
 
 Por padrão usamos `EVOLUTION_IMAGE_TAG=v2.2.3` (compatível com a configuração atual).
