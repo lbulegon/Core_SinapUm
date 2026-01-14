@@ -8,7 +8,8 @@
 #
 set -euo pipefail
 
-BASE_URL="${EVOLUTION_BASE_URL:-http://69.169.102.84:8004}"
+# Por padrão, usar localhost (evita problemas de hairpin/NAT ao acessar o IP público a partir do próprio host).
+BASE_URL="${EVOLUTION_BASE_URL:-http://127.0.0.1:8004}"
 API_KEY="${EVOLUTION_API_KEY:-GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg}"
 
 INSTANCE_ID="${INSTANCE_ID:-qrtest-$(date +%s)}"
@@ -23,6 +24,23 @@ echo "API Key:    ${API_KEY:0:6}...${API_KEY: -4}"
 echo ""
 
 headers=(-H "apikey: ${API_KEY}" -H "Authorization: Bearer ${API_KEY}" -H "Content-Type: application/json")
+
+echo "== 0) aguardando health (até 30s) =="
+ok="0"
+for i in {1..30}; do
+  if curl -sS -m 3 "$BASE_URL/" >/dev/null 2>&1; then
+    ok="1"
+    break
+  fi
+  sleep 1
+done
+if [ "$ok" != "1" ]; then
+  echo "❌ Evolution API não respondeu em $BASE_URL dentro de 30s."
+  echo "   Dica: verifique com: docker compose ps && docker compose logs --tail 200 evolution-api"
+  exit 2
+fi
+echo "✅ health OK"
+echo ""
 
 echo "== 1) Health (/) =="
 curl -sS -m 10 "$BASE_URL/" | head -c 400 || true

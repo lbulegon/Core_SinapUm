@@ -45,8 +45,9 @@ docker volume rm evolution_api_service_evolution_redis_data
 ### 4. Reconstruir Imagem
 
 ```bash
-# Reconstruir com nova base (v2.3.6)
-docker compose build --no-cache evolution-api
+# Puxar a imagem (recomendado)
+docker compose pull evolution-api
+docker compose up -d
 ```
 
 ### 5. Iniciar Containers
@@ -119,6 +120,17 @@ Cria uma instância e faz polling do `/instance/connect`, além de filtrar os lo
 ```bash
 cd /root/Core_SinapUm/services/evolution_api_service
 bash scripts/diagnose_qr.sh
+```
+
+## 🔁 Trocar versão da imagem (quando precisar)
+
+Por padrão usamos `EVOLUTION_IMAGE_TAG=v2.2.3` (compatível com a configuração atual).
+Para testar outra versão:
+
+```bash
+export EVOLUTION_IMAGE_TAG=v2.2.3
+docker compose pull evolution-api
+docker compose up -d
 ```
 
 ## 🧪 Teste A/B: Com e Sem Redis

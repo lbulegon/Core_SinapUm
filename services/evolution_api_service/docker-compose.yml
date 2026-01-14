@@ -1,7 +1,10 @@
 services:
   evolution-api:
     # RECOMENDADO: usar imagem oficial (evita ficar preso em versões antigas do build local)
-    image: atendai/evolution-api:latest
+    # OBS: o tag "latest" nem sempre é o mais recente no Docker Hub.
+    # IMPORTANTE: a linha v1.x tem diferenças de config (ex: pode quebrar /instance/create com DB), então o default aqui permanece em v2.2.3.
+    # Para testar outra versão: export EVOLUTION_IMAGE_TAG=vX.Y.Z
+    image: atendai/evolution-api:${EVOLUTION_IMAGE_TAG:-v2.2.3}
     pull_policy: always
     #
     # Alternativa (se realmente precisar customizar):
