@@ -1,6 +1,7 @@
 # Configuração dos Orbitais - SparkScore
 # Orbitais são camadas funcionais de análise semiótica e psicodinâmica
 
+# Configuração dos Orbitais Cognitivos (0-6) - Sistema original
 orbitals:
   - id: 0
     name: "Ruído"
@@ -66,4 +67,44 @@ ppa_flow:
   validado: 3
   ativado: 4
   cristalizado: 6
+
+# Configuração dos Orbitais de Análise (MVP Creative Engine)
+# Orbitais ativos (enabled: true) são executados e retornam scores
+# Orbitais placeholder (enabled: false) retornam apenas explicação
+orbital_configs:
+  semiotic:
+    enabled: true
+    description: "Análise semiótica: CTA, coerência, redundância"
+  
+  emotional:
+    enabled: true
+    description: "Análise emocional: valência, urgência, tom"
+  
+  cognitive:
+    enabled: true
+    description: "Análise cognitiva: densidade, clareza, adequação"
+  
+  narrative:
+    enabled: false
+    description: "Análise narrativa: estrutura, arco, coerência temporal (placeholder)"
+  
+  cultural:
+    enabled: false
+    description: "Análise cultural: adequação, referências, sensibilidade (placeholder)"
+  
+  ethical:
+    enabled: false
+    description: "Análise ética: transparência, honestidade, responsabilidade (placeholder)"
+  
+  psychoanalytic:
+    enabled: false
+    description: "Análise psicanalítica: símbolos, arquétipos, desejos latentes (placeholder)"
+  
+  temporal:
+    enabled: false
+    description: "Análise temporal: timing, sazonalidade, urgência (placeholder)"
+  
+  social:
+    enabled: false
+    description: "Análise social: viralidade, compartilhamento, engajamento (placeholder)"
 

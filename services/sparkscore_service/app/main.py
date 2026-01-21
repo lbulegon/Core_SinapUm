@@ -5,6 +5,7 @@ Main - Entrypoint da API FastAPI SparkScore
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
+from app.api.v1 import router as v1_router
 
 app = FastAPI(
     title="SparkScore - Sistema de Análise Psicológica e Semiótica",
@@ -21,8 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Rotas
+# Rotas existentes (mantidas para compatibilidade)
 app.include_router(router)
+
+# Rotas v1 (novas, para Creative Engine)
+app.include_router(v1_router)
 
 
 @app.get("/")
