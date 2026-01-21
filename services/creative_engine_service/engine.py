@@ -362,3 +362,30 @@ class CreativeEngine:
         except Exception as e:
             logger.error(f"Erro ao buscar produto: {e}", exc_info=True)
             raise
+    
+    def _normalize_product_data(self, product_data: Dict[str, Any], product_id: str) -> Dict[str, Any]:
+        """
+        Normaliza dados do produto para formato esperado
+        
+        Args:
+            product_data: Dados do produto (pode vir de diferentes fontes)
+            product_id: ID do produto
+        
+        Returns:
+            Dict normalizado com dados do produto
+        """
+        # Mapear campos comuns de diferentes fontes
+        normalized = {
+            "id": str(product_data.get("id", product_id)),
+            "nome": product_data.get("nome") or product_data.get("name") or product_data.get("nome_produto") or "",
+            "marca": product_data.get("marca") or product_data.get("brand") or "",
+            "descricao": product_data.get("descricao") or product_data.get("description") or "",
+            "categoria": product_data.get("categoria") or product_data.get("category") or "",
+            "subcategoria": product_data.get("subcategoria") or product_data.get("subcategory") or "",
+            "volume_ml": product_data.get("volume_ml") or product_data.get("volume") or None,
+            "imagens": product_data.get("imagens") or product_data.get("image_urls") or product_data.get("images") or [],
+            "preco": product_data.get("preco") or product_data.get("price") or None,
+        }
+        
+        logger.info(f"Dados do produto normalizados: id={normalized['id']}, nome={normalized['nome']}, marca={normalized['marca']}")
+        return normalized
