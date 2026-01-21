@@ -72,10 +72,13 @@ class CreativeEngine:
         try:
             # Se product_data foi fornecido, usar diretamente; caso contrário, buscar no banco
             if product_data is None:
+                logger.info(f"product_data não fornecido, buscando produto {product_id} no banco")
                 product_data = self._get_product_data(product_id)
             else:
+                logger.info(f"product_data fornecido para produto {product_id}, normalizando dados")
                 # Garantir que product_data tem o formato esperado
                 product_data = self._normalize_product_data(product_data, product_id)
+                logger.info(f"Dados normalizados: {product_data}")
             
             # Gerar variantes com estratégias padrão
             default_strategies = ["price", "benefit", "urgency"]
