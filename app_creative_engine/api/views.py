@@ -57,10 +57,13 @@ def generate_creative(request):
     )
     
     try:
+        # Se product_data foi fornecido, passar para o engine
+        product_data = serializer.validated_data.get('product_data')
         result = engine.generate_creative(
             product_id=serializer.validated_data['product_id'],
             shopper_id=serializer.validated_data['shopper_id'],
-            context=context
+            context=context,
+            product_data=product_data  # Passar dados do produto se fornecidos
         )
         
         # Converter para dict

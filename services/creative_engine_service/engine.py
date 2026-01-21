@@ -52,7 +52,8 @@ class CreativeEngine:
         self,
         product_id: str,
         shopper_id: str,
-        context: CreativeContext
+        context: CreativeContext,
+        product_data: Optional[Dict[str, Any]] = None
     ) -> CreativeResponse:
         """
         Gera criativo principal para produto e shopper
@@ -61,6 +62,7 @@ class CreativeEngine:
             product_id: ID do produto
             shopper_id: ID do shopper
             context: Contexto de geração
+            product_data: Dados do produto (opcional - se não fornecido, tenta buscar no banco)
         
         Returns:
             CreativeResponse com criativo e variantes
@@ -68,8 +70,12 @@ class CreativeEngine:
         correlation_id = str(uuid.uuid4())
         
         try:
-            # Buscar dados do produto
-            product_data = self._get_product_data(product_id)
+            # Se product_data foi fornecido, usar diretamente; caso contrário, buscar no banco
+            if product_data is None:
+                product_data = self._get_product_data(product_id)
+            else:
+                # Garantir que product_data tem o formato esperado
+                product_data = self._normalize_product_data(product_data, product_id)
             
             # Gerar variantes com estratégias padrão
             default_strategies = ["price", "benefit", "urgency"]

@@ -32,6 +32,8 @@ class GenerateCreativeSerializer(serializers.Serializer):
         allow_null=True
     )
     campaign_tag = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    # Dados do produto (opcional - se não fornecido, tenta buscar no banco)
+    product_data = serializers.DictField(required=False, allow_null=True)
 
 
 class GenerateVariantsSerializer(serializers.Serializer):
