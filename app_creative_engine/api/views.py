@@ -1,266 +1,213 @@
 """
-Views DRF para Creative Engine API
+Views da API do Creative Engine
 """
-import logging
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
+import uuid
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+import json
 
-from services.creative_engine_service.engine import CreativeEngine
-from services.creative_engine_service.contracts import CreativeContext
-from services.creative_engine_service.adapters.whatsapp import WhatsAppAdapter
-from app_creative_engine.api.serializers import (
-    GenerateCreativeSerializer,
-    GenerateVariantsSerializer,
-    AdaptCreativeSerializer,
-    PerformanceEventSerializer,
-    RecommendNextSerializer,
-)
-
-logger = logging.getLogger(__name__)
-
-# Instância singleton do engine
-_engine = None
+from app_creative_engine.models import CreativeAsset, CreativePerformance, CreativeScore
 
 
-def get_engine():
-    """Retorna instância do engine (singleton)"""
-    global _engine
-    if _engine is None:
-        _engine = CreativeEngine()
-    return _engine
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["POST"])
 def generate_creative(request):
     """
+    Gera um novo criativo
     POST /api/creative-engine/generate
-    Gera criativo principal
     """
-    serializer = GenerateCreativeSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    
-    engine = get_engine()
-    
-    # Construir contexto
-    context = CreativeContext(
-        channel=serializer.validated_data['channel'],
-        locale=serializer.validated_data.get('locale', 'pt-BR'),
-        tone=serializer.validated_data.get('tone', 'direto'),
-        audience_hint=serializer.validated_data.get('audience_hint'),
-        time_of_day=serializer.validated_data.get('time_of_day'),
-        stock_level=serializer.validated_data.get('stock_level'),
-        price_sensitivity=serializer.validated_data.get('price_sensitivity'),
-        campaign_tag=serializer.validated_data.get('campaign_tag'),
-    )
-    
     try:
-        # Se product_data foi fornecido, passar para o engine
-        product_data = serializer.validated_data.get('product_data')
-        result = engine.generate_creative(
-            product_id=serializer.validated_data['product_id'],
-            shopper_id=serializer.validated_data['shopper_id'],
-            context=context,
-            product_data=product_data  # Passar dados do produto se fornecidos
+        data = json.loads(request.body) if request.body else {}
+        
+        creative_id = str(uuid.uuid4())
+        variant_id = str(uuid.uuid4())
+        product_id = data.get('product_id', '')
+        shopper_id = data.get('shopper_id')
+        channel = data.get('channel', 'whatsapp')
+        strategy = data.get('strategy', 'default')
+        
+        # Criar asset básico
+        asset = CreativeAsset.objects.create(
+            creative_id=creative_id,
+            variant_id=variant_id,
+            product_id=product_id,
+            shopper_id=shopper_id,
+            channel=channel,
+            strategy=strategy,
+            image_url=data.get('image_url'),
+            text_short=data.get('text_short'),
+            text_medium=data.get('text_medium'),
+            text_long=data.get('text_long'),
+            discourse=data.get('discourse', {}),
+            ctas=data.get('ctas', [])
         )
         
-        # Converter para dict
-        response_data = {
-            "creative_id": result.creative_id,
-            "variants": [
-                {
-                    "variant_id": v.variant_id,
-                    "strategy": v.strategy,
-                    "channel": v.channel,
-                    "image_url": v.image_url,
-                    "text_short": v.text_short,
-                    "text_medium": v.text_medium,
-                    "text_long": v.text_long,
-                    "discourse": v.discourse,
-                    "ctas": v.ctas,
-                }
-                for v in result.variants
-            ],
-            "recommended_variant_id": result.recommended_variant_id,
-        }
-        
-        if result.debug:
-            response_data["debug"] = result.debug
-        
-        return Response(response_data, status=status.HTTP_201_CREATED)
-        
+        return JsonResponse({
+            'creative_id': creative_id,
+            'variant_id': variant_id,
+            'status': 'created'
+        }, status=201)
     except Exception as e:
-        logger.error(f"Erro ao gerar criativo: {e}", exc_info=True)
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return JsonResponse({'error': str(e)}, status=400)
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["POST"])
 def generate_variants(request, creative_id):
     """
-    POST /api/creative-engine/{creative_id}/variants
     Gera variantes de um criativo
+    POST /api/creative-engine/{creative_id}/variants
     """
-    serializer = GenerateVariantsSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    
-    engine = get_engine()
-    
-    context = CreativeContext(
-        channel=serializer.validated_data['channel'],
-        locale=serializer.validated_data.get('locale', 'pt-BR'),
-        tone=serializer.validated_data.get('tone', 'direto'),
-    )
-    
     try:
-        variants = engine.generate_variants(
-            creative_id=creative_id,
-            strategies=serializer.validated_data['strategies'],
-            context=context
-        )
+        data = json.loads(request.body) if request.body else {}
+        count = data.get('count', 1)
         
-        response_data = [
-            {
-                "variant_id": v.variant_id,
-                "strategy": v.strategy,
-                "channel": v.channel,
-                "image_url": v.image_url,
-                "text_short": v.text_short,
-                "text_medium": v.text_medium,
-                "text_long": v.text_long,
-                "discourse": v.discourse,
-                "ctas": v.ctas,
-            }
-            for v in variants
-        ]
+        variants = []
+        for i in range(count):
+            variant_id = str(uuid.uuid4())
+            # Buscar criativo original para copiar dados
+            original = CreativeAsset.objects.filter(creative_id=creative_id).first()
+            
+            if original:
+                variant = CreativeAsset.objects.create(
+                    creative_id=creative_id,
+                    variant_id=variant_id,
+                    product_id=original.product_id,
+                    shopper_id=original.shopper_id,
+                    channel=original.channel,
+                    strategy=original.strategy,
+                    image_url=data.get('image_url') or original.image_url,
+                    text_short=data.get('text_short') or original.text_short,
+                    text_medium=data.get('text_medium') or original.text_medium,
+                    text_long=data.get('text_long') or original.text_long,
+                    discourse=data.get('discourse', original.discourse),
+                    ctas=data.get('ctas', original.ctas)
+                )
+                variants.append(variant_id)
         
-        return Response(response_data, status=status.HTTP_201_CREATED)
-        
+        return JsonResponse({
+            'creative_id': creative_id,
+            'variants': variants,
+            'count': len(variants)
+        }, status=201)
     except Exception as e:
-        logger.error(f"Erro ao gerar variantes: {e}", exc_info=True)
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return JsonResponse({'error': str(e)}, status=400)
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["POST"])
 def adapt_creative(request, variant_id):
     """
+    Adapta um criativo existente
     POST /api/creative-engine/variants/{variant_id}/adapt
-    Adapta variante para canal
     """
-    serializer = AdaptCreativeSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    
-    engine = get_engine()
-    adapter = WhatsAppAdapter()
-    
-    context = CreativeContext(
-        channel=serializer.validated_data['channel'],
-        locale=serializer.validated_data.get('locale', 'pt-BR'),
-        tone=serializer.validated_data.get('tone', 'direto'),
-    )
-    
     try:
-        result = engine.adapt_creative(
-            variant_id=variant_id,
-            channel=serializer.validated_data['channel'],
-            context=context
-        )
+        data = json.loads(request.body) if request.body else {}
         
-        return Response(result, status=status.HTTP_200_OK)
+        variant = CreativeAsset.objects.filter(variant_id=variant_id).first()
+        if not variant:
+            return JsonResponse({'error': 'Variant not found'}, status=404)
         
+        # Atualizar campos se fornecidos
+        if 'image_url' in data:
+            variant.image_url = data['image_url']
+        if 'text_short' in data:
+            variant.text_short = data['text_short']
+        if 'text_medium' in data:
+            variant.text_medium = data['text_medium']
+        if 'text_long' in data:
+            variant.text_long = data['text_long']
+        if 'discourse' in data:
+            variant.discourse = data['discourse']
+        if 'ctas' in data:
+            variant.ctas = data['ctas']
+        
+        variant.save()
+        
+        return JsonResponse({
+            'variant_id': variant_id,
+            'status': 'adapted'
+        }, status=200)
     except Exception as e:
-        logger.error(f"Erro ao adaptar criativo: {e}", exc_info=True)
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return JsonResponse({'error': str(e)}, status=400)
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["POST"])
 def register_performance(request):
     """
+    Registra performance de um criativo
     POST /api/creative-engine/performance
-    Registra evento de performance
     """
-    serializer = PerformanceEventSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    
-    engine = get_engine()
-    
     try:
-        engine.register_performance(serializer.validated_data)
-        return Response({"success": True}, status=status.HTTP_200_OK)
+        data = json.loads(request.body) if request.body else {}
         
-    except Exception as e:
-        logger.error(f"Erro ao registrar performance: {e}", exc_info=True)
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        performance = CreativePerformance.objects.create(
+            variant_id=data.get('variant_id', ''),
+            creative_id=data.get('creative_id', ''),
+            product_id=data.get('product_id', ''),
+            shopper_id=data.get('shopper_id'),
+            event_type=data.get('event_type', 'view'),
+            event_data=data.get('event_data', {}),
+            correlation_id=data.get('correlation_id')
         )
+        
+        return JsonResponse({
+            'id': str(performance.id),
+            'status': 'registered'
+        }, status=201)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def recommend_next(request):
     """
-    GET /api/creative-engine/recommend?shopper_id=...&product_id=...&channel=...
     Recomenda próximo criativo
+    GET/POST /api/creative-engine/recommend
     """
-    serializer = RecommendNextSerializer(data=request.query_params)
-    serializer.is_valid(raise_exception=True)
-    
-    engine = get_engine()
-    
-    context = CreativeContext(
-        channel=serializer.validated_data['channel'],
-        locale=serializer.validated_data.get('locale', 'pt-BR'),
-        tone=serializer.validated_data.get('tone', 'direto'),
-    )
-    
     try:
-        result = engine.recommend_next(
-            shopper_id=serializer.validated_data['shopper_id'],
-            product_id=serializer.validated_data['product_id'],
-            context=context
-        )
+        if request.method == 'GET':
+            params = request.GET
+        else:
+            data = json.loads(request.body) if request.body else {}
+            params = data
         
-        response_data = {
-            "creative_id": result.creative_id,
-            "variants": [
-                {
-                    "variant_id": v.variant_id,
-                    "strategy": v.strategy,
-                    "channel": v.channel,
-                    "image_url": v.image_url,
-                    "text_short": v.text_short,
-                    "text_medium": v.text_medium,
-                    "text_long": v.text_long,
-                    "discourse": v.discourse,
-                    "ctas": v.ctas,
-                }
-                for v in result.variants
-            ],
-            "recommended_variant_id": result.recommended_variant_id,
-        }
+        product_id = params.get('product_id', '')
+        shopper_id = params.get('shopper_id')
+        channel = params.get('channel', 'whatsapp')
         
-        if result.debug:
-            response_data["debug"] = result.debug
+        # Buscar melhor score para o produto/canal
+        best_score = CreativeScore.objects.filter(
+            product_id=product_id,
+            channel=channel
+        ).order_by('-engagement_score').first()
         
-        return Response(response_data, status=status.HTTP_200_OK)
+        if best_score:
+            # Buscar asset correspondente
+            asset = CreativeAsset.objects.filter(
+                variant_id=best_score.variant_id
+            ).first()
+            
+            if asset:
+                return JsonResponse({
+                    'recommended_variant_id': best_score.variant_id,
+                    'creative_id': best_score.creative_id,
+                    'engagement_score': best_score.engagement_score,
+                    'strategy': best_score.strategy,
+                    'asset': {
+                        'image_url': asset.image_url,
+                        'text_short': asset.text_short,
+                        'text_medium': asset.text_medium,
+                        'text_long': asset.text_long
+                    }
+                }, status=200)
         
+        return JsonResponse({
+            'message': 'No recommendations available',
+            'recommended_variant_id': None
+        }, status=200)
     except Exception as e:
-        logger.error(f"Erro ao recomendar criativo: {e}", exc_info=True)
-        return Response(
-            {"error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return JsonResponse({'error': str(e)}, status=400)

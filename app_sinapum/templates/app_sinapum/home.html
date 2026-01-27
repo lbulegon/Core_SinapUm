@@ -71,6 +71,17 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
         
+        .nav-menu a.creative-link {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .nav-menu a.creative-link:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
         main {
             flex: 1;
             display: flex;
@@ -135,6 +146,7 @@
                 <li><a href="/">Home</a></li>
                 <li><a href="/analyze/">📸 Análise de Imagens</a></li>
                 <li><a href="/whatsapp/">📱 WhatsApp</a></li>
+                <li><a href="/api/creative-engine/test/" class="creative-link">🎨 Creative Engine</a></li>
                 <li><a href="/admin/">Admin</a></li>
                 <li><a href="http://69.169.102.84:3001" target="_blank">💬 Chatwoot</a></li>
                 <li><a href="{{ grafana_url }}" target="_blank" class="grafana-link">📊 Grafana</a></li>
@@ -150,6 +162,7 @@
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem;">
                 <a href="/analyze/" class="btn">📸 Análise de Imagens</a>
                 <a href="/whatsapp/" class="btn">📱 Conectar WhatsApp</a>
+                <a href="/api/creative-engine/test/" class="btn">🎨 Creative Engine</a>
                 <a href="http://69.169.102.84:3001" target="_blank" class="btn">💬 Acessar Chatwoot</a>
                 <a href="{{ grafana_url }}" target="_blank" class="btn">📊 Acessar Grafana</a>
             </div>

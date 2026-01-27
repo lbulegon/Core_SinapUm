@@ -63,14 +63,16 @@ def whatsapp_create_instance(request):
             status = status_result.get('status')
             if status == 'close':
                 # Instância existe mas está fechada, deletar e recriar para gerar QR code
+                logger.info(f"Instância '{instance_name}' está desconectada. Deletando para recriar...")
                 delete_result = service.delete_instance(instance_name)
                 if delete_result.get('success'):
-                    # Aguardar um pouco antes de recriar
+                    # Aguardar um pouco antes de recriar para garantir que a deleção foi processada
                     import time
-                    time.sleep(1)
+                    time.sleep(2)
                     # Agora criar novamente
                     result = service.create_instance(instance_name)
                     if result.get('success'):
+                        logger.info(f"Instância '{instance_name}' recriada com sucesso")
                         return JsonResponse({
                             'success': True,
                             'message': f'Instância "{instance_name}" recriada. Aguarde alguns segundos para o QR code ser gerado.',
@@ -78,6 +80,44 @@ def whatsapp_create_instance(request):
                             'status': 'creating',
                             'recreated': True
                         })
+                    else:
+                        # Se falhou ao criar, retornar erro
+                        logger.error(f"Erro ao recriar instância '{instance_name}': {result.get('error')}")
+                        return JsonResponse({
+                            'success': False,
+                            'error': f"Erro ao recriar instância: {result.get('error', 'Erro desconhecido')}",
+                            'instance_name': instance_name
+                        }, status=500)
+                else:
+                    # Se falhou ao deletar, tentar criar mesmo assim (pode ser que já tenha sido deletada)
+                    logger.warning(f"Erro ao deletar instância '{instance_name}': {delete_result.get('error')}. Tentando criar mesmo assim...")
+                    import time
+                    time.sleep(1)
+                    result = service.create_instance(instance_name)
+                    if result.get('success'):
+                        return JsonResponse({
+                            'success': True,
+                            'message': f'Instância "{instance_name}" criada com sucesso.',
+                            'instance_exists': False,
+                            'status': 'creating'
+                        })
+                    else:
+                        # Verificar se o erro é porque já existe
+                        error_msg = result.get('error', '')
+                        if 'already in use' in error_msg.lower() or 'already exists' in error_msg.lower():
+                            # Instância ainda existe, retornar status atual
+                            return JsonResponse({
+                                'success': True,
+                                'message': f'Instância "{instance_name}" já existe e está desconectada. Tente obter o QR code.',
+                                'instance_exists': True,
+                                'status': 'close',
+                                'connected': False
+                            })
+                        return JsonResponse({
+                            'success': False,
+                            'error': f"Erro ao criar instância: {error_msg}",
+                            'instance_name': instance_name
+                        }, status=500)
             
             # Instância existe e está ativa ou conectada
             return JsonResponse({

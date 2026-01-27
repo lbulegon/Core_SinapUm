@@ -349,6 +349,7 @@ except socket.gaierror:
     # Se não conseguir resolver, estamos no host
     DEFAULT_EVOLUTION_API_URL = 'http://127.0.0.1:8004'
 
-EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL', DEFAULT_EVOLUTION_API_URL)
+# EVOLUTION_API_URL pode ser definido explicitamente, caso contrário usa EVOLUTION_BASE_URL ou o default
+EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL') or os.environ.get('EVOLUTION_BASE_URL') or DEFAULT_EVOLUTION_API_URL
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg')
 EVOLUTION_INSTANCE_NAME = os.environ.get('EVOLUTION_INSTANCE_NAME', 'core_sinapum')

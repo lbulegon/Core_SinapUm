@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Engine - Teste</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button.secondary {
+            background: #6c757d;
+        }
+        
+        button.secondary:hover {
+            background: #5a6268;
+        }
+        
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .response.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .response.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .response pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .card p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .badge-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Creative Engine - Teste</h1>
+        <p class="subtitle">Teste todas as funcionalidades do Creative Engine</p>
+        
+        <!-- Seção: Gerar Criativo -->
+        <div class="section">
+            <h2>1. Gerar Novo Criativo</h2>
+            <form id="generateForm">
+                <div class="grid">
+                    <div class="form-group">
+                        <label>Product ID:</label>
+                        <input type="text" name="product_id" value="prod_123" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Shopper ID (opcional):</label>
+                        <input type="text" name="shopper_id" value="shopper_456">
+                    </div>
+                    <div class="form-group">
+                        <label>Channel:</label>
+                        <select name="channel">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Strategy:</label>
+                        <input type="text" name="strategy" value="default">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Image URL (opcional):</label>
+                    <input type="url" name="image_url" placeholder="https://example.com/image.jpg">
+                </div>
+                <div class="form-group">
+                    <label>Text Short:</label>
+                    <textarea name="text_short" placeholder="Texto curto para o criativo"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Text Medium:</label>
+                    <textarea name="text_medium" placeholder="Texto médio para o criativo"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Text Long:</label>
+                    <textarea name="text_long" placeholder="Texto longo para o criativo"></textarea>
+                </div>
+                <button type="submit">Gerar Criativo</button>
+            </form>
+            <div id="generateResponse" class="response" style="display: none;"></div>
+        </div>
+        
+        <!-- Seção: Gerar Variantes -->
+        <div class="section">
+            <h2>2. Gerar Variantes</h2>
+            <form id="variantsForm">
+                <div class="form-group">
+                    <label>Creative ID:</label>
+                    <input type="text" name="creative_id" placeholder="Cole o creative_id gerado acima" required>
+                </div>
+                <div class="form-group">
+                    <label>Quantidade de Variantes:</label>
+                    <input type="number" name="count" value="3" min="1" max="10">
+                </div>
+                <button type="submit">Gerar Variantes</button>
+            </form>
+            <div id="variantsResponse" class="response" style="display: none;"></div>
+        </div>
+        
+        <!-- Seção: Adaptar Criativo -->
+        <div class="section">
+            <h2>3. Adaptar Criativo</h2>
+            <form id="adaptForm">
+                <div class="form-group">
+                    <label>Variant ID:</label>
+                    <input type="text" name="variant_id" placeholder="Cole o variant_id" required>
+                </div>
+                <div class="form-group">
+                    <label>Novo Text Short (opcional):</label>
+                    <textarea name="text_short"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Novo Text Medium (opcional):</label>
+                    <textarea name="text_medium"></textarea>
+                </div>
+                <button type="submit">Adaptar Criativo</button>
+            </form>
+            <div id="adaptResponse" class="response" style="display: none;"></div>
+        </div>
+        
+        <!-- Seção: Registrar Performance -->
+        <div class="section">
+            <h2>4. Registrar Performance</h2>
+            <form id="performanceForm">
+                <div class="grid">
+                    <div class="form-group">
+                        <label>Variant ID:</label>
+                        <input type="text" name="variant_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Creative ID:</label>
+                        <input type="text" name="creative_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Product ID:</label>
+                        <input type="text" name="product_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Event Type:</label>
+                        <select name="event_type">
+                            <option value="view">View</option>
+                            <option value="click">Click</option>
+                            <option value="interest">Interest</option>
+                            <option value="conversion">Conversion</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit">Registrar Performance</button>
+            </form>
+            <div id="performanceResponse" class="response" style="display: none;"></div>
+        </div>
+        
+        <!-- Seção: Recomendar Próximo -->
+        <div class="section">
+            <h2>5. Recomendar Próximo Criativo</h2>
+            <form id="recommendForm">
+                <div class="grid">
+                    <div class="form-group">
+                        <label>Product ID:</label>
+                        <input type="text" name="product_id" value="prod_123">
+                    </div>
+                    <div class="form-group">
+                        <label>Shopper ID (opcional):</label>
+                        <input type="text" name="shopper_id">
+                    </div>
+                    <div class="form-group">
+                        <label>Channel:</label>
+                        <select name="channel">
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit">Obter Recomendação</button>
+            </form>
+            <div id="recommendResponse" class="response" style="display: none;"></div>
+        </div>
+        
+        <!-- Seção: Listar Criativos -->
+        <div class="section">
+            <h2>6. Listar Criativos</h2>
+            <button onclick="listCreatives()" class="secondary">Listar Todos os Criativos</button>
+            <div id="listResponse" class="response" style="display: none;"></div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processando...</p>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '/api/creative-engine/';
+        
+        function showResponse(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'response ' + (isError ? 'error' : 'success');
+            element.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('active', show);
+        }
+        
+        // Gerar Criativo
+        document.getElementById('generateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch(API_BASE + 'generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                showResponse('generateResponse', result, !response.ok);
+                
+                // Preencher creative_id no formulário de variantes
+                if (result.creative_id) {
+                    document.querySelector('#variantsForm input[name="creative_id"]').value = result.creative_id;
+                }
+            } catch (error) {
+                showResponse('generateResponse', {error: error.message}, true);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Gerar Variantes
+        document.getElementById('variantsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            
+            const formData = new FormData(e.target);
+            const creativeId = formData.get('creative_id');
+            const count = formData.get('count');
+            
+            try {
+                const response = await fetch(API_BASE + creativeId + '/variants', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({count: parseInt(count)})
+                });
+                
+                const result = await response.json();
+                showResponse('variantsResponse', result, !response.ok);
+            } catch (error) {
+                showResponse('variantsResponse', {error: error.message}, true);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Adaptar Criativo
+        document.getElementById('adaptForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            
+            const formData = new FormData(e.target);
+            const variantId = formData.get('variant_id');
+            const data = {};
+            
+            if (formData.get('text_short')) data.text_short = formData.get('text_short');
+            if (formData.get('text_medium')) data.text_medium = formData.get('text_medium');
+            
+            try {
+                const response = await fetch(API_BASE + 'variants/' + variantId + '/adapt', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                showResponse('adaptResponse', result, !response.ok);
+            } catch (error) {
+                showResponse('adaptResponse', {error: error.message}, true);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Registrar Performance
+        document.getElementById('performanceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch(API_BASE + 'performance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                showResponse('performanceResponse', result, !response.ok);
+            } catch (error) {
+                showResponse('performanceResponse', {error: error.message}, true);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Recomendar Próximo
+        document.getElementById('recommendForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            
+            const formData = new FormData(e.target);
+            const params = new URLSearchParams(formData);
+            
+            try {
+                const response = await fetch(API_BASE + 'recommend?' + params.toString(), {
+                    method: 'GET'
+                });
+                
+                const result = await response.json();
+                showResponse('recommendResponse', result, !response.ok);
+            } catch (error) {
+                showResponse('recommendResponse', {error: error.message}, true);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        // Listar Criativos
+        async function listCreatives() {
+            showLoading(true);
+            
+            try {
+                const response = await fetch(API_BASE + 'list/');
+                const result = await response.json();
+                showResponse('listResponse', result, !response.ok);
+            } catch (error) {
+                showResponse('listResponse', {error: error.message}, true);
+            } finally {
+                showLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>

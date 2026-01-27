@@ -107,8 +107,19 @@ class EvolutionAPIService:
                     'profile_name': status_result.get('profile_name'),
                     'number': status_result.get('number')
                 }
+            elif status_result.get('status') == 'close':
+                # Instância está desconectada, precisamos recriar ou reconectar
+                # O QR code só é gerado quando a instância é criada ou reconectada
+                logger.info(f"Instância '{instance_name}' está desconectada. QR code não disponível até reconectar.")
+                return {
+                    'success': False,
+                    'error': 'Instância desconectada. É necessário recriar a instância para gerar novo QR code.',
+                    'instance_name': instance_name,
+                    'status': 'disconnected',
+                    'needs_recreation': True
+                }
         
-        # Na Evolution API v2.1.1, o QR code vem através do endpoint /instance/connect
+        # Na Evolution API v2.2.3, o QR code vem através do endpoint /instance/connect
         # NOTA: Este endpoint retorna {"count": 0} quando o QR code ainda não está disponível
         # O QR code geralmente é obtido via WebSocket, mas vamos tentar via REST primeiro
         url = f"{self.base_url}/instance/connect/{instance_name}"
