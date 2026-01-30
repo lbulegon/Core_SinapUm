@@ -1,15 +1,17 @@
 """Testes para Creative Service"""
 import pytest
+from unittest.mock import MagicMock
 from PIL import Image
 from io import BytesIO
 from app.services.creative_service import CreativeService
-from app.storage.catalog import CatalogStorage
 from app.schemas.creative import CardRequest, CardOverlay
 
 
 @pytest.fixture
-def catalog_storage(tmp_path):
-    storage = CatalogStorage(db_path=tmp_path / "test_catalog.db")
+def catalog_storage():
+    """Mock do CatalogStorage (usa PostgreSQL em prod, mock em testes)"""
+    storage = MagicMock()
+    storage.get_product.return_value = None
     return storage
 
 

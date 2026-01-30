@@ -537,12 +537,27 @@ O pipeline gera insights automáticos baseados nos resultados:
 
 ### Testes
 
-Execute os testes de integração:
+Bateria de testes (unitários, casos de uso, integração, edge cases):
 
 ```bash
 cd services/sparkscore_service
-pytest tests/test_analyze_piece.py -v
+
+# Via Docker (recomendado)
+docker compose -f ../../docker-compose.yml run --rm -v $(pwd):/app -e PYTHONPATH=/app sparkscore_service \
+  sh -c "pip install -q pytest 'httpx<0.27' && pytest tests/ --ignore=tests/regression/ -v --tb=short"
+
+# Localmente (com venv e deps instaladas)
+pytest tests/ --ignore=tests/regression/ -v --tb=short
 ```
+
+| Categoria | Pasta | Descrição |
+|-----------|-------|-----------|
+| Unit | `tests/unit/` | Orbitais CSV, Semiotic, BaseOrbital, Registry |
+| Casos de uso | `tests/use_cases/` | Cenários reais (story WhatsApp, peça sem CTA, texto longo) |
+| Integração | `tests/test_analyze_piece.py` | API `/api/v1/analyze_piece` |
+| Edge cases | `tests/test_edge_cases.py` | Payloads extremos, formato legado |
+
+Documentação de casos de uso: `docs/CASOS_DE_USO.md`
 
 ### Notas Técnicas
 

@@ -16,6 +16,15 @@ class ProductVideo(BaseModel):
     thumbnail_url: Optional[str] = None
 
 
+class ProductVariation(BaseModel):
+    """Variação de produto (ETAPA 2 - Variações e Grade)"""
+    tipo_variacao: str  # 'tamanho', 'cor', 'material', etc.
+    valor_variacao: str  # 'P', 'M', 'G', 'Vermelho', etc.
+    sku: Optional[str] = None
+    preco_adicional: float = 0.0
+    estoque_disponivel: int = 0
+
+
 class ProductIndex(BaseModel):
     """Payload para indexar um produto"""
     product_id: str
@@ -38,15 +47,6 @@ class ProductIndexResponse(BaseModel):
     product_id: str
     indexed_at: datetime
     message: Optional[str] = None
-
-
-class ProductVariation(BaseModel):
-    """Variação de produto (ETAPA 2 - Variações e Grade)"""
-    tipo_variacao: str  # 'tamanho', 'cor', 'material', etc.
-    valor_variacao: str  # 'P', 'M', 'G', 'Vermelho', etc.
-    sku: Optional[str] = None
-    preco_adicional: float = 0.0
-    estoque_disponivel: int = 0
 
 
 class ProductSearchResult(BaseModel):

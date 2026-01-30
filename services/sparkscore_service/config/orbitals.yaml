@@ -107,4 +107,8 @@ orbital_configs:
   social:
     enabled: false
     description: "Análise social: viralidade, compartilhamento, engajamento (placeholder)"
+  
+  csv:
+    enabled: false
+    description: "Circulação Simbólica Vetorial: fluxo vetorial, propagação, adequação ao canal"
 

@@ -15,6 +15,7 @@ from app.orbitals.ethical_orbital import EthicalOrbital
 from app.orbitals.psychoanalytic_orbital import PsychoanalyticOrbital
 from app.orbitals.temporal_orbital import TemporalOrbital
 from app.orbitals.social_orbital import SocialOrbital
+from app.orbitals.csv_orbital import CsvOrbital
 
 
 class OrbitalRegistry:
@@ -33,6 +34,7 @@ class OrbitalRegistry:
         "psychoanalytic": PsychoanalyticOrbital,
         "temporal": TemporalOrbital,
         "social": SocialOrbital,
+        "csv": CsvOrbital,
     }
     
     def __init__(self):

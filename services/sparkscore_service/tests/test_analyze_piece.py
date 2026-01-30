@@ -58,6 +58,9 @@ def test_analyze_piece_minimal():
     
     # Verificar orbitais placeholder
     assert "narrative" in orbital_ids or any(o["orbital_id"] == "narrative" for o in data["orbitals"])
+
+    # Verificar orbital CSV (placeholder ou ativo)
+    assert "csv" in orbital_ids
     
     # Validar estrutura de orbital ativo
     semiotic = next((o for o in data["orbitals"] if o["orbital_id"] == "semiotic"), None)

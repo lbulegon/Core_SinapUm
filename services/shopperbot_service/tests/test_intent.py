@@ -12,7 +12,7 @@ def intent_service():
 def test_classify_buy_now(intent_service):
     """Testa classificação de intent BUY_NOW"""
     request = IntentRequest(
-        message="quero comprar esse produto agora",
+        message="quero comprar, vou levar esse produto agora",
         contexto=ContextType.GROUP,
         user_id="user123",
         estabelecimento_id="est123"

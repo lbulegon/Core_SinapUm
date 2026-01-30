@@ -1,15 +1,16 @@
 """Testes para Recommendation Service"""
 import pytest
+from unittest.mock import MagicMock
 from app.services.recommendation_service import RecommendationService
-from app.storage.catalog import CatalogStorage
 from app.schemas.recommendation import RecommendationRequest, RecommendationFilter
 from app.schemas.intent import IntentResponse, IntentType, ExtractedEntity
 
 
 @pytest.fixture
-def catalog_storage(tmp_path):
-    from pathlib import Path
-    storage = CatalogStorage(db_path=tmp_path / "test_catalog.db")
+def catalog_storage():
+    """Mock do CatalogStorage (usa PostgreSQL em prod, mock em testes)"""
+    storage = MagicMock()
+    storage.search_products.return_value = []
     return storage
 
 
