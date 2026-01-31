@@ -56,29 +56,25 @@ class VitrineZapClient:
     
     def get_customer(self, shopper_id: str, phone: str) -> Dict[str, Any]:
         """
-        Obtém ou cria cliente
-        
-        Args:
-            shopper_id: ID do Shopper
-            phone: Telefone do cliente
-        
-        Returns:
-            {
-                'success': bool,
-                'customer_id': str,
-                'customer': {...}
-            }
+        Obtém cliente por telefone via API interna.
+        Retorna customer_id (Cliente.id) para uso em cart/order.
         """
-        # TODO: Implementar endpoint no VitrineZap
-        # Por enquanto, retornar stub
-        return {
-            'success': True,
-            'customer_id': f'customer_{phone}',
-            'customer': {
-                'id': f'customer_{phone}',
-                'phone': phone,
-            }
-        }
+        try:
+            resp = self._request(
+                'POST',
+                '/api/internal/customer/get-or-create/',
+                data={'phone': phone},
+            )
+            if resp.get('success'):
+                return {
+                    'success': True,
+                    'customer_id': str(resp.get('customer_id', '')),
+                    'customer': resp.get('customer', {}),
+                }
+            return {'success': False, 'customer_id': '', 'customer': {}, 'error': resp.get('error')}
+        except Exception as e:
+            logger.warning(f"get_customer error: {e}")
+            return {'success': False, 'customer_id': '', 'customer': {}, 'error': str(e)}
     
     def search_catalog(self, shopper_id: str, query: str, filters: Optional[Dict] = None) -> Dict[str, Any]:
         """
@@ -141,7 +137,7 @@ class VitrineZapClient:
         Evora: POST /api/client/cart/add/ (requer auth de cliente).
         Quando Evora expuser API headless com X-Internal-Token + customer_id, esta chamada funcionará.
         """
-        endpoint = '/api/client/cart/add/'
+        endpoint = '/api/internal/cart/add/'
         data = {'product_id': product_id, 'quantity': quantity}
         extra = {'X-Customer-Id': str(customer_id)} if customer_id else {}
         resp = self._request('POST', endpoint, data, extra_headers=extra)
@@ -159,7 +155,7 @@ class VitrineZapClient:
             'address': address,
             'payment_method': payment_method or 'pix',
         }
-        resp = self._request('POST', '/api/client/cart/checkout/', data, extra_headers=extra)
+        resp = self._request('POST', '/api/internal/cart/checkout/', data, extra_headers=extra)
         if resp.get('success') or resp.get('order_id'):
             return {'success': True, 'order_id': resp.get('order_id', ''), 'order': resp}
         return {'success': False, 'order_id': '', 'order': {}, 'error': resp.get('error', 'Falha ao criar pedido')}
