@@ -7,7 +7,7 @@ from app.utils.logging import logger, get_request_id
 from app.utils.config import DEBUG, PORT
 from app.routers import (
     catalog, intent, recommendation, objection,
-    creative, routing, handoff
+    creative, routing, handoff, mcp
 )
 
 # Context var para request_id
@@ -59,6 +59,7 @@ app.include_router(objection.router)
 app.include_router(creative.router)
 app.include_router(routing.router)
 app.include_router(handoff.router)
+app.include_router(mcp.router)
 
 
 @app.exception_handler(Exception)

@@ -3,4 +3,6 @@ uvicorn[standard]==0.24.0
 requests==2.31.0
 pydantic==2.5.0
 jsonschema==4.20.0
+mcp>=1.0.0,<2.0.0
+anyio>=4.0.0
 

@@ -333,8 +333,17 @@ MCP_MAX_INPUT_BYTES = int(os.environ.get('MCP_MAX_INPUT_BYTES', 10485760))  # 10
 DDF_BASE_URL = os.environ.get('DDF_BASE_URL', 'http://ddf_service:8005')
 DDF_TIMEOUT = int(os.environ.get('DDF_TIMEOUT', 60))  # segundos
 
+# SparkScore Service (para runtime sparkscore)
+SPARKSCORE_BASE_URL = os.environ.get('SPARKSCORE_BASE_URL', 'http://sparkscore_service:8006')
+SPARKSCORE_TIMEOUT = int(os.environ.get('SPARKSCORE_TIMEOUT', 30))
+
 # MCP Service Configuration (para delegação opcional)
 MCP_SERVICE_URL = os.environ.get('MCP_SERVICE_URL', 'http://mcp_service:7010')
+
+# Usar MCP Tool Registry para análise de imagens (/analyze/, /api/v1/analyze-product-image)
+# Quando True: chama vitrinezap.analisar_produto via Core execute; fallback para OpenMind direto se tool não existir
+# Quando False: sempre usa OpenMind direto (comportamento legado)
+USE_MCP_FOR_ANALYZE = os.environ.get('USE_MCP_FOR_ANALYZE', 'true').lower() in ('1', 'true', 'yes')
 
 # Evolution API Configuration (WhatsApp Integration)
 # Detectar automaticamente se está em container ou host

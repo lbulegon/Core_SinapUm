@@ -1,6 +1,7 @@
 """
 Serviços para integração com OpenMind AI
 """
+import base64
 import json
 import requests
 import logging
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 OPENMIND_AI_URL = getattr(settings, 'OPENMIND_AI_URL', 'http://127.0.0.1:8000')
 OPENMIND_AI_KEY = getattr(settings, 'OPENMIND_AI_KEY', None)
+USE_MCP_FOR_ANALYZE = getattr(settings, 'USE_MCP_FOR_ANALYZE', True)
 
 # Prompt fallback mínimo (usado apenas quando não há prompt no banco de dados)
 # Este é um prompt genérico básico para garantir que o sistema funcione
@@ -24,9 +26,68 @@ FALLBACK_PROMPT_ANALISE_PRODUTO = (
 )
 
 
+def _analyze_image_via_mcp(image_file, image_path=None, image_url=None):
+    """
+    Analisa imagem via MCP Tool Registry (vitrinezap.analisar_produto).
+    Usa prompt versionado do Tool Registry.
+    
+    Returns:
+        dict: Resultado no formato OpenMind (success, data, etc) ou None se falhar
+    """
+    try:
+        from app_mcp_tool_registry.services import execute_tool
+        from app_mcp_tool_registry.models import Tool
+        
+        # Verificar se a tool existe
+        if not Tool.objects.filter(name='vitrinezap.analisar_produto', is_active=True).exists():
+            logger.info("Tool vitrinezap.analisar_produto não registrada; usando fluxo legado")
+            return None
+        
+        image_file.seek(0)
+        image_data = image_file.read()
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        input_data = {
+            'image_base64': image_base64,
+            'prompt_params': {}
+        }
+        if image_url:
+            input_data['image_url'] = image_url
+        
+        result = execute_tool(
+            tool_name='vitrinezap.analisar_produto',
+            input_data=input_data,
+            client_key='vitrinezap',
+        )
+        
+        if not result.get('ok'):
+            logger.warning(f"MCP execute falhou: {result.get('error')}; fallback para legado")
+            return None
+        
+        output = result.get('output') or {}
+        if not output.get('success'):
+            return None
+        
+        # Adicionar image_path/image_url ao retorno
+        if image_path:
+            output['image_path'] = image_path
+        if image_url:
+            output['image_url'] = image_url
+        
+        logger.info("✅ Análise via MCP (vitrinezap.analisar_produto) concluída")
+        return output
+        
+    except Exception as e:
+        logger.warning(f"Erro ao usar MCP para análise: {e}; fallback para legado", exc_info=True)
+        return None
+
+
 def analyze_image_with_openmind(image_file, image_path=None, image_url=None, prompt=None):
     """
     Analisa uma imagem usando o OpenMind AI Server.
+    
+    Quando USE_MCP_FOR_ANALYZE=True, tenta primeiro via MCP Tool Registry (vitrinezap.analisar_produto).
+    Se a tool não existir ou falhar, usa fluxo legado (OpenMind direto).
     
     Args:
         image_file: Arquivo de imagem (Django UploadedFile)
@@ -37,6 +98,30 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
     Returns:
         dict: Resposta da API do OpenMind AI com image_url e image_path incluídos se fornecidos
     """
+    if USE_MCP_FOR_ANALYZE:
+        mcp_result = _analyze_image_via_mcp(image_file, image_path=image_path, image_url=image_url)
+        if mcp_result is not None:
+            image_file.seek(0)
+            if mcp_result.get('success') and mcp_result.get('data'):
+                prompt_info = mcp_result.get('data', {}).get('cadastro_meta', {}).get('prompt_usado') or {
+                    'nome': 'MCP Tool Registry',
+                    'versao': 'N/A',
+                    'fonte': 'vitrinezap.analisar_produto',
+                }
+                try:
+                    modelo_json = transform_evora_to_modelo_json(
+                        mcp_result['data'],
+                        image_filename=image_file.name,
+                        image_path=image_path,
+                        prompt_info=prompt_info,
+                    )
+                    mcp_result['data'] = modelo_json
+                    mcp_result['prompt_info'] = prompt_info
+                except Exception as te:
+                    logger.warning(f"Erro ao transformar dados MCP: {te}")
+            return mcp_result
+        image_file.seek(0)
+    
     try:
         # Inicializar prompt_info como None
         prompt_info = None

@@ -76,6 +76,7 @@ services:
       - POSTGRES_PORT=5432
       - OPENMIND_AI_URL=${OPENMIND_AI_URL:-http://openmind:8001}
       - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
+      - SPARKSCORE_BASE_URL=${SPARKSCORE_BASE_URL:-http://sparkscore_service:8006}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,69.169.102.84}
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
       - DDF_BASE_URL=${DDF_BASE_URL:-http://ddf_service:8005}
@@ -359,6 +360,8 @@ services:
       - STORAGE_PATH=/app/storage
       - LOG_LEVEL=${SHOPPERBOT_LOG_LEVEL:-INFO}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-mcp_user}:${POSTGRES_PASSWORD:-mcp_password_change_me}@db:5432/${POSTGRES_DB:-mcp_sinapum}
+      - MCP_CORE_URL=${MCP_CORE_URL:-http://web:5000}
+      - MCP_ENABLED=${MCP_ENABLED:-true}
     volumes:
       - shopperbot_storage:/app/storage
     depends_on:

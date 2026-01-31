@@ -21,6 +21,13 @@ class Settings(BaseSettings):
         "postgresql://sinapum:sinapum123@postgres:5432/sinapum"
     )
     
+    # MCP Core (VitrineZap tools: cart, catalog, order)
+    MCP_CORE_URL: str = os.getenv(
+        "MCP_CORE_URL",
+        "http://web:5000"
+    )
+    MCP_ENABLED: bool = os.getenv("MCP_ENABLED", "true").lower() in ("1", "true", "yes")
+    
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     

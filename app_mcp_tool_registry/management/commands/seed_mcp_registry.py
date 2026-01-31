@@ -53,7 +53,9 @@ class Command(BaseCommand):
             tool.allowed_clients.add(client)
             self.stdout.write(self.style.SUCCESS(f'✓ Cliente vitrinezap adicionado aos allowed_clients'))
         
-        # 3. Criar ToolVersion 1.0.0 com schemas do VitrineZap
+        # 3. Criar ToolVersion 1.0.0 - OpenMind analyze-product-image
+        from django.conf import settings
+        openmind_url = getattr(settings, 'OPENMIND_AI_URL', 'http://openmind:8001')
         tool_version, created = ToolVersion.objects.get_or_create(
             tool=tool,
             version='1.0.0',
@@ -62,9 +64,8 @@ class Command(BaseCommand):
                 'is_deprecated': False,
                 'runtime': 'openmind_http',
                 'config': {
-                    'url': 'http://openmind:8001/agent/run',
-                    'agent': 'vitrinezap_product_analyst',
-                    'timeout_s': 45
+                    'url': f'{openmind_url.rstrip("/")}/api/v1/analyze-product-image',
+                    'timeout_s': 60
                 },
                 'input_schema': {
                     'type': 'object',
@@ -109,8 +110,7 @@ class Command(BaseCommand):
                             },
                             'description': 'Dicas opcionais para a análise'
                         }
-                    },
-                    'required': ['source']
+                    }
                 },
                 'output_schema': {
                     'type': 'object',
@@ -180,7 +180,47 @@ class Command(BaseCommand):
             tool.save()
             self.stdout.write(self.style.SUCCESS(f'✓ Versão atual da tool definida como 1.0.0'))
         
-        # 5. Imprimir API key
+        # 5. Criar tool sparkscore.analisar_peca
+        sparkscore_url = getattr(settings, 'SPARKSCORE_BASE_URL', 'http://sparkscore_service:8006')
+        tool_spark, _ = Tool.objects.get_or_create(
+            name='sparkscore.analisar_peca',
+            defaults={
+                'description': 'Analisa peça criativa (texto, imagem) via SparkScore - orbitais semiótico, emocional, CSV, etc.',
+                'is_active': True,
+            }
+        )
+        if client not in tool_spark.allowed_clients.all():
+            tool_spark.allowed_clients.add(client)
+        ToolVersion.objects.get_or_create(
+            tool=tool_spark,
+            version='1.0.0',
+            defaults={
+                'is_active': True,
+                'is_deprecated': False,
+                'runtime': 'sparkscore',
+                'config': {
+                    'url': f'{sparkscore_url.rstrip("/")}/api/v1/analyze_piece',
+                    'timeout_s': 30,
+                },
+                'input_schema': {
+                    'type': 'object',
+                    'properties': {
+                        'piece_id': {'type': 'string'},
+                        'piece_type': {'type': 'string', 'enum': ['image', 'text', 'video']},
+                        'text_overlay': {'type': 'string'},
+                        'caption': {'type': 'string'},
+                        'objective': {'type': 'object'},
+                        'distribution': {'type': 'object'},
+                    },
+                },
+            }
+        )
+        if not tool_spark.current_version:
+            tool_spark.current_version = tool_spark.versions.first()
+            tool_spark.save()
+        self.stdout.write(self.style.SUCCESS('✓ Tool sparkscore.analisar_peca configurada'))
+        
+        # 6. Imprimir API key
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('=' * 60))
         self.stdout.write(self.style.SUCCESS('API KEY DO VITRINEZAP:'))

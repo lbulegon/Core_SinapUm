@@ -5,6 +5,7 @@ Main - Entrypoint da API FastAPI
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
+from app.api.mcp_routes import router as mcp_router
 
 app = FastAPI(
     title="DDF - Detect & Delegate Framework",
@@ -23,6 +24,7 @@ app.add_middleware(
 
 # Rotas
 app.include_router(router)
+app.include_router(mcp_router, prefix="/ddf/mcp")
 
 
 @app.get("/")

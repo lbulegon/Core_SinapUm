@@ -20,6 +20,8 @@ OPENMIND_AI_URL = getattr(settings, 'OPENMIND_AI_URL', 'http://127.0.0.1:8001')
 OPENMIND_AI_KEY = getattr(settings, 'OPENMIND_AI_KEY', None)
 DDF_BASE_URL = getattr(settings, 'DDF_BASE_URL', 'http://ddf_service:8005')
 DDF_TIMEOUT = getattr(settings, 'DDF_TIMEOUT', 60)
+SPARKSCORE_BASE_URL = getattr(settings, 'SPARKSCORE_BASE_URL', 'http://sparkscore_service:8006')
+SPARKSCORE_TIMEOUT = getattr(settings, 'SPARKSCORE_TIMEOUT', 30)
 MCP_MAX_INPUT_BYTES = getattr(settings, 'MCP_MAX_INPUT_BYTES', 10485760)  # 10MB
 
 
@@ -415,6 +417,8 @@ def execute_runtime(
         return execute_runtime_prompt(config, input_data, prompt_text)
     elif runtime == "ddf":
         return execute_runtime_ddf(config, input_data, prompt_text=prompt_text)
+    elif runtime == "sparkscore":
+        return execute_runtime_sparkscore(config, input_data, prompt_text=prompt_text)
     elif runtime == "noop":
         return {"message": "No operation - tool not implemented"}
     elif runtime == "pipeline":

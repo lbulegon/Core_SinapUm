@@ -15,6 +15,10 @@ fi
 echo "Executando migrações..."
 python manage.py migrate --noinput
 
+# Seed MCP Registry (vitrinezap.analisar_produto + ClientApp)
+echo "Executando seed do MCP Registry..."
+python manage.py seed_mcp_registry 2>/dev/null || true
+
 # Coletar arquivos estáticos
 echo "Coletando arquivos estáticos..."
 python manage.py collectstatic --noinput --clear || true
