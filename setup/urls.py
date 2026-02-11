@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 from app_sinapum import views
 from app_sinapum import views_core
 from app_sinapum import views_evolution
+from app_sinapum import views_baileys
+from core.services.whatsapp import webhook_handler
 
 # Importar views do CrewAI (com try/except para não quebrar se CrewAI não estiver instalado)
 try:
@@ -61,6 +63,13 @@ urlpatterns = [
     path('whatsapp/api/get-status/', views_evolution.whatsapp_get_status, name='whatsapp_get_status'),
     path('whatsapp/api/delete-instance/', views_evolution.whatsapp_delete_instance, name='whatsapp_delete_instance'),
     path('whatsapp/api/restart-instance/', views_evolution.whatsapp_restart_instance, name='whatsapp_restart_instance'),
+    # WhatsApp Gateway Service (Baileys)
+    path('whatsapp/gateway/', views_baileys.whatsapp_gateway_connect, name='whatsapp_gateway_connect'),
+    path('whatsapp/gateway/connect/', views_baileys.whatsapp_gateway_connect_action, name='whatsapp_gateway_connect_action'),
+    path('whatsapp/gateway/qr/', views_baileys.whatsapp_gateway_get_qr, name='whatsapp_gateway_get_qr'),
+    path('whatsapp/gateway/status/', views_baileys.whatsapp_gateway_get_status, name='whatsapp_gateway_get_status'),
+    path('whatsapp/gateway/disconnect/', views_baileys.whatsapp_gateway_disconnect, name='whatsapp_gateway_disconnect'),
+    path('whatsapp/gateway/reset/', views_baileys.whatsapp_gateway_reset_session, name='whatsapp_gateway_reset_session'),
     # WhatsApp Gateway - Nova arquitetura plugável
     path('api/whatsapp/', include('app_whatsapp.api.urls')),
     # Creative Engine - Motor de criativos
@@ -69,6 +78,8 @@ urlpatterns = [
     # WhatsApp Canonical Events v1.0
     # ============================================================================
     path('api/v1/whatsapp/events/', include('core.services.whatsapp.canonical.urls')),
+    # WhatsApp Gateway Service Webhook
+    path('webhooks/whatsapp/', webhook_handler.handle_incoming_whatsapp_event, name='whatsapp_gateway_webhook'),
     path('admin/', admin.site.urls),
 ]
 

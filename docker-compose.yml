@@ -81,6 +81,13 @@ services:
       - INTERNAL_API_KEY=${INTERNAL_API_KEY:-e6994b05d473440f6c677604ef39188867c4564c54908ea47fdb0f30005945e2}
       - DDF_BASE_URL=${DDF_BASE_URL:-http://ddf_service:8005}
       - MCP_MAX_INPUT_BYTES=${MCP_MAX_INPUT_BYTES:-10485760}
+      # WhatsApp Gateway Service (URL interna para comunicação Docker)
+      - SINAPUM_WHATSAPP_GATEWAY_URL=http://whatsapp_gateway_service:8007
+      - SINAPUM_WHATSAPP_GATEWAY_API_KEY=${SINAPUM_WHATSAPP_GATEWAY_API_KEY}
+      - SINAPUM_WHATSAPP_GATEWAY_PORT=${SINAPUM_WHATSAPP_GATEWAY_PORT:-8007}
+      - SINAPUM_CORE_BASE_URL=${SINAPUM_CORE_BASE_URL:-http://69.169.102.84:5000}
+      - SINAPUM_WHATSAPP_WEBHOOK_URL=${SINAPUM_WHATSAPP_WEBHOOK_URL}
+      - SINAPUM_WHATSAPP_AUTO_CONNECT=${SINAPUM_WHATSAPP_AUTO_CONNECT:-false}
       # ARQUITETURA NOVA - Feature Flags
       - FEATURE_EVOLUTION_MULTI_TENANT=${FEATURE_EVOLUTION_MULTI_TENANT:-true}
       - FEATURE_OPENMIND_ENABLED=${FEATURE_OPENMIND_ENABLED:-true}
@@ -399,6 +406,33 @@ services:
       retries: 3
       start_period: 40s
 
+  # WhatsApp Gateway Service - Gateway WhatsApp usando Baileys
+  whatsapp_gateway_service:
+    build:
+      context: ./services/whatsapp_gateway_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_whatsapp_gateway
+    restart: unless-stopped
+    ports:
+      - "${SINAPUM_WHATSAPP_GATEWAY_PORT:-8007}:8007"
+    environment:
+      - PORT=8007
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - API_KEY=${SINAPUM_WHATSAPP_GATEWAY_API_KEY}
+      - WEBHOOK_URL=${SINAPUM_WHATSAPP_WEBHOOK_URL}
+      - AUTH_DIR=/data/auth
+      - AUTO_CONNECT=${SINAPUM_WHATSAPP_AUTO_CONNECT:-false}
+    volumes:
+      - wa_auth:/data/auth
+    networks:
+      - mcp_network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 volumes:
   postgres_data:
     driver: local
@@ -425,6 +459,8 @@ volumes:
   chatwoot_storage_data:
     driver: local
   shopperbot_storage:
+    driver: local
+  wa_auth:
     driver: local
 
 networks:

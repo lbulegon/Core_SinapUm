@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conectar WhatsApp Gateway - Core SinapUm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        nav {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-menu a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-menu a:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .content {
+            background: white;
+            border-radius: 15px;
+            padding: 3rem;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        
+        .status-connected {
+            background: #10b981;
+            color: white;
+        }
+        
+        .status-disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .status-connecting {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .status-qr_required {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .qrcode-container {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 10px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .qrcode-image {
+            max-width: 300px;
+            width: 100%;
+            height: auto;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            padding: 1rem;
+            background: white;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-text {
+            color: #666;
+            margin: 1rem 0;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .connected-info {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .connected-info h3 {
+            color: #10b981;
+            margin-bottom: 0.5rem;
+        }
+        
+        .error-message {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #991b1b;
+        }
+        
+        .success-message {
+            background: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #065f46;
+        }
+        
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo">🚀 Core SinapUm</div>
+            <ul class="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/analyze/">📸 Análise de Imagens</a></li>
+                <li><a href="/whatsapp/">📱 WhatsApp (Evolution)</a></li>
+                <li><a href="/whatsapp/gateway/">📱 WhatsApp Gateway</a></li>
+                <li><a href="/admin/">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="content">
+            <h1>📱 Conectar WhatsApp Gateway</h1>
+            <p class="info-text" style="margin-bottom: 1.5rem; color: #666;">
+                Conecte seu WhatsApp usando o WhatsApp Gateway Service (Baileys)
+            </p>
+            
+            <div id="status-container">
+                <div id="status-badge" class="status-badge status-disconnected">
+                    ❌ Desconectado
+                </div>
+            </div>
+            
+            <div id="message-container"></div>
+            
+            <div id="qrcode-container" class="qrcode-container" style="display: none;">
+                <div id="qrcode-loading" class="loading"></div>
+                <img id="qrcode-image" class="qrcode-image" style="display: none;" alt="QR Code WhatsApp">
+            </div>
+            
+            <div class="info-text" id="info-text">
+                <p><strong>Instruções:</strong></p>
+                <p>1. Clique em "Conectar" para gerar o QR Code</p>
+                <p>2. Abra o WhatsApp no seu celular</p>
+                <p>3. Vá em <strong>Configurações > Aparelhos conectados > Conectar um aparelho</strong></p>
+                <p>4. Escaneie o QR Code exibido acima</p>
+            </div>
+            
+            <div style="margin-top: 2rem;">
+                <button id="btn-connect" class="btn" onclick="connectWhatsApp()">🔗 Conectar WhatsApp</button>
+                <button id="btn-disconnect" class="btn btn-danger" onclick="disconnectWhatsApp()" style="display: none;">🗑️ Desconectar</button>
+                <button id="btn-reset" class="btn btn-secondary" onclick="resetSession()" style="display: none;">🔄 Resetar Sessão</button>
+                <button class="btn btn-secondary" onclick="checkStatus()">🔄 Atualizar Status</button>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Core SinapUm - WhatsApp Gateway Service (Baileys)</p>
+    </footer>
+    
+    <script>
+        let statusCheckInterval = null;
+        let qrCheckInterval = null;
+        
+        // Verificar status ao carregar a página
+        window.addEventListener('DOMContentLoaded', function() {
+            checkStatus();
+        });
+        
+        function updateStatusBadge(status) {
+            const badge = document.getElementById('status-badge');
+            const btnConnect = document.getElementById('btn-connect');
+            const btnDisconnect = document.getElementById('btn-disconnect');
+            const btnReset = document.getElementById('btn-reset');
+            const qrContainer = document.getElementById('qrcode-container');
+            const infoText = document.getElementById('info-text');
+            
+            badge.className = 'status-badge';
+            
+            switch(status) {
+                case 'connected':
+                    badge.className += ' status-connected';
+                    badge.textContent = '✅ Conectado';
+                    btnConnect.style.display = 'none';
+                    btnDisconnect.style.display = 'inline-block';
+                    btnReset.style.display = 'inline-block';
+                    qrContainer.style.display = 'none';
+                    infoText.style.display = 'none';
+                    break;
+                case 'connecting':
+                    badge.className += ' status-connecting';
+                    badge.textContent = '🔄 Conectando...';
+                    btnConnect.disabled = true;
+                    break;
+                case 'qr_required':
+                    badge.className += ' status-qr_required';
+                    badge.textContent = '📱 QR Code Disponível';
+                    btnConnect.style.display = 'none';
+                    btnDisconnect.style.display = 'inline-block';
+                    btnReset.style.display = 'inline-block';
+                    qrContainer.style.display = 'flex';
+                    infoText.style.display = 'block';
+                    break;
+                default:
+                    badge.className += ' status-disconnected';
+                    badge.textContent = '❌ Desconectado';
+                    btnConnect.style.display = 'inline-block';
+                    btnConnect.disabled = false;
+                    btnDisconnect.style.display = 'none';
+                    btnReset.style.display = 'none';
+                    qrContainer.style.display = 'none';
+                    infoText.style.display = 'block';
+            }
+        }
+        
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('message-container');
+            const className = type === 'error' ? 'error-message' : 
+                            type === 'success' ? 'success-message' : 'info-text';
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+            
+            // Remover mensagem após 5 segundos
+            if (type !== 'error') {
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        function connectWhatsApp() {
+            const btnConnect = document.getElementById('btn-connect');
+            btnConnect.disabled = true;
+            showMessage('Conectando ao WhatsApp Gateway...', 'info');
+            
+            fetch('/whatsapp/gateway/connect/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message || 'Conexão iniciada. Aguardando QR code...', 'success');
+                    updateStatusBadge(data.status || 'connecting');
+                    
+                    // Aguardar um pouco e buscar QR code
+                    setTimeout(() => {
+                        getQRCode();
+                    }, 2000);
+                } else {
+                    showMessage('Erro: ' + (data.error || 'Erro desconhecido'), 'error');
+                    btnConnect.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showMessage('Erro ao conectar: ' + error.message, 'error');
+                btnConnect.disabled = false;
+            });
+        }
+        
+        function getQRCode(retryCount = 0) {
+            const maxRetries = 15; // Tentar até 15 vezes (75 segundos)
+            
+            document.getElementById('qrcode-loading').style.display = 'block';
+            document.getElementById('qrcode-image').style.display = 'none';
+            
+            fetch('/whatsapp/gateway/qr/')
+                .then(response => {
+                    if (response.status === 404) {
+                        // QR code não disponível ainda, tentar novamente
+                        if (retryCount < maxRetries) {
+                            setTimeout(() => {
+                                getQRCode(retryCount + 1);
+                            }, 5000);
+                        } else {
+                            document.getElementById('qrcode-loading').style.display = 'none';
+                            showMessage('QR code não foi gerado após várias tentativas. Tente conectar novamente.', 'error');
+                        }
+                        return null;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data) return;
+                    
+                    if (data.success) {
+                        if (data.connected) {
+                            // Já conectado
+                            showMessage('WhatsApp já está conectado!', 'success');
+                            updateStatusBadge('connected');
+                            location.reload();
+                        } else if (data.qrcode) {
+                            // Mostrar QR code
+                            const qrImg = document.getElementById('qrcode-image');
+                            qrImg.src = data.qrcode;
+                            qrImg.style.display = 'block';
+                            document.getElementById('qrcode-loading').style.display = 'none';
+                            updateStatusBadge('qr_required');
+                            
+                            // Verificar status periodicamente
+                            if (statusCheckInterval) {
+                                clearInterval(statusCheckInterval);
+                            }
+                            statusCheckInterval = setInterval(checkStatus, 5000);
+                        }
+                    } else {
+                        if (retryCount < maxRetries && data.status === 'not_available') {
+                            setTimeout(() => {
+                                getQRCode(retryCount + 1);
+                            }, 5000);
+                        } else {
+                            document.getElementById('qrcode-loading').style.display = 'none';
+                            showMessage('Erro ao obter QR code: ' + (data.error || 'Erro desconhecido'), 'error');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    if (retryCount < maxRetries) {
+                        setTimeout(() => {
+                            getQRCode(retryCount + 1);
+                        }, 5000);
+                    } else {
+                        document.getElementById('qrcode-loading').style.display = 'none';
+                        showMessage('Erro ao obter QR code: ' + error.message, 'error');
+                    }
+                });
+        }
+        
+        function checkStatus() {
+            fetch('/whatsapp/gateway/status/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const status = data.connection || 'disconnected';
+                        updateStatusBadge(status);
+                        
+                        if (status === 'connected') {
+                            if (statusCheckInterval) {
+                                clearInterval(statusCheckInterval);
+                            }
+                            if (qrCheckInterval) {
+                                clearInterval(qrCheckInterval);
+                            }
+                            showMessage('WhatsApp conectado com sucesso!', 'success');
+                            setTimeout(() => {
+                                location.reload();
+                            }, 2000);
+                        } else if (status === 'qr_required') {
+                            // Se QR está disponível mas não está sendo exibido, buscar
+                            if (data.qr_available && document.getElementById('qrcode-image').style.display === 'none') {
+                                getQRCode();
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao verificar status:', error);
+                });
+        }
+        
+        function disconnectWhatsApp() {
+            if (!confirm('Tem certeza que deseja desconectar o WhatsApp?')) {
+                return;
+            }
+            
+            fetch('/whatsapp/gateway/disconnect/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('WhatsApp desconectado com sucesso!', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showMessage('Erro ao desconectar: ' + (data.error || 'Erro desconhecido'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showMessage('Erro ao desconectar: ' + error.message, 'error');
+            });
+        }
+        
+        function resetSession() {
+            if (!confirm('Tem certeza que deseja resetar a sessão? Isso irá remover a autenticação e você precisará escanear o QR code novamente.')) {
+                return;
+            }
+            
+            fetch('/whatsapp/gateway/reset/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Sessão resetada. Use "Conectar" para gerar novo QR code.', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage('Erro ao resetar sessão: ' + (data.error || 'Erro desconhecido'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showMessage('Erro ao resetar sessão: ' + error.message, 'error');
+            });
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Limpar intervalos ao sair da página
+        window.addEventListener('beforeunload', function() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+            }
+            if (qrCheckInterval) {
+                clearInterval(qrCheckInterval);
+            }
+        });
+    </script>
+</body>
+</html>

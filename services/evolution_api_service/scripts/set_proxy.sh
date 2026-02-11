@@ -77,3 +77,4 @@ echo -e "\n"
 echo "Pronto. Agora rode:"
 echo "  bash scripts/diagnose_qr.sh"
 
+

@@ -1,0 +1,38 @@
+# Dockerfile.build-from-source
+# Build Evolution API a partir do source, com patch do QR code (PR #2365)
+# Usar quando a tag fixa (v2.3.7) não resolver o loop de reconexão do QR.
+#
+# Referência: https://github.com/EvolutionAPI/evolution-api/pull/2365
+# Commit do patch: 3d253fff3ef2e7dacb27dae79acf7f0aed5ff216 (fork FelipeFrancca)
+
+FROM node:20-alpine AS builder
+
+WORKDIR /build
+
+# Clone do fork com o patch do QR (ou main + cherry-pick)
+# FelipeFrancca/evolution-api tem o fix no branch main
+ARG EVOLUTION_REPO=https://github.com/FelipeFrancca/evolution-api.git
+ARG EVOLUTION_REF=main
+
+RUN apk add --no-cache git && \
+    git clone --depth 1 --branch "${EVOLUTION_REF}" "${EVOLUTION_REPO}" . || \
+    git clone --depth 1 "${EVOLUTION_REPO}" . && git checkout "${EVOLUTION_REF}"
+
+RUN npm ci --omit=dev && npx prisma generate && npm run build
+
+# Stage final
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache wget
+
+COPY --from=builder /build/package*.json ./
+COPY --from=builder /build/node_modules ./node_modules
+COPY --from=builder /build/dist ./dist
+COPY --from=builder /build/prisma ./prisma
+
+ENV NODE_ENV=production
+EXPOSE 8080
+
+CMD ["node", "dist/src/main.js"]

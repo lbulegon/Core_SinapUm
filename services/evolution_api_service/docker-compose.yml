@@ -1,68 +1,41 @@
+# Evolution API - Core_SinapUm
+# MODE=image (padrao) -> usa imagem Docker Hub
+# MODE=build -> usa docker-compose.override.yml (Dockerfile.evolution + patch PR #2365)
+# Portas: 8004:8080 | Network: evolution-network (preservadas)
+
 services:
   evolution-api:
-    # RECOMENDADO: usar imagem oficial (evita ficar preso em versões antigas do build local)
-    # OBS: o tag "latest" nem sempre é o mais recente no Docker Hub.
-    # IMPORTANTE: a linha v1.x tem diferenças de config (ex: pode quebrar /instance/create com DB), então o default aqui permanece em v2.2.3.
-    # Para testar outra versão: export EVOLUTION_IMAGE_TAG=vX.Y.Z
-    image: atendai/evolution-api:${EVOLUTION_IMAGE_TAG:-v2.2.3}
+    image: ${EVOLUTION_IMAGE:-atendai/evolution-api}:${EVOLUTION_IMAGE_TAG:-v2.2.3}
     pull_policy: always
-    #
-    # Alternativa (se realmente precisar customizar):
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.evolution
     container_name: evolution-api
+    env_file:
+      - .env
     restart: unless-stopped
     ports:
-      - "8004:8080"
+      - "${EVOLUTION_PORT_EXTERNAL:-8004}:${EVOLUTION_PORT_INTERNAL:-8080}"
     environment:
-      # Configurações básicas
-      SERVER_URL: http://69.169.102.84:8004
+      SERVER_URL: ${EVOLUTION_SERVER_URL}
       PORT: 8080
-      
-      # Autenticação
-      AUTHENTICATION_API_KEY: GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg
-      
-      # Database - PostgreSQL (usando container existente via host)
-      DATABASE_ENABLED: true
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      DATABASE_ENABLED: ${EVOLUTION_DATABASE_ENABLED:-true}
       DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgresql://evolution:I4FD1_hihwvGc3BpZ0nEd7xnengVrnRh@host.docker.internal:5433/evolution
-      
-      # Redis (serviço local no mesmo docker-compose)
+      DATABASE_CONNECTION_URI: ${EVOLUTION_DB_URI}
       CACHE_REDIS_ENABLED: true
       CACHE_REDIS_URI: redis://redis:6379/0
       CACHE_REDIS_PREFIX_KEY: evolution
       CACHE_REDIS_SAVE_INSTANCES: false
       CACHE_LOCAL_ENABLED: false
-      
-      # Configurações de instância
       CONFIG_SESSION_PHONE_CLIENT: Chrome
       CONFIG_SESSION_PHONE_NAME: Evolution API
-      # Versão do WhatsApp Web
-      # IMPORTANTE:
-      # - Em versões mais novas da Evolution API, a versão do WhatsApp Web é auto-detectada.
-      # - Fixar CONFIG_SESSION_PHONE_VERSION pode causar falhas/instabilidade (ex: decodeFrame / QR não gera).
-      # Se precisar forçar versão, habilite manualmente, mas o padrão recomendado é NÃO setar.
-      # CONFIG_SESSION_PHONE_VERSION: 2.3000.1015901307
-      
-      # QR Code
-      QRCODE_LIMIT: 30
-      QRCODE_COLOR: '#198754'
-      
-      # Webhook - Habilitado para receber eventos de QR code
-      WEBHOOK_GLOBAL_ENABLED: true
-      WEBHOOK_GLOBAL_URL: http://host.docker.internal:8000/api/whatsapp/webhook/evolution/
-      
-      # WebSocket - Habilitado para receber eventos de QR code
+      QRCODE_LIMIT: ${EVOLUTION_QRCODE_LIMIT:-30}
+      QRCODE_COLOR: ${EVOLUTION_QRCODE_COLOR:-'#198754'}
+      WEBHOOK_GLOBAL_ENABLED: ${EVOLUTION_WEBHOOK_ENABLED:-true}
+      WEBHOOK_GLOBAL_URL: ${EVOLUTION_WEBHOOK_URL}
       WEBSOCKET_ENABLED: true
       WEBSOCKET_GLOBAL_EVENTS: true
-      
-      # Logs (nível apropriado para produção)
       LOG_LEVEL: ${EVOLUTION_LOG_LEVEL:-INFO}
       LOG_COLOR: "true"
       LOG_BAILEYS: ${EVOLUTION_LOG_BAILEYS:-info}
-      # Para debug detalhado, altere LOG_BAILEYS para: debug
-      
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
@@ -85,7 +58,7 @@ services:
     container_name: evolution_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${EVOLUTION_REDIS_PORT:-6379}:6379"
     volumes:
       - evolution_redis_data:/data
     networks:

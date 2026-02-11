@@ -1,0 +1,26 @@
+{
+  "name": "whatsapp-gateway-service",
+  "version": "1.0.0",
+  "description": "WhatsApp Gateway Service usando Baileys - Microserviço do Core_SinapUm",
+  "license": "MIT",
+  "author": "Core_SinapUm",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "@cacheable/node-cache": "^1.7.4",
+    "baileys": "^7.0.0-rc.6",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "mime-types": "^3.0.1",
+    "pino": "^10.1.0",
+    "qrcode": "^1.5.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

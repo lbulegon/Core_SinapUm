@@ -1,0 +1,18 @@
+# Core_SinapUm — Worker Celery (separado do web)
+# Base
+celery>=5.3,<6.0
+redis>=5.0,<6.0
+requests>=2.31,<3.0
+
+# Django (para carregar o mesmo projeto)
+Django>=4.2,<6.0
+
+# Semantic cache
+redisvl>=0.3.0
+
+# Embeddings (local)
+sentence-transformers>=2.6.0
+
+# (opcional) métricas/log estruturado
+# structlog>=24.0.0
+# prometheus-client>=0.20.0

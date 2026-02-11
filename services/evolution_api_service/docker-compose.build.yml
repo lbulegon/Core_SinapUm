@@ -1,0 +1,10 @@
+# Modo BUILD - patch 21/jan (PR #2365)
+# Uso: docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# Ou: ./scripts/up-build.sh
+
+services:
+  evolution-api:
+    image: evolution-api:build-qrfix
+    build:
+      context: .
+      dockerfile: Dockerfile.evolution

@@ -83,10 +83,8 @@ class WhatsAppGateway:
                     self._provider = ProviderLegacyWrapper()
                 
                 elif provider_name == 'baileys':
-                    # Futuro: ProviderBaileys direto
-                    logger.warning("Provider 'baileys' não implementado, usando 'legacy'")
-                    from .providers.provider_legacy_wrapper import ProviderLegacyWrapper
-                    self._provider = ProviderLegacyWrapper()
+                    from .providers.provider_baileys import ProviderBaileys
+                    self._provider = ProviderBaileys()
                 
                 else:
                     raise ValueError(f"Provider desconhecido: {provider_name}")

@@ -1,17 +1,43 @@
-# Dockerfile customizado para Evolution API
-# Baseado em latest (sempre atualizada)
-# NOTA: Chromium NÃO é necessário - a imagem oficial já inclui o necessário
-# Este Dockerfile mantém apenas para compatibilidade, mas pode ser removido
-# se usar diretamente: image: atendai/evolution-api:latest
+# Dockerfile.evolution - Build Evolution API com patch QR (PR #2365)
+# Patch 21/jan/2026: corrige loop infinito de reconexão do QR code
+# https://github.com/EvolutionAPI/evolution-api/pull/2365
+#
+# Multi-stage build para imagem final enxuta
 
-# Usando versão latest (sempre atualizada - puxa a versão mais recente disponível)
-FROM atendai/evolution-api:latest
+FROM node:20-alpine AS builder
 
-# Se quiser fixar uma versão específica (ex: v2.3.6), descomente e ajuste:
-# FROM atendai/evolution-api:v2.3.6
+WORKDIR /build
 
-# Verificar se a imagem base está funcionando
-RUN node --version && npm --version
+RUN apk add --no-cache git
 
-# NOTA: Chromium não é necessário - Baileys não requer Chromium para QR code
-# A geração de QR code é feita via biblioteca JavaScript, não via browser
+# Clone fork com patch PR #2365 (loop infinito QR)
+# Repo oficial: EvolutionAPI/evolution-api - PR ainda nao mergeado
+# Fork FelipeFrancca contem o fix no branch main
+ARG EVOLUTION_REPO=https://github.com/FelipeFrancca/evolution-api.git
+ARG EVOLUTION_REF=main
+RUN git clone --depth 1 --branch "${EVOLUTION_REF}" "${EVOLUTION_REPO}" . || \
+    (git clone --depth 50 "${EVOLUTION_REPO}" . && git checkout "${EVOLUTION_REF}")
+
+# Build precisa de devDeps (tsc, tsup). HUSKY=0 evita prepare.
+# legacy-peer-deps evita conflito esbuild/tsx
+RUN HUSKY=0 npm install --legacy-peer-deps --ignore-scripts && \
+    (npx prisma generate 2>/dev/null || true) && \
+    npm run build
+
+# Stage final
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache wget
+
+COPY --from=builder /build/package*.json ./
+COPY --from=builder /build/node_modules ./node_modules
+COPY --from=builder /build/dist ./dist
+COPY --from=builder /build/prisma ./prisma
+
+ENV NODE_ENV=production
+EXPOSE 8080
+
+# Evolution API: dist/main.js ou dist/src/main.js conforme versao
+CMD ["node", "dist/main.js"]

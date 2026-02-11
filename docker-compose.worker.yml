@@ -1,0 +1,51 @@
+# Worker Celery + Redis (compose separado; não mexe no web)
+# Uso: docker compose -f docker-compose.worker.yml up -d --build
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: core_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: core_celery_worker
+    restart: unless-stopped
+    depends_on:
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DJANGO_SETTINGS_MODULE: setup.settings
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      IDEMPOTENCY_REDIS_URL: redis://redis:6379/0
+      WHATSAPP_GATEWAY_URL: ${WHATSAPP_GATEWAY_URL:-http://host.docker.internal:8004}
+      SINAPUM_WHATSAPP_GATEWAY_API_KEY: ${SINAPUM_WHATSAPP_GATEWAY_API_KEY:-}
+      WHATSAPP_GATEWAY_TIMEOUT: "6"
+      SEMANTIC_CACHE_ENABLED: ${SEMANTIC_CACHE_ENABLED:-true}
+      SEMANTIC_EMBEDDINGS_PROVIDER: ${SEMANTIC_EMBEDDINGS_PROVIDER:-local}
+      SEMANTIC_LOCAL_MODEL: ${SEMANTIC_LOCAL_MODEL:-all-MiniLM-L6-v2}
+      SEMANTIC_VECTOR_DIM: "384"
+      SEMANTIC_CACHE_THRESHOLD: "0.86"
+      SEMANTIC_CACHE_TOPK: "3"
+      REDISVL_INDEX_NAME: vz_semantic_cache
+      REDISVL_PREFIX: vz:cache
+      EVORA_MCP_URL: ${EVORA_MCP_URL:-}
+      EVORA_MCP_TOKEN: ${EVORA_MCP_TOKEN:-}
+      DATABASE_URL: ${DATABASE_URL:-}
+      POSTGRES_HOST: ${POSTGRES_HOST:-host.docker.internal}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_sinapum}
+      POSTGRES_USER: ${POSTGRES_USER:-mcp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcp_password_change_me}
+    command: >
+      celery -A setup worker
+      -l INFO
+      -Q events_ingest,domain_processing,ai_calls,metrics_batch,webhooks_out
+      --concurrency=2

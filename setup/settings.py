@@ -49,6 +49,14 @@ EVOLUTION_TIMEOUT = int(os.environ.get('EVOLUTION_TIMEOUT', '30'))
 # WhatsApp Gateway - Provider Selection (app_whatsapp)
 WHATSAPP_PROVIDER = os.environ.get('WHATSAPP_PROVIDER', 'simulated')  # simulated|cloud|baileys|evolution
 
+# WhatsApp Gateway Service - Baileys (Node.js)
+SINAPUM_WHATSAPP_GATEWAY_URL = os.environ.get('SINAPUM_WHATSAPP_GATEWAY_URL', 'http://whatsapp_gateway_service:8007')
+SINAPUM_WHATSAPP_GATEWAY_API_KEY = os.environ.get('SINAPUM_WHATSAPP_GATEWAY_API_KEY', None)
+SINAPUM_WHATSAPP_GATEWAY_PORT = os.environ.get('SINAPUM_WHATSAPP_GATEWAY_PORT', '8007')
+SINAPUM_CORE_BASE_URL = os.environ.get('SINAPUM_CORE_BASE_URL', 'http://69.169.102.84:5000')
+SINAPUM_WHATSAPP_WEBHOOK_URL = os.environ.get('SINAPUM_WHATSAPP_WEBHOOK_URL', None)
+SINAPUM_WHATSAPP_AUTO_CONNECT = os.environ.get('SINAPUM_WHATSAPP_AUTO_CONNECT', 'false').lower() in ('true', '1', 'yes')
+
 # WhatsApp Gateway - Camada de Abstração Padrão (core/services/whatsapp)
 WHATSAPP_GATEWAY_PROVIDER = os.environ.get('WHATSAPP_GATEWAY_PROVIDER', 'legacy')  # legacy|simulated|noop|evolution|cloud|baileys
 WHATSAPP_SEND_ENABLED = os.environ.get('WHATSAPP_SEND_ENABLED', 'True').lower() in ('true', '1', 'yes')
@@ -108,6 +116,7 @@ INSTALLED_APPS = [
     # Feature Flags & Rollout Manager
     # ============================================================================
     'core.services.feature_flags.apps.FeatureFlagsConfig',  # Feature Flags com rollout gradual
+    'app_inbound_events',  # Eventos brutos (auditoria + dedupe) - Core_SinapUm pipeline
 ]
 
 MIDDLEWARE = [
@@ -362,3 +371,19 @@ except socket.gaierror:
 EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL') or os.environ.get('EVOLUTION_BASE_URL') or DEFAULT_EVOLUTION_API_URL
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg')
 EVOLUTION_INSTANCE_NAME = os.environ.get('EVOLUTION_INSTANCE_NAME', 'core_sinapum')
+
+# ============================================================================
+# Celery / Redis (Core_SinapUm task queue)
+# ============================================================================
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+CELERY_TASK_DEFAULT_QUEUE = os.environ.get('CELERY_TASK_DEFAULT_QUEUE', 'domain_processing')
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_TIME_LIMIT = int(os.environ.get('CELERY_TASK_TIME_LIMIT', '120'))
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get('CELERY_TASK_SOFT_TIME_LIMIT', '110'))
+CELERY_TASK_ROUTES = {
+    'core.services.task_queue_service.tasks.ingest_event': {'queue': 'events_ingest'},
+    'core.services.task_queue_service.tasks.process_inbound_event': {'queue': 'domain_processing'},
+}
