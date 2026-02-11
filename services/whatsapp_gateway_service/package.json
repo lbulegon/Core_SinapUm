@@ -5,10 +5,10 @@
   "license": "MIT",
   "author": "Core_SinapUm",
   "type": "commonjs",
-  "main": "src/server.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
   "dependencies": {
     "@cacheable/node-cache": "^1.7.4",
