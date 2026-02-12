@@ -10,7 +10,7 @@ const wa = require("./wa");
 
 const router = express.Router();
 
-// ==================== MIDDLEWARE DE AUTENTICAÇÃO ====================
+// ==================== MIDDLEWARE ====================
 function requireApiKey(req, res, next) {
   const apiKey = req.headers["x-api-key"] || req.headers["X-API-Key"];
   const expectedKey = process.env.API_KEY;
@@ -43,9 +43,15 @@ function requireApiKey(req, res, next) {
   next();
 }
 
+// Sessão por usuário: extrai X-Instance-Id (ex: user_123), default se ausente
+function instanceId(req) {
+  return req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+}
+
 // Health check (aberto, sem autenticação)
 router.get("/health", (req, res) => {
-  const status = wa.getConnectionStatus();
+  const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+  const status = wa.getConnectionStatus(instId);
   res.json({
     status: "ok",
     whatsapp: {
@@ -58,19 +64,21 @@ router.get("/health", (req, res) => {
 
 // ==================== STATUS ====================
 router.get("/v1/status", requireApiKey, (req, res) => {
-  const status = wa.getConnectionStatus();
-  const qr = wa.getQRCode();
+  const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+    const status = wa.getConnectionStatus(instId);
+  const qr = wa.getQRCode(instId);
   
   res.json({
     connection: status,
     qr_available: qr !== null,
-    socket_active: wa.getSocket() !== null,
+    socket_active: wa.getSocket(instId) !== null,
   });
 });
 
 // ==================== QR CODE ====================
 router.get("/v1/qr", requireApiKey, async (req, res) => {
-  const qr = wa.getQRCode();
+  const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+  const qr = wa.getQRCode(instId);
   
   if (!qr) {
     return res.status(404).json({
@@ -90,7 +98,8 @@ router.get("/v1/qr", requireApiKey, async (req, res) => {
 // ==================== CONECTAR ====================
 router.post("/v1/connect", requireApiKey, async (req, res) => {
   try {
-    const status = wa.getConnectionStatus();
+    const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+    const status = wa.getConnectionStatus(instId);
     
     if (status === "connected") {
       return res.json({
@@ -109,12 +118,12 @@ router.post("/v1/connect", requireApiKey, async (req, res) => {
     }
 
     // Inicia conexão
-    await wa.startSock();
+    await wa.startSock(instId);
     
     res.json({
       success: true,
       message: "Conexão iniciada",
-      status: wa.getConnectionStatus(),
+      status: wa.getConnectionStatus(instId),
     });
   } catch (error) {
     console.error("Erro ao conectar:", error);
@@ -128,7 +137,8 @@ router.post("/v1/connect", requireApiKey, async (req, res) => {
 // ==================== DESCONECTAR ====================
 router.post("/v1/disconnect", requireApiKey, async (req, res) => {
   try {
-    await wa.disconnect();
+    const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+    await wa.disconnect(instId);
     
     res.json({
       success: true,
@@ -146,12 +156,13 @@ router.post("/v1/disconnect", requireApiKey, async (req, res) => {
 // ==================== RESET SESSÃO ====================
 router.post("/v1/session/reset", requireApiKey, async (req, res) => {
   try {
+    const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
     // Desconecta primeiro
-    await wa.disconnect();
+    await wa.disconnect(instId);
     
     // Remove arquivos de sessão
     const authDir = process.env.AUTH_DIR || "/data/auth";
-    const sessionDir = path.join(authDir, "baileys-session");
+    const sessionDir = instId === "default" ? path.join(authDir, "baileys-session") : path.join(authDir, "sessions", instId, "baileys-session");
     
     if (fs.existsSync(sessionDir)) {
       fs.rmSync(sessionDir, { recursive: true, force: true });
@@ -174,6 +185,7 @@ router.post("/v1/session/reset", requireApiKey, async (req, res) => {
 // ==================== ENVIAR TEXTO ====================
 router.post("/v1/send/text", requireApiKey, async (req, res) => {
   try {
+    const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
     const { to, text } = req.body;
 
     if (!to || !text) {
@@ -183,7 +195,7 @@ router.post("/v1/send/text", requireApiKey, async (req, res) => {
       });
     }
 
-    const sock = wa.getSocket();
+    const sock = wa.getSocket(instId);
     
     if (!sock) {
       return res.status(503).json({
@@ -231,7 +243,8 @@ router.post("/v1/send/image", requireApiKey, async (req, res) => {
       });
     }
 
-    const sock = wa.getSocket();
+    const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+    const sock = wa.getSocket(instId);
     
     if (!sock) {
       return res.status(503).json({
@@ -309,7 +322,8 @@ router.post("/v1/send/document", requireApiKey, async (req, res) => {
       });
     }
 
-    const sock = wa.getSocket();
+    const instId = req.headers["x-instance-id"] || req.headers["X-Instance-Id"] || "default";
+    const sock = wa.getSocket(instId);
     
     if (!sock) {
       return res.status(503).json({

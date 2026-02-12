@@ -52,7 +52,7 @@ function eventsConfig(sock, saveCreds, callbacks = {}) {
 
         // verifica se a mensagem é de um grupo
         let number;
-        if (msg.key.participant) {
+        if (msg.key.participant && msg.key.participantAlt) {
           number = msg.key.participantAlt.split("@")[0];
         } else if (msg.key.remoteJid && msg.key.remoteJid.includes("@")) {
           number = msg.key.remoteJid.split("@")[0];
@@ -112,15 +112,7 @@ function eventsConfig(sock, saveCreds, callbacks = {}) {
       );
 
       onDisconnected(shouldReconnect);
-
-      if (shouldReconnect) {
-        setTimeout(() => {
-          const wa = require("./wa");
-          wa.startSock().catch(err => {
-            console.error("Erro ao reconectar:", err);
-          });
-        }, 5000);
-      }
+      // Reconexão é feita pelo callback onDisconnected em wa.js (com instanceId correto)
     }
 
     if (connection === "open") {

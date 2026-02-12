@@ -1,13 +1,9 @@
 // ============================================================================
-// wa.js - Lógica Baileys (adaptada do bot-do-mago)
+// wa.js - Lógica Baileys com suporte a multi-instância (X-Instance-Id)
 // ============================================================================
-// Este arquivo contém a lógica principal do WhatsApp usando Baileys.
-// Derivado diretamente de /root/Source/bot-do-mago
 
-// bloquear logs internos
 require("./utils/filterLogs")();
 
-// baileys
 const P = require("pino");
 const {
   default: makeWASocket,
@@ -15,75 +11,51 @@ const {
   makeCacheableSignalKeyStore,
 } = require("baileys");
 
-// módulos internos
 const { getAuthState } = require("./auth");
 const { eventsConfig } = require("./events");
 
-// cache para controle interno do baileys
 const { NodeCache } = require("@cacheable/node-cache");
 const msgRetryCounterCache = new NodeCache();
 
-// Estado global
-let globalSock = null;
-let isConnecting = false;
-let connectionStatus = "disconnected"; // disconnected, connecting, connected, qr_required
-let qrCode = null;
 let webhookUrl = null;
 
-// Callbacks para eventos
-const eventCallbacks = {
-  qr: [],
-  connected: [],
-  disconnected: [],
-  message: [],
-};
+// Store por instância: instanceId -> { sock, isConnecting, connectionStatus, qrCode }
+const instances = new Map();
 
-function addEventListener(event, callback) {
-  if (eventCallbacks[event]) {
-    eventCallbacks[event].push(callback);
-  }
-}
-
-function removeEventListener(event, callback) {
-  if (eventCallbacks[event]) {
-    eventCallbacks[event] = eventCallbacks[event].filter(cb => cb !== callback);
-  }
-}
-
-function notifyEvent(event, data) {
-  if (eventCallbacks[event]) {
-    eventCallbacks[event].forEach(callback => {
-      try {
-        callback(data);
-      } catch (error) {
-        console.error(`Erro ao executar callback de evento ${event}:`, error);
-      }
+function getInstance(instanceId = "default") {
+  if (!instances.has(instanceId)) {
+    instances.set(instanceId, {
+      sock: null,
+      isConnecting: false,
+      connectionStatus: "disconnected",
+      qrCode: null,
     });
   }
+  return instances.get(instanceId);
 }
 
-async function startSock() {
-  if (isConnecting) {
-    console.log("⚠️ Conexão já em andamento...");
-    return globalSock;
+async function startSock(instanceId = "default") {
+  const inst = getInstance(instanceId);
+
+  if (inst.isConnecting) {
+    console.log(`[${instanceId}] ⚠️ Conexão já em andamento...`);
+    return inst.sock;
   }
 
-  if (globalSock && connectionStatus === "connected") {
-    console.log("✅ Já está conectado");
-    return globalSock;
+  if (inst.sock && inst.connectionStatus === "connected") {
+    console.log(`[${instanceId}] ✅ Já está conectado`);
+    return inst.sock;
   }
 
-  isConnecting = true;
-  connectionStatus = "connecting";
+  inst.isConnecting = true;
+  inst.connectionStatus = "connecting";
 
   try {
-    const { state, saveCreds } = await getAuthState();
+    const { state, saveCreds } = await getAuthState(instanceId);
     const { version, isLatest } = await fetchLatestBaileysVersion();
-    
+
     console.log(
-      `💻 versão do websocket v${version[0]}.${version[1]}\n💻 última versão: ${
-        isLatest == true ? "sim" : "não"
-      }`
+      `[${instanceId}] 💻 versão websocket v${version[0]}.${version[1]} (última: ${isLatest ? "sim" : "não"})`
     );
 
     const sock = makeWASocket({
@@ -97,82 +69,77 @@ async function startSock() {
       logger: P({ level: "silent" }),
     });
 
-    globalSock = sock;
-    
-    // Configura eventos (passa callbacks)
+    inst.sock = sock;
+
     eventsConfig(sock, saveCreds, {
       onQR: (qr) => {
-        qrCode = qr;
-        connectionStatus = "qr_required";
-        notifyEvent("qr", { qr });
-        sendWebhook("qr", { qr });
+        inst.qrCode = qr;
+        inst.connectionStatus = "qr_required";
+        sendWebhook(instanceId, "qr", { qr });
       },
       onConnected: () => {
-        connectionStatus = "connected";
-        isConnecting = false;
-        qrCode = null;
-        notifyEvent("connected", {});
-        sendWebhook("connected", {});
+        inst.connectionStatus = "connected";
+        inst.isConnecting = false;
+        inst.qrCode = null;
+        sendWebhook(instanceId, "connected", {});
       },
       onDisconnected: (shouldReconnect) => {
-        connectionStatus = "disconnected";
-        isConnecting = false;
-        notifyEvent("disconnected", { shouldReconnect });
-        sendWebhook("disconnected", { shouldReconnect });
-        
+        inst.connectionStatus = "disconnected";
+        inst.isConnecting = false;
+        inst.sock = null;
+        sendWebhook(instanceId, "disconnected", { shouldReconnect });
+
         if (shouldReconnect) {
           setTimeout(() => {
-            startSock().catch(err => {
-              console.error("Erro ao reconectar:", err);
+            startSock(instanceId).catch((err) => {
+              console.error(`[${instanceId}] Erro ao reconectar:`, err);
             });
           }, 5000);
         }
       },
       onMessage: (messageData) => {
-        notifyEvent("message", messageData);
-        sendWebhook("message", messageData);
+        sendWebhook(instanceId, "message", messageData);
       },
     });
-    
+
     return sock;
   } catch (error) {
-    console.error("❌ Erro ao iniciar socket:", error);
-    isConnecting = false;
-    connectionStatus = "disconnected";
+    console.error(`[${instanceId}] ❌ Erro ao iniciar socket:`, error);
+    inst.isConnecting = false;
+    inst.connectionStatus = "disconnected";
     throw error;
   }
 }
 
-function getSocket() {
-  return globalSock;
+function getSocket(instanceId = "default") {
+  return getInstance(instanceId).sock;
 }
 
-function getConnectionStatus() {
-  return connectionStatus;
+function getConnectionStatus(instanceId = "default") {
+  return getInstance(instanceId).connectionStatus;
 }
 
-function getQRCode() {
-  return qrCode;
+function getQRCode(instanceId = "default") {
+  return getInstance(instanceId).qrCode;
 }
 
 function setWebhookUrl(url) {
   webhookUrl = url;
 }
 
-async function sendWebhook(eventType, payload) {
-  if (!webhookUrl) {
-    return;
-  }
+async function sendWebhook(instanceId, eventType, payload) {
+  if (!webhookUrl) return;
 
   try {
     const https = require("https");
     const http = require("http");
     const url = require("url");
-    
+
     const parsedUrl = url.parse(webhookUrl);
     const client = parsedUrl.protocol === "https:" ? https : http;
-    
+
     const postData = JSON.stringify({
+      instance_id: instanceId,
       event_type: eventType,
       payload: payload,
       ts: new Date().toISOString(),
@@ -197,7 +164,7 @@ async function sendWebhook(eventType, payload) {
       });
       req.on("error", (error) => {
         console.error(`Erro ao enviar webhook:`, error.message);
-        resolve(); // Não falha o processo se webhook falhar
+        resolve();
       });
       req.write(postData);
       req.end();
@@ -207,18 +174,19 @@ async function sendWebhook(eventType, payload) {
   }
 }
 
-async function disconnect() {
-  if (globalSock) {
+async function disconnect(instanceId = "default") {
+  const inst = getInstance(instanceId);
+  if (inst.sock) {
     try {
-      await globalSock.end();
+      await inst.sock.end();
     } catch (error) {
-      console.error("Erro ao desconectar:", error);
+      console.error(`[${instanceId}] Erro ao desconectar:`, error);
     }
-    globalSock = null;
+    inst.sock = null;
   }
-  connectionStatus = "disconnected";
-  isConnecting = false;
-  qrCode = null;
+  inst.connectionStatus = "disconnected";
+  inst.isConnecting = false;
+  inst.qrCode = null;
 }
 
 module.exports = {
@@ -228,6 +196,5 @@ module.exports = {
   getQRCode,
   setWebhookUrl,
   disconnect,
-  addEventListener,
-  removeEventListener,
+  getInstance,
 };
