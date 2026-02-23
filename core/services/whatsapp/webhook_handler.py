@@ -3,14 +3,42 @@ Webhook Handler - WhatsApp Gateway Service
 ===========================================
 
 Handler para receber eventos do WhatsApp Gateway Service (Node.js + Baileys).
+Encaminha mensagens para o Evora/VitrineZap para gerenciamento de conversas.
 """
 import logging
-from typing import Dict, Any
+import threading
+from typing import Dict, Any, Optional
+import requests as http_requests
 from django.http import JsonResponse, HttpRequest
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
+
+
+def _forward_to_evora(payload: Dict[str, Any]) -> Optional[Dict]:
+    """Encaminha payload de mensagem para o Evora/VitrineZap em background"""
+    evora_url = getattr(settings, 'EVORA_WHATSAPP_WEBHOOK_URL', '')
+    if not evora_url:
+        return None
+
+    def _do_forward():
+        try:
+            resp = http_requests.post(
+                evora_url,
+                json=payload,
+                headers={'Content-Type': 'application/json'},
+                timeout=15,
+            )
+            logger.info(
+                f"[Evora Forward] status={resp.status_code} url={evora_url}",
+                extra={'response_status': resp.status_code}
+            )
+        except Exception as e:
+            logger.error(f"[Evora Forward] Erro ao encaminhar para {evora_url}: {e}")
+
+    thread = threading.Thread(target=_do_forward, daemon=True)
+    thread.start()
 
 
 @csrf_exempt
@@ -78,7 +106,7 @@ def handle_incoming_whatsapp_event(request: HttpRequest):
 
 
 def _handle_message_event(payload: Dict[str, Any], timestamp: str) -> Dict[str, Any]:
-    """Processa evento de mensagem recebida"""
+    """Processa evento de mensagem recebida e encaminha ao Evora"""
     try:
         message_id = payload.get('id')
         from_jid = payload.get('from')
@@ -97,15 +125,21 @@ def _handle_message_event(payload: Dict[str, Any], timestamp: str) -> Dict[str, 
             }
         )
         
-        # TODO: Integrar com sistema de processamento de mensagens do Core_SinapUm
-        # Exemplo:
-        # - Criar evento canônico
-        # - Processar com ShopperBot/SinapUm Agent
-        # - Salvar no banco de dados
+        evora_payload = {
+            'from': number or (from_jid.split('@')[0] if from_jid else ''),
+            'message': text,
+            'message_id': message_id,
+            'timestamp': timestamp,
+            'type': 'text',
+            'from_jid': from_jid,
+            'raw_payload': raw_message,
+            'source': 'baileys_gateway',
+        }
+        _forward_to_evora(evora_payload)
         
         return JsonResponse({
             'success': True,
-            'message': 'Mensagem processada',
+            'message': 'Mensagem processada e encaminhada',
             'message_id': message_id
         })
         

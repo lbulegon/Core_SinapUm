@@ -45,6 +45,11 @@ FEATURE_CONSOLE_ENABLED = os.environ.get('FEATURE_CONSOLE_ENABLED', 'False').low
 EVOLUTION_BASE_URL = os.environ.get('EVOLUTION_BASE_URL', 'http://69.169.102.84:8004')
 EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', 'GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg')
 EVOLUTION_TIMEOUT = int(os.environ.get('EVOLUTION_TIMEOUT', '30'))
+# URL base acessível pela Evolution API (ex: http://host.docker.internal:8000) - para webhook por instância
+EVOLUTION_WEBHOOK_BASE_URL = os.environ.get(
+    'EVOLUTION_WEBHOOK_BASE_URL',
+    os.environ.get('SINAPUM_CORE_BASE_URL', 'http://69.169.102.84:5000')
+).rstrip('/')
 
 # WhatsApp Gateway - Provider Selection (app_whatsapp)
 WHATSAPP_PROVIDER = os.environ.get('WHATSAPP_PROVIDER', 'simulated')  # simulated|cloud|baileys|evolution
@@ -56,6 +61,9 @@ SINAPUM_WHATSAPP_GATEWAY_PORT = os.environ.get('SINAPUM_WHATSAPP_GATEWAY_PORT', 
 SINAPUM_CORE_BASE_URL = os.environ.get('SINAPUM_CORE_BASE_URL', 'http://69.169.102.84:5000')
 SINAPUM_WHATSAPP_WEBHOOK_URL = os.environ.get('SINAPUM_WHATSAPP_WEBHOOK_URL', None)
 SINAPUM_WHATSAPP_AUTO_CONNECT = os.environ.get('SINAPUM_WHATSAPP_AUTO_CONNECT', 'false').lower() in ('true', '1', 'yes')
+
+# Evora/VitrineZap - Forward de mensagens WhatsApp
+EVORA_WHATSAPP_WEBHOOK_URL = os.environ.get('EVORA_WHATSAPP_WEBHOOK_URL', '')
 
 # WhatsApp Gateway - Camada de Abstração Padrão (core/services/whatsapp)
 WHATSAPP_GATEWAY_PROVIDER = os.environ.get('WHATSAPP_GATEWAY_PROVIDER', 'legacy')  # legacy|simulated|noop|evolution|cloud|baileys
