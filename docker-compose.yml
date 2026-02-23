@@ -88,8 +88,9 @@ services:
       - SINAPUM_CORE_BASE_URL=${SINAPUM_CORE_BASE_URL:-http://69.169.102.84:5000}
       - SINAPUM_WHATSAPP_WEBHOOK_URL=${SINAPUM_WHATSAPP_WEBHOOK_URL}
       - SINAPUM_WHATSAPP_AUTO_CONNECT=${SINAPUM_WHATSAPP_AUTO_CONNECT:-false}
+      - EVORA_WHATSAPP_WEBHOOK_URL=${EVORA_WHATSAPP_WEBHOOK_URL:-https://evora-product.up.railway.app/api/whatsapp/webhook-from-gateway/}
       # ARQUITETURA NOVA - Feature Flags
-      - FEATURE_EVOLUTION_MULTI_TENANT=${FEATURE_EVOLUTION_MULTI_TENANT:-true}
+      - FEATURE_EVOLUTION_MULTI_TENANT=${FEATURE_EVOLUTION_MULTI_TENANT:-false}
       - FEATURE_OPENMIND_ENABLED=${FEATURE_OPENMIND_ENABLED:-true}
       - EVOLUTION_BASE_URL=${EVOLUTION_BASE_URL:-http://69.169.102.84:8004}
       - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-GKvy6psn-8HHpBQ4HAHKFOXnwjHR-oSzeGZzCaws0xg}
@@ -99,7 +100,7 @@ services:
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:-}
       # WhatsApp Gateway - Provider Selection
       - WHATSAPP_PROVIDER=${WHATSAPP_PROVIDER:-legacy}
-      - WHATSAPP_GATEWAY_PROVIDER=${WHATSAPP_GATEWAY_PROVIDER:-legacy}
+      - WHATSAPP_GATEWAY_PROVIDER=${WHATSAPP_GATEWAY_PROVIDER:-gateway_service}
       # WhatsApp Gateway - Configurações de Envio
       - WHATSAPP_SEND_ENABLED=${WHATSAPP_SEND_ENABLED:-False}
       - WHATSAPP_SHADOW_MODE=${WHATSAPP_SHADOW_MODE:-True}
@@ -406,6 +407,109 @@ services:
       retries: 3
       start_period: 40s
 
+  # ============================================================
+  # MLflow Tracking Server - Experiment Tracking & Model Registry
+  # ============================================================
+  mlflow_postgres:
+    image: postgres:16-alpine
+    container_name: core_sinapum_mlflow_postgres
+    environment:
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB:-mlflow_db}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER:-mlflow_user}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD:-mlflow_pass}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - mlflow_postgres_data:/var/lib/postgresql/data
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MLFLOW_POSTGRES_USER:-mlflow_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    build:
+      context: ./services/mlflow_service
+      dockerfile: Dockerfile
+    container_name: core_sinapum_mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri ${MLFLOW_BACKEND_URI:-postgresql://mlflow_user:mlflow_pass@mlflow_postgres:5432/mlflow_db}
+      --default-artifact-root ${MLFLOW_ARTIFACT_ROOT:-/mlflow/artifacts}
+      --workers 2
+    environment:
+      GUNICORN_CMD_ARGS: "--timeout 120"
+    env_file:
+      - ./services/mlflow_service/.env
+    ports:
+      - "${MLFLOW_HOST_PORT:-5050}:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    depends_on:
+      mlflow_postgres:
+        condition: service_healthy
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # WorldGraph Service (Neo4j) - Memória Diagramática
+  worldgraph_service:
+    image: neo4j:5
+    container_name: mcp_sinapum_worldgraph
+    ports:
+      - "${WORLDGRAPH_HTTP_PORT:-7474}:7474"
+      - "${WORLDGRAPH_BOLT_PORT:-7687}:7687"
+    environment:
+      - NEO4J_AUTH=${WORLDGRAPH_NEO4J_USER:-neo4j}/${WORLDGRAPH_NEO4J_PASSWORD:-neo4j12345}
+      - NEO4J_server_memory_heap_initial__size=${WORLDGRAPH_HEAP_INITIAL:-1G}
+      - NEO4J_server_memory_heap_max__size=${WORLDGRAPH_HEAP_MAX:-1G}
+      - NEO4J_server_memory_pagecache_size=${WORLDGRAPH_PAGECACHE:-1G}
+    volumes:
+      - worldgraph_data:/data
+      - worldgraph_logs:/logs
+      - ./services/worldgraph_service/seed:/seed:ro
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # Vectorstore Service (FastAPI + FAISS) - Memória Semântica
+  vectorstore_service:
+    build:
+      context: ./services/vectorstore_service
+      dockerfile: Dockerfile
+    container_name: mcp_sinapum_vectorstore
+    ports:
+      - "${VECTORSTORE_PORT:-8010}:8010"
+    environment:
+      - VECTORSTORE_DATA_DIR=/data
+      - VECTORSTORE_MODEL=${VECTORSTORE_MODEL:-all-MiniLM-L6-v2}
+    volumes:
+      - vectorstore_data:/data
+    networks:
+      - mcp_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8010/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
   # WhatsApp Gateway Service - Gateway WhatsApp usando Baileys
   whatsapp_gateway_service:
     build:
@@ -461,6 +565,16 @@ volumes:
   shopperbot_storage:
     driver: local
   wa_auth:
+    driver: local
+  mlflow_postgres_data:
+    driver: local
+  mlflow_artifacts:
+    driver: local
+  worldgraph_data:
+    driver: local
+  worldgraph_logs:
+    driver: local
+  vectorstore_data:
     driver: local
 
 networks:

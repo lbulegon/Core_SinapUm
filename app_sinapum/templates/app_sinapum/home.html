@@ -94,6 +94,17 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
         
+        .nav-menu a.mlflow-link {
+            background: linear-gradient(135deg, #0194E2, #0174b3);
+            color: white;
+        }
+        
+        .nav-menu a.mlflow-link:hover {
+            background: linear-gradient(135deg, #0174b3, #015a8a);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(1, 148, 226, 0.4);
+        }
+        
         /* Main Content */
         main {
             flex: 1;
@@ -207,6 +218,17 @@
             color: white;
         }
         
+        .service-card.mlflow {
+            background: linear-gradient(135deg, #0194E2 0%, #0174b3 100%);
+            border-color: #0194E2;
+            color: white;
+        }
+        
+        .service-card.mlflow .service-title,
+        .service-card.mlflow .service-description {
+            color: white;
+        }
+        
         /* Footer */
         footer {
             background: rgba(255, 255, 255, 0.95);
@@ -258,6 +280,7 @@
                 <li><a href="/admin/">Admin</a></li>
                 <li><a href="http://69.169.102.84:3001" target="_blank">Chatwoot</a></li>
                 <li><a href="{{ grafana_url }}" target="_blank" class="grafana-link">Grafana</a></li>
+                <li><a href="http://69.169.102.84:5050/" target="_blank" class="mlflow-link">MLflow</a></li>
             </ul>
         </div>
     </nav>
@@ -311,6 +334,14 @@
                     <div class="service-title">Grafana</div>
                     <div class="service-description">
                         Dashboards e métricas em tempo real do sistema
+                    </div>
+                </a>
+                
+                <a href="http://69.169.102.84:5050/" target="_blank" class="service-card mlflow">
+                    <span class="service-icon">🧪</span>
+                    <div class="service-title">MLflow</div>
+                    <div class="service-description">
+                        Rastreamento de experimentos e gerenciamento de modelos de ML
                     </div>
                 </a>
             </div>
