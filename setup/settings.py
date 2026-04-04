@@ -125,6 +125,13 @@ INSTALLED_APPS = [
     # ============================================================================
     'core.services.feature_flags.apps.FeatureFlagsConfig',  # Feature Flags com rollout gradual
     'app_inbound_events',  # Eventos brutos (auditoria + dedupe) - Core_SinapUm pipeline
+    # Agent Core (PAOR) — loop cognitivo; regras semânticas vêm do Core, não deste app
+    'agent_core.apps.AgentCoreConfig',
+    # SinapCore — módulos cognitivos (Admin: enable / priority / JSON config)
+    'app_sinapcore.apps.AppSinapcoreConfig',
+    # ACP — Agent Communication Protocol (execução de tarefas de agente)
+    'app_acp',
+    'app_architecture_intelligence',
 ]
 
 MIDDLEWARE = [
@@ -156,6 +163,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'setup.wsgi.application'
+
+# Cache (jobs RAG PRO + uso geral; FileBased = partilhado entre workers Gunicorn no mesmo volume)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": str(BASE_DIR / ".django_cache"),
+        "TIMEOUT": 3600,
+        "OPTIONS": {"MAX_ENTRIES": 2000},
+    }
+}
 
 
 # Database
@@ -395,3 +412,27 @@ CELERY_TASK_ROUTES = {
     'core.services.task_queue_service.tasks.ingest_event': {'queue': 'events_ingest'},
     'core.services.task_queue_service.tasks.process_inbound_event': {'queue': 'domain_processing'},
 }
+
+# ============================================================================
+# Redis — Estado ambiental (orbital environmental_indiciary) + histórico
+# ============================================================================
+REDIS_URL = os.environ.get('REDIS_URL', '')  # preferencial: redis://host:6379/0
+REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
+REDIS_PORT = int(os.environ.get('REDIS_PORT', '6379'))
+REDIS_DB = int(os.environ.get('REDIS_DB', '0'))
+REDIS_TTL_ENV_STATE = int(os.environ.get('REDIS_TTL_ENV_STATE', '300'))  # 5 min
+ENV_HISTORY_MAX_LEN = int(os.environ.get('ENV_HISTORY_MAX_LEN', '100'))
+# Desativar gravação/leitura Redis (ex.: dev sem Redis)
+ENVIRONMENTAL_STATE_REDIS_ENABLED = os.environ.get(
+    'ENVIRONMENTAL_STATE_REDIS_ENABLED', 'True'
+).lower() in ('true', '1', 'yes')
+
+# ============================================================================
+# SinapCore — módulos cognitivos plugáveis (defaults estáticos: agent_core.config.settings.MODULE_DEFAULTS)
+# ============================================================================
+SINAPCORE_MODULES: dict = {}
+
+# ============================================================================
+# SinapLint — endpoint interno /api/sinaplint/internal/engine/ (produto SinapLint SaaS)
+# ============================================================================
+SINAPLINT_ENGINE_SHARED_SECRET = os.environ.get("SINAPLINT_ENGINE_SHARED_SECRET", "").strip()
