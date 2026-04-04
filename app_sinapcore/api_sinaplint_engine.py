@@ -2,7 +2,7 @@
 Motor SinapLint para o produto SinapLint SaaS (orquestração remota).
 
 GET/POST ``/api/sinaplint/internal/engine/`` — executa ``SinapLint().run()`` sobre a árvore
-do monólito (``BASE_DIR``) e devolve o JSON completo (igual ao CLI ``sinaplint check --json``).
+do monólito (``BASE_DIR``) e retorna o JSON completo (igual ao CLI ``sinaplint check --json``).
 
 Autenticação (recomendado em produção):
   - ``Authorization: Bearer <segredo>`` ou
@@ -10,7 +10,7 @@ Autenticação (recomendado em produção):
   - ``X-API-KEY: <segredo>``
 
 O segredo é ``settings.SINAPLINT_ENGINE_SHARED_SECRET`` (env ``SINAPLINT_ENGINE_SHARED_SECRET``).
-Se não estiver definido: em ``DEBUG`` permite (dev); em produção responde 503.
+Se não estiver definido: com ``DEBUG`` permite (dev); em produção responde 503.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def _auth_error_or_none(request: Request) -> Response | None:
         return Response(
             {
                 "error": "SINAPLINT_ENGINE_SHARED_SECRET não configurado",
-                "hint": "Defina a variável de ambiente no Core (e o mesmo valor em SinapLint como SINAPLINT_ENGINE_API_KEY).",
+                "hint": "Configure a variável de ambiente no Core (e o mesmo valor no SinapLint como SINAPLINT_ENGINE_API_KEY).",
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
