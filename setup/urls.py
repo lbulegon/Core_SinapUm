@@ -17,11 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
+from django.views.generic import RedirectView
 from django.conf.urls.static import static
 from app_sinapum import views
 from app_sinapum import views_core
-from app_sinapum import views_evolution
+from app_sinapum import views_environmental_state
+from app_sinapum import environmental_views
 from app_sinapum import views_baileys
+from app_sinapcore import eoc_views
 from core.services.whatsapp import webhook_handler
 
 # Importar views do CrewAI (com try/except para não quebrar se CrewAI não estiver instalado)
@@ -42,6 +45,15 @@ except ImportError:
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('rag-gastronomico/api/start/', views.rag_gastronomico_ingest_start, name='rag_gastronomico_ingest_start'),
+    path(
+        'rag-gastronomico/api/status/<uuid:job_id>/',
+        views.rag_gastronomico_ingest_status,
+        name='rag_gastronomico_ingest_status',
+    ),
+    path('rag-gastronomico/api/preview/', views.rag_gastronomico_preview, name='rag_gastronomico_preview'),
+    path('rag-gastronomico/api/commit/', views.rag_gastronomico_commit, name='rag_gastronomico_commit'),
+    path('rag-gastronomico/', views.rag_gastronomico, name='rag_gastronomico'),
     path('analyze/', views.analyze_image, name='analyze_image'),
     path('analyze/save-product/', views.save_product_json, name='save_product_json'),
     path('analyze/add-images-ajax/', views.handle_add_images_ajax, name='add_images_ajax'),
@@ -50,30 +62,61 @@ urlpatterns = [
     path('api/v1/analyze-product-image', views.api_analyze_product_image, name='api_analyze_product_image'),
     # Core Registry endpoints (MCP) - Novo app_mcp_tool_registry
     path('core/', include('app_mcp_tool_registry.urls')),
+    # ACP — Agent Communication Protocol (tarefas de agente)
+    path('acp/', include('app_acp.urls')),
+    # A2A — Agent to Agent (Planner + Executor)
+    path('a2a/', include('a2a.urls')),
     # Integração iFood (API interna)
     path('', include('app_ifood_integration.urls')),
     # Lead Registry - Sistema central de captação de leads
     path('', include('app_leads.urls')),
+    # Estado ambiental (Redis) — Mapa de Estado Ambiental / orbital environmental_indiciary
+    path(
+        'api/v1/environment/<int:estabelecimento_id>/',
+        views_environmental_state.get_environmental_state,
+        name='api_environmental_state',
+    ),
+    path(
+        'environmental/',
+        RedirectView.as_view(url='/environmental/1/', permanent=False),
+        name='environmental_dashboard_redirect',
+    ),
+    path(
+        'environmental/<int:estabelecimento_id>/',
+        environmental_views.environmental_dashboard,
+        name='environmental_dashboard',
+    ),
     # Health check (mantido para compatibilidade)
     path('health', views_core.health_check, name='health_check'),
-    # Evolution API / WhatsApp Integration (legado)
-    path('whatsapp/', views_evolution.whatsapp_connect, name='whatsapp_connect'),
-    path('whatsapp/api/create-instance/', views_evolution.whatsapp_create_instance, name='whatsapp_create_instance'),
-    path('whatsapp/api/get-qrcode/', views_evolution.whatsapp_get_qrcode, name='whatsapp_get_qrcode'),
-    path('whatsapp/api/get-status/', views_evolution.whatsapp_get_status, name='whatsapp_get_status'),
-    path('whatsapp/api/delete-instance/', views_evolution.whatsapp_delete_instance, name='whatsapp_delete_instance'),
-    path('whatsapp/api/restart-instance/', views_evolution.whatsapp_restart_instance, name='whatsapp_restart_instance'),
-    # WhatsApp Gateway Service (Baileys)
+    # WhatsApp - Usa Baileys (whatsapp_gateway_service) - Evolution API removida
+    path('whatsapp/', views_baileys.whatsapp_gateway_connect, name='whatsapp_connect'),
+    # WhatsApp Gateway Service (Baileys) - endpoints detalhados
     path('whatsapp/gateway/', views_baileys.whatsapp_gateway_connect, name='whatsapp_gateway_connect'),
     path('whatsapp/gateway/connect/', views_baileys.whatsapp_gateway_connect_action, name='whatsapp_gateway_connect_action'),
     path('whatsapp/gateway/qr/', views_baileys.whatsapp_gateway_get_qr, name='whatsapp_gateway_get_qr'),
     path('whatsapp/gateway/status/', views_baileys.whatsapp_gateway_get_status, name='whatsapp_gateway_get_status'),
     path('whatsapp/gateway/disconnect/', views_baileys.whatsapp_gateway_disconnect, name='whatsapp_gateway_disconnect'),
     path('whatsapp/gateway/reset/', views_baileys.whatsapp_gateway_reset_session, name='whatsapp_gateway_reset_session'),
+    # Proxy transparente Baileys - permite ao Évora usar porta Django (5000) em vez da 8007
+    path('whatsapp/proxy/<path:endpoint>', views_baileys.whatsapp_baileys_proxy, name='whatsapp_baileys_proxy'),
     # WhatsApp Gateway - Nova arquitetura plugável
     path('api/whatsapp/', include('app_whatsapp.api.urls')),
     # Creative Engine - Motor de criativos
     path('api/creative-engine/', include('app_creative_engine.api.urls')),
+    # Architecture Intelligence - Avaliação arquitetural
+    path('architecture/', include('app_architecture_intelligence.urls')),
+    # Agent Core (PAOR) — integração com governança arquitetural
+    path('agent-core/', include('agent_core.urls')),
+    # SinapCore — dashboard módulos + logs de auditoria (staff)
+    path('sinapcore/', include('app_sinapcore.urls')),
+    # SinapLint Cloud (API key por tenant) — análise arquitetural
+    path('api/sinaplint/', include('app_sinapcore.api_urls')),
+    # SinapLint SaaS — utilizador Django, Stripe, limites mensais
+    path('api/sinaplint/saas/', include('app_sinaplint.urls_saas')),
+    # EOC — Centro de Operações Cognitivo (torre SinapCore + ambiente + logs)
+    path('eoc/', eoc_views.eoc_dashboard, name='eoc_dashboard'),
+    path('eoc/<int:estabelecimento_id>/', eoc_views.eoc_dashboard, name='eoc_dashboard_establishment'),
+    path('eoc/command/', eoc_views.eoc_send_command, name='eoc_send_command'),
     # ============================================================================
     # WhatsApp Canonical Events v1.0
     # ============================================================================

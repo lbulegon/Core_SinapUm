@@ -37,7 +37,7 @@ class SinapAIRefactor:
         if msg.startswith("file:") or msg.startswith("dir:"):
             return {
                 "suggestion": "Restaurar arquivos/pastas obrigatórios do blueprint em Core_SinapUm.",
-                "example": "Ver `sinaplint/rules/structure_rules.py` (REQUIRED_DIRS / REQUIRED_FILES).",
+                "example": "Ver `app_sinaplint/rules/structure_rules.py` (REQUIRED_DIRS / REQUIRED_FILES).",
             }
 
         if "estrutura" in msg or "missing" in msg:

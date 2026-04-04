@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from sinaplint.path_utils import (
+from app_sinaplint.path_utils import (
     SKIP_DIR_NAMES,
     path_ok_for_pattern_scan,
     restrict_framework_roots,
@@ -41,7 +41,7 @@ def _iter_target_files(base: Path):
         if should_skip_tree(rel_parts):
             dirs[:] = []
             continue
-        if rel_parts and "sinaplint" in rel_parts:
+        if rel_parts and ("app_sinaplint" in rel_parts or "sinaplint" in rel_parts):
             dirs[:] = []
             continue
         if rel_parts and not restrict_framework_roots(rel_parts):

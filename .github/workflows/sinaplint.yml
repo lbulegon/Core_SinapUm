@@ -1,0 +1,120 @@
+# Análise SinapLint em cada push e pull request (sem Docker).
+name: SinapLint
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: sinaplint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  analyze:
+    name: Análise SinapLint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: SinapLint (JSON + limiar 80)
+        id: sinaplint
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -e
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF" ]; then
+            python3 -m app_sinaplint check --json -o sinaplint-report.json --fail-under 80 \
+              --delta-base "$BASE_REF" \
+              --smart-block \
+              --policy .github/sinaplint-policy.json
+          else
+            python3 -m app_sinaplint check --json -o sinaplint-report.json --fail-under 80
+          fi
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -f sinaplint-report.json ]; then
+            python3 -m app_sinaplint pr-comment -i sinaplint-report.json -o sinaplint-pr.md \
+              --sha "${GITHUB_SHA}" \
+              --base-ref "${BASE_REF}"
+          fi
+        continue-on-error: true
+
+      - name: Resumo no sumário do workflow
+        if: always()
+        run: |
+          echo "### SinapLint" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f sinaplint-report.json ]; then
+            echo "**Score:** $(jq -r '.score' sinaplint-report.json)/100 — $(jq -r '.quality // empty' sinaplint-report.json)" >> "$GITHUB_STEP_SUMMARY"
+            DS=$(jq -r '.delta_summary // empty' sinaplint-report.json)
+            if [ -n "$DS" ]; then
+              echo "**Delta (vs base):** ${DS}" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            RISK=$(jq -r '.architecture.insights.risk.risk_score // empty' sinaplint-report.json)
+            if [ -n "$RISK" ]; then
+              echo "**Risco:** ${RISK} ($(jq -r '.architecture.insights.risk.risk_level // empty' sinaplint-report.json))" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "_Sem ficheiro de relatório._" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload relatório JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sinaplint-report
+          path: sinaplint-report.json
+          if-no-files-found: warn
+
+      - name: Comentário único no PR (atualiza a cada push)
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let md;
+            try {
+              if (fs.existsSync('sinaplint-pr.md')) {
+                md = fs.readFileSync('sinaplint-pr.md', 'utf8');
+              } else if (fs.existsSync('sinaplint-report.json')) {
+                const data = JSON.parse(fs.readFileSync('sinaplint-report.json', 'utf8'));
+                const marker = '<!-- sinaplint-ci -->';
+                md = marker + '\n### SinapLint (fallback)\n\nScore: `' + data.score + '/100`\n';
+              } else {
+                md = '<!-- sinaplint-ci -->\n_SinapLint: sem relatório._';
+              }
+            } catch (e) {
+              md = '<!-- sinaplint-ci -->\n_Erro ao ler comentário PR._\n```\n' + e + '\n```';
+            }
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100
+            });
+            const bot = comments.find(c => c.body && c.body.includes(marker));
+            if (bot) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: bot.id, body: md
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body: md
+              });
+            }
+
+      - name: Falhar CI se score &lt; limiar
+        if: steps.sinaplint.outcome == 'failure'
+        run: |
+          echo "::error::SinapLint: score abaixo de 80 ou erro na análise."
+          exit 1

@@ -89,6 +89,18 @@ OPENMIND_TOKEN = os.environ.get('OPENMIND_TOKEN', '')
 VITRINEZAP_BASE_URL = os.environ.get('VITRINEZAP_BASE_URL', 'https://evora-product.up.railway.app')
 INTERNAL_API_TOKEN = os.environ.get('INTERNAL_API_TOKEN', '')
 
+# SinapLint SaaS — Stripe + limites (app_sinaplint)
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_SUCCESS_URL = os.environ.get(
+    'STRIPE_SUCCESS_URL',
+    'http://127.0.0.1:8000/api/sinaplint/saas/billing/success/',
+)
+STRIPE_CANCEL_URL = os.environ.get(
+    'STRIPE_CANCEL_URL',
+    'http://127.0.0.1:8000/api/sinaplint/saas/billing/cancel/',
+)
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -129,6 +141,8 @@ INSTALLED_APPS = [
     'agent_core.apps.AgentCoreConfig',
     # SinapCore — módulos cognitivos (Admin: enable / priority / JSON config)
     'app_sinapcore.apps.AppSinapcoreConfig',
+    # SinapLint — motor CLI + regras + modelos SaaS opcionais (billing, API key, uso)
+    'app_sinaplint.apps.AppSinaplintConfig',
     # ACP — Agent Communication Protocol (execução de tarefas de agente)
     'app_acp',
     'app_architecture_intelligence',
@@ -141,6 +155,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'app_sinaplint.middleware.SinapLintAPIKeyMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

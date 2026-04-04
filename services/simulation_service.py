@@ -7,8 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from sinaplint.engine import SinapLint
-from sinaplint.scorers.module_score import total_module_penalty
+from app_sinaplint.engine import SinapLint, run_analysis
+from app_sinaplint.scorers.module_score import total_module_penalty
 
 
 class SimulationService:
@@ -26,7 +26,7 @@ class SimulationService:
         Distribui a redução: estrutura → padrão → AST (igual à prioridade de correção típica).
         """
         root = base_path or Path(__file__).resolve().parent.parent
-        lint = SinapLint(root).run()
+        lint = run_analysis(root)
         before = int(lint["score"])
 
         st_err = len(lint["structure"]["errors"])

@@ -1,0 +1,9 @@
+{
+  "fail_under_score": 80,
+  "block_on_new_cycles": true,
+  "use_scc_new_groups": true,
+  "block_on_coupling_increase": true,
+  "min_coupling_weight_delta": 0,
+  "block_on_coupling_score_increase": false,
+  "max_score_drop": -5
+}

@@ -5,18 +5,20 @@ CLI SinapLint — interface estilo eslint/flake8 (`sinaplint check`).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
 from typing import Any, Optional, Sequence, TextIO
 
-from sinaplint.engine import MIN_PASS_SCORE, SinapLint
-from sinaplint.fixer import SinapFixer
-from sinaplint.reporters.json import dumps as json_dumps
+from app_sinaplint.delta_runner import run_check_with_delta
+from app_sinaplint.engine import MIN_PASS_SCORE, SinapLint, SinapLintOrchestrator
+from app_sinaplint.fixer import SinapFixer
+from app_sinaplint.reporters.json import dumps as json_dumps
 
 
 def _ensure_project_root() -> Path:
-    """Raiz Core_SinapUm (pai do pacote sinaplint)."""
+    """Raiz Core_SinapUm (pai do pacote app_sinaplint)."""
     return Path(__file__).resolve().parent.parent
 
 
@@ -150,6 +152,107 @@ def _print_report_human(
                 out(f"      ex.: {ex}\n")
         out("\n")
 
+    scores = result.get("scores") or {}
+    if scores:
+        emit("Scores por camada (0–100):", "label")
+        out(
+            f"  code: {scores.get('code')} | architecture: {scores.get('architecture')} | "
+            f"modularity: {scores.get('modularity')}\n"
+        )
+        out("\n")
+
+    ctx = result.get("_context") or {}
+    metrics = ctx.get("metrics") or {}
+    if metrics.get("django_apps_count"):
+        emit("Apps Django (app_*) e dependências cruzadas:", "label")
+        out(
+            f"  apps: {metrics.get('django_apps_count')} | "
+            f"arestas: {metrics.get('cross_app_dependency_edges')} | "
+            f"peso: {metrics.get('total_dependency_weight')}\n"
+        )
+        out("\n")
+
+    arch = result.get("architecture") or {}
+    ins = arch.get("insights") or {}
+    rk = ins.get("risk") or {}
+    if rk:
+        emit("Risco arquitetural (aggregado):", "label")
+        out(
+            f"  risk_score: {rk.get('risk_score')} | nível: {rk.get('risk_level')} | "
+            f"critical: {', '.join(rk.get('critical_apps') or [])}\n"
+        )
+        out("\n")
+    plan = ins.get("refactor_plan") or []
+    if plan[:3]:
+        emit("Plano de refactor (impacto → investimento):", "label")
+        for row in plan[:5]:
+            acts = row.get("actions") or []
+            acts_s = "; ".join(acts) if acts else "—"
+            out(
+                f"  - {row.get('app')}: {row.get('priority')} "
+                f"(impact_score {row.get('impact_score')}) — {acts_s}\n"
+            )
+        out("\n")
+    rp = ins.get("refactor_priority") or []
+    if rp[:3] and not plan:
+        emit("Prioridade de refactor (legado):", "label")
+        for row in rp[:5]:
+            out(f"  - {row.get('app')}: {row.get('priority')} — {row.get('reason')}\n")
+        out("\n")
+    gods = ins.get("anti_patterns") or []
+    if gods:
+        emit("Anti-padrões (god app):", "label")
+        for g in gods[:8]:
+            out(f"  - {g.get('app')}: {g.get('reason')} (fan-in {g.get('fan_in')}, saídas {g.get('out_degree')})\n")
+        out("\n")
+
+    cyc = arch.get("cycles") or []
+    if cyc:
+        emit("Ciclos arquiteturais (SCC entre app_*):", "label")
+        for group in cyc[:12]:
+            out(f"  - {' → '.join(group)} (grupo)\n")
+        if len(cyc) > 12:
+            out(f"  … e mais {len(cyc) - 12} grupo(s)\n")
+        out("\n")
+    coup = (arch.get("coupling") or {}).get("issues") or []
+    if coup:
+        emit("Acoplamento (avisos):", "label")
+        for line in coup[:10]:
+            out(f"  - {line}\n")
+        out("\n")
+
+    delta = result.get("delta") or {}
+    if delta.get("base_available"):
+        emit("Delta vs branch base:", "label")
+        dsc = int(delta.get("score_change") or 0)
+        darch = int(delta.get("architecture_score_change") or 0)
+        out(
+            f"  score: {delta.get('score_before')} → {delta.get('score_after')} "
+            f"({dsc:+d}) | "
+            f"arch score: {darch:+d} | "
+            f"tendência: {delta.get('trend')}\n"
+        )
+        if delta.get("new_cycles_count"):
+            out(f"  novos grupos SCC: {delta.get('new_cycles_count')}\n")
+        if delta.get("coupling_increased"):
+            out("  peso de dependências entre apps aumentou em relação à base.\n")
+        if delta.get("coupling_decreased"):
+            out("  peso de dependências entre apps diminuiu em relação à base.\n")
+        out("\n")
+
+    ca = result.get("clean_architecture") or {}
+    ca_sum = ca.get("summary") or {}
+    n_v = int(ca_sum.get("violations_count") or 0)
+    if n_v:
+        emit("Clean Architecture (violações de camada):", "label")
+        out(f"  {n_v} violação(ões); plano: {ca_sum.get('plan_items', 0)} item(ns)\n")
+        for v in (ca.get("violations") or [])[:6]:
+            out(
+                f"  - {v.get('from_layer')}→{v.get('to_layer')}: "
+                f"{v.get('from')} importa `{v.get('to_module')}`\n"
+            )
+        out("\n")
+
     emit("\U0001f4e6 Módulos orbitais:", "label")
     for m in result.get("modules") or []:
         out(
@@ -165,9 +268,19 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"Erro: diretório inválido: {root}", file=sys.stderr)
         return 2
 
-    lint = SinapLint(base_path=root)
-    result = lint.run()
+    if getattr(args, "delta_base", None):
+        result = run_check_with_delta(root, str(args.delta_base))
+    else:
+        result = SinapLintOrchestrator().run(root)
     fail_under = int(args.fail_under)
+
+    if getattr(args, "smart_block", False):
+        from app_sinaplint.engine.delta.blocking import DeltaBlocker, load_blocking_rules
+
+        policy_path = getattr(args, "policy", None)
+        rules = load_blocking_rules(Path(policy_path).resolve() if policy_path else None)
+        rules["fail_under_score"] = fail_under
+        result["blocking"] = DeltaBlocker(rules).evaluate(result)
 
     if args.json:
         payload = json_dumps(result)
@@ -187,12 +300,50 @@ def cmd_check(args: argparse.Namespace) -> int:
             Path(args.output).write_text(json_dumps(result), encoding="utf-8")
             print(f"JSON também gravado em {args.output}", file=sys.stderr)
 
+    if getattr(args, "smart_block", False):
+        from app_sinaplint.engine.delta.blocking import format_blocking_message
+
+        b = result.get("blocking") or {}
+        if b.get("blocked"):
+            print("\n" + format_blocking_message(b), file=sys.stderr)
+            return 1
+        return 0
+
     if result["score"] < fail_under:
         print(
             f"\nFalha: score {result['score']} < {fail_under} (limiar).",
             file=sys.stderr,
         )
         return 1
+    return 0
+
+
+def cmd_pr_comment(args: argparse.Namespace) -> int:
+    """Gera Markdown premium para comentário no PR (a partir do JSON do ``check``)."""
+    inp = Path(args.input).resolve()
+    if not inp.is_file():
+        print(f"Erro: ficheiro não encontrado: {inp}", file=sys.stderr)
+        return 2
+    try:
+        data = json.loads(inp.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Erro ao ler JSON: {e}", file=sys.stderr)
+        return 2
+
+    from app_sinaplint.engine.delta.comment_formatter import generate_pr_comment
+
+    sha = (getattr(args, "sha", None) or "").strip()
+    if len(sha) > 7:
+        sha = sha[:7]
+    base_l = (getattr(args, "base_ref", None) or "").strip()
+    body = generate_pr_comment(data, short_sha=sha, base_label=base_l)
+
+    outp = getattr(args, "output", None)
+    if outp:
+        Path(outp).write_text(body, encoding="utf-8")
+        print(f"Markdown escrito em {outp}", file=sys.stderr)
+    else:
+        print(body)
     return 0
 
 
@@ -239,7 +390,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--root",
         type=Path,
         default=None,
-        help="Raiz do projeto Core_SinapUm (default: pasta que contém sinaplint/).",
+        help="Raiz do projeto Core_SinapUm (default: pasta que contém app_sinaplint/).",
     )
     check.add_argument(
         "--json",
@@ -261,6 +412,33 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Exit code 1 se score < N (default: {MIN_PASS_SCORE}).",
     )
     check.add_argument(
+        "--delta-base",
+        type=str,
+        default=None,
+        metavar="REF",
+        help=(
+            "Comparar com o estado da branch base (ex.: main). "
+            "Requer git e fetch da ref remota (ex.: origin/main). "
+            "Inclui delta e delta_summary no JSON."
+        ),
+    )
+    check.add_argument(
+        "--smart-block",
+        action="store_true",
+        help=(
+            "Aplicar política de bloqueio (score + delta: SCC, acoplamento, queda de score). "
+            "Exit 1 se bloqueado. O limiar --fail-under define também fail_under_score. "
+            "Ficheiro JSON opcional: --policy ou SINAPLINT_POLICY_JSON."
+        ),
+    )
+    check.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="JSON com regras (ver docs). Ignorado sem --smart-block.",
+    )
+    check.add_argument(
         "--color",
         action="store_true",
         help="Forçar cores no terminal (requer colorama).",
@@ -272,6 +450,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.set_defaults(func=cmd_check)
 
+    pr_comm = sub.add_parser(
+        "pr-comment",
+        help="Gera Markdown para comentário no PR a partir do JSON do check (CI).",
+    )
+    pr_comm.add_argument(
+        "-i",
+        "--input",
+        type=Path,
+        required=True,
+        help="Ficheiro JSON (ex.: sinaplint-report.json).",
+    )
+    pr_comm.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        help="Gravar Markdown neste ficheiro (default: stdout).",
+    )
+    pr_comm.add_argument(
+        "--sha",
+        type=str,
+        default="",
+        help="SHA do commit (mostrado no cabeçalho; truncado a 7 caracteres).",
+    )
+    pr_comm.add_argument(
+        "--base-ref",
+        type=str,
+        default="",
+        metavar="BRANCH",
+        help="Nome da branch base (rótulo no texto; opcional se já estiver em delta).",
+    )
+    pr_comm.set_defaults(func=cmd_pr_comment)
+
     fix = sub.add_parser(
         "fix",
         help="Aplica correções automáticas conservadoras (pause_orders, env_state). Rever diff antes de commitar.",
@@ -280,7 +491,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--root",
         type=Path,
         default=None,
-        help="Raiz do projeto Core_SinapUm (default: pasta que contém sinaplint/).",
+        help="Raiz do projeto Core_SinapUm (default: pasta que contém app_sinaplint/).",
     )
     fix.add_argument(
         "--dry-run",

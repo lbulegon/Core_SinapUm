@@ -151,8 +151,24 @@ Registar sempre que possível:
 **SinapLint** é o motor de lint cognitivo/arquitetural do Core_SinapUm: valida estrutura, módulos PAOR, padrões (regex) e **AST**, calcula **score** e pode sugerir melhorias.
 
 ```
-sinaplint/
-├── engine.py           # Orquestração e scoring
+app_sinaplint/
+├── engine/             # Orquestrador + pipeline + motor (sinap_lint.py)
+│   ├── orchestrator.py
+│   ├── pipeline.py
+│   ├── context_builder.py  # _context a partir do grafo (sem segunda passagem)
+│   ├── graph/              # Grafo app_* , acoplamento, SCC (ciclos), visual nodes/edges
+│   │   ├── django_graph.py
+│   │   ├── coupling_analyzer.py
+│   │   ├── cycle_detector.py
+│   │   ├── graph_serializer.py
+│   │   ├── architecture_report.py
+│   │   └── architectural_insights.py  # god app, prioridade, risk score, heatmap no visual
+│   ├── architecture/     # Camadas (Clean) + plano de refactor sugerido
+│   │   ├── layer_mapper.py
+│   │   ├── dependency_extractor.py
+│   │   ├── clean_arch_analyzer.py
+│   │   └── refactor_planner.py
+│   └── sinap_lint.py   # Regras agregadas, scoring, ai_refactor
 ├── path_utils.py       # Exclusões de caminhos
 ├── rules/
 │   ├── structure_rules.py
@@ -175,7 +191,13 @@ sinaplint/
 | Padrões | Regex (ex.: `pause_orders(` fora de handlers) + sugestões estáticas |
 | AST | Chamadas `pause_orders`, condições `env_state` (heurística) |
 
-Penalizações em `sinaplint/engine.py` (`PENALTIES`). Limiar: `MIN_PASS_SCORE` (80).
+Penalizações em `app_sinaplint/engine/sinap_lint.py` (`PENALTIES`). Limiar: `MIN_PASS_SCORE` (80).
+
+### Contexto estrutural (orquestrador)
+
+`run_analysis`, o CLI `check` e as APIs que o usam acrescentam **`_context`** (lista de pastas `app_*`, arestas `from`→`to` com peso por ficheiros, métricas), **`architecture`** (grafo `app_*`→`app_*`, `coupling`, `cycles` via SCC, `edges_weighted`, `fan_in`, **`insights`** com `anti_patterns` god app, `refactor_priority`, **`risk`** (`risk_score`, `risk_level`, `critical_apps`), e **`visual`** com `nodes` enriquecidos: `risk_index`, `risk_tier`, `color`, `size` para heatmap) e **`scores`** (`code`, `architecture`, `modularity`). O **`scores.architecture`** combina penalização por **ciclos** entre apps e por apps com **≥5 dependências** de saída. O **`score`** principal e **`quality`** / **`ok`** mantêm o mesmo significado (regras + módulos PAOR). Chamadas diretas a `SinapLint().run()` devolvem só o núcleo, sem esse enriquecimento.
+
+**`clean_architecture`** (orquestrador): heurísticas de camada em ficheiros `app_*` (presentation / application / domain / infrastructure) e imports absolutos analisados por AST; devolve **`violations`** e **`refactor_plan`** com prioridade e sugestões. Imports relativos (``from .``) não são resolvidos nesta versão.
 
 ### Níveis de qualidade (score)
 
@@ -198,7 +220,7 @@ cd Core_SinapUm
 | Forma | Descrição |
 |-------|-----------|
 | `python sinaplint.py check` | Script na raiz de `Core_SinapUm` (recomendado para scripts e CI). |
-| `python -m sinaplint check` | Executa o pacote como módulo (útil com `PYTHONPATH` já configurado). |
+| `python -m app_sinaplint check` | Executa o pacote como módulo (útil com `PYTHONPATH` já configurado). |
 
 #### Opções do subcomando `check`
 
@@ -207,7 +229,7 @@ cd Core_SinapUm
 | `--json` | Imprime **só** o relatório completo em JSON no *stdout* (sem relatório humano). |
 | `-o caminho.json` / `--output` | Grava o mesmo JSON no arquivo indicado. Com `--json`, o JSON vai para o arquivo e a mensagem de confirmação para *stderr*; **sem** `--json`, mostra o relatório humano no *stdout* **e** grava o JSON no arquivo (mensagem no *stderr*). |
 | `--fail-under N` | Termina com código **1** se `score < N` (por defeito **80**). Útil para CI com limiar mais alto (ex.: `85`). |
-| `--root /caminho` | Usa outra pasta como raiz do Core_SinapUm em vez da pasta do pacote `sinaplint`. |
+| `--root /caminho` | Usa outra pasta como raiz do Core_SinapUm em vez da pasta do pacote `app_sinaplint`. |
 | `--color` / `--no-color` | Forçar ou desativar cores no terminal (usa [colorama](https://pypi.org/project/colorama/) se instalado; respeita `NO_COLOR`). |
 
 #### Exemplos
@@ -217,7 +239,7 @@ cd Core_SinapUm
 
 # Relatório legível no terminal (score, estrutura, padrões, AST, sugestões, módulos)
 python sinaplint.py check
-python -m sinaplint check
+python -m app_sinaplint check
 
 # Só JSON no stdout (para pipes e automação)
 python sinaplint.py check --json
@@ -256,7 +278,7 @@ Após `cd Core_SinapUm`, estes comandos devem completar com exit **0** quando o 
 
 ```bash
 python3 sinaplint.py check
-python3 -m sinaplint check
+python3 -m app_sinaplint check
 python3 sinaplint.py check --json
 python3 sinaplint.py check -o sinaplint_report.json   # cria o JSON; mensagem no stderr
 python3 sinaplint.py check --fail-under 85
@@ -272,7 +294,7 @@ Aplica correções **conservadoras** apenas nos mesmos caminhos que o `check` (r
 - comentar chamadas diretas a `pause_orders(` (fora de handlers);
 - comentar condições `if env_state` (heurística).
 
-**Não** altera `sinaplint/`, `migrations`, `command_engine/handlers/`, nem árvores grandes em `services/`.
+**Não** altera `app_sinaplint/`, `migrations`, `command_engine/handlers/`, nem árvores grandes em `services/`.
 
 ```bash
 python3 sinaplint.py fix              # grava alterações
@@ -315,13 +337,13 @@ sinaplint check
 **Django shell:**
 
 ```python
-from sinaplint.engine import SinapLint, MIN_PASS_SCORE
+from app_sinaplint.engine import SinapLint, MIN_PASS_SCORE
 from pathlib import Path
 r = SinapLint(Path(".")).run()
 assert r["score"] >= MIN_PASS_SCORE
 ```
 
-**CI (GitHub Actions):** `.github/workflows/ci.yml` — `pip install -r Core_SinapUm/requirements.txt` e `python Core_SinapUm/sinaplint.py check` (falha o job se o score ficar abaixo do limiar por defeito, 80).
+**CI (GitHub Actions):** workflow dedicado [`.github/workflows/sinaplint.yml`](.github/workflows/sinaplint.yml) — análise em cada push/PR (`python3 -m app_sinaplint check`), em PRs com **delta** vs branch base e **`--smart-block`** (política em [`.github/sinaplint-policy.json`](.github/sinaplint-policy.json): SCC novos, acoplamento, queda de score), artefacto JSON, comentário atualizado no PR. Ver [`docs/GITHUB_SINAPLINT.md`](docs/GITHUB_SINAPLINT.md) e [`docs/SINAPLINT_POLICY.md`](docs/SINAPLINT_POLICY.md). **Landing + demo + dashboard SaaS:** [`tools/sinaplint-landing/`](tools/sinaplint-landing/) (`/` e `/dashboard`) + [`tools/sinaplint-demo-server/`](tools/sinaplint-demo-server/). API SaaS: [`docs/SINAPLINT_SAAS.md`](docs/SINAPLINT_SAAS.md). O workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) cobre outros testes (Docker).
 
 **Persistência:** `validate_framework.py` grava **`ArchitectureScore`** com `details.sinaplint` (payload completo). O **EOC** mostra o último score persistido.
 
@@ -359,7 +381,7 @@ Após migrações (`manage.py migrate`), crie tenant e projeto no Admin. Em prod
 | `LearningService` | `services/learning_service.py` | Agrega `SinapCoreLog` por `decision` (contagem, `success_rate`). |
 | `SimulationService` | `services/simulation_service.py` | Estima score após remoção hipotética de *issues* (heurística). |
 
-O motor SinapLint inclui **`ai_refactor`**: sugestões heurísticas por issue (`sinaplint/ai_refactor.py`), incluídas no JSON do `check`.
+O motor SinapLint inclui **`ai_refactor`**: sugestões heurísticas por issue (`app_sinaplint/ai_refactor.py`), incluídas no JSON do `check`.
 
 ---
 

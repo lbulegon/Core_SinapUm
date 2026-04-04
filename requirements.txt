@@ -171,5 +171,9 @@ yarl==1.22.0
 youtube-transcript-api==1.2.3
 zipp==3.23.0
 zstandard==0.25.0
+neo4j==5.28.1
 psycopg2-binary==2.9.9
 djangorestframework==3.15.2
+stripe>=8.0,<13
+redis>=5.0.0
+rembg>=2.0.0  # Creative Engine - remoção de fundo

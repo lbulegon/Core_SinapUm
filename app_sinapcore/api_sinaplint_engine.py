@@ -24,7 +24,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from sinaplint.engine import SinapLint
+from app_sinapcore.services.sinaplint_service import SinapLintService
 
 
 def _auth_error_or_none(request: Request) -> Response | None:
@@ -66,7 +66,7 @@ def engine_run(request: Request) -> Response:
     # BASE_DIR = raiz do monólito Core_SinapUm (pai de setup/)
     base = Path(getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent))
     try:
-        result = SinapLint(base_path=base).run()
+        result = SinapLintService().analyze(base)
     except Exception as exc:
         return Response(
             {"error": "sinaplint_failed", "detail": str(exc)},
