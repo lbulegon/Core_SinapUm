@@ -1,0 +1,317 @@
+{% load json_pretty %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Execuções do agente — SinapUm</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --muted: #94a3b8;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --plan: #a78bfa;
+            --act: #f472b6;
+            --observe: #34d399;
+            --reflect: #fbbf24;
+            --border: #334155;
+            --ok: #22c55e;
+            --warn: #f59e0b;
+            --bad: #ef4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.55;
+            min-height: 100vh;
+        }
+        header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.97);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+        header .lede {
+            margin: 0.5rem 0 0;
+            font-size: 0.95rem;
+            color: var(--text);
+            max-width: 52rem;
+        }
+        header .meta { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
+        main { max-width: 900px; margin: 0 auto; padding: 1.25rem; }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid var(--border);
+        }
+        .card h2 {
+            margin: 0 0 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            word-break: break-word;
+        }
+        .ops-summary {
+            background: #0f172a;
+            border-radius: 10px;
+            padding: 1rem 1.15rem;
+            margin-top: 0.75rem;
+            border: 1px solid var(--border);
+        }
+        .ops-summary h3 {
+            margin: 0 0 0.65rem;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .ops-line { margin: 0.35rem 0; font-size: 0.95rem; }
+        .ops-line strong { color: #cbd5e1; font-weight: 600; }
+        .row { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: center; margin-top: 0.5rem; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-ok { background: #14532d; color: #bbf7d0; }
+        .badge-run { background: #1e3a8a; color: #bfdbfe; }
+        .badge-wait { background: #713f12; color: #fde68a; }
+        .badge-fail { background: #7f1d1d; color: #fecaca; }
+        .muted { font-size: 0.88rem; color: var(--muted); }
+        .score-pill {
+            display: inline-block;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+        }
+        .score-pill.low { color: var(--bad); }
+        .score-pill.medium { color: var(--warn); }
+        .score-pill.high { color: var(--ok); }
+        .score-pill.unknown { color: var(--muted); }
+        .watchlist { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+        .watchlist li { margin: 0.25rem 0; }
+        .timeline { margin-top: 1rem; }
+        .timeline > .muted { margin-bottom: 0.65rem; }
+        .phase-block {
+            margin-bottom: 0.65rem;
+            padding: 0.65rem 0.85rem;
+            background: #334155;
+            border-radius: 8px;
+            border-left: 4px solid var(--border);
+        }
+        .phase-block.plan { border-left-color: var(--plan); }
+        .phase-block.act { border-left-color: var(--act); }
+        .phase-block.observe { border-left-color: var(--observe); }
+        .phase-block.reflect { border-left-color: var(--reflect); }
+        .phase-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.35rem;
+        }
+        .phase-one-liner { font-size: 0.86rem; color: #cbd5e1; margin: 0 0 0.4rem; }
+        details.tech { margin-top: 0.35rem; }
+        details.tech summary {
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--accent);
+        }
+        pre.phase-data {
+            margin: 0.4rem 0 0;
+            padding: 0.65rem;
+            background: #0f172a;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 0.72rem;
+            max-height: 240px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .empty { text-align: center; padding: 2.5rem 1rem; color: var(--muted); }
+        a.nav { color: var(--accent); text-decoration: none; }
+        a.nav:hover { text-decoration: underline; }
+        .alert {
+            padding: 0.85rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.92rem;
+        }
+        .alert-success { background: #14532d; color: #bbf7d0; border: 1px solid #166534; }
+        .alert-error { background: #7f1d1d; color: #fecaca; border: 1px solid #991b1b; }
+        .demo-box {
+            background: var(--card);
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            padding: 1.35rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .demo-box h2 { margin: 0 0 0.5rem; font-size: 1rem; color: var(--text); }
+        .btn-demo {
+            display: inline-block;
+            margin-top: 0.65rem;
+            padding: 0.6rem 1.15rem;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: #fff !important;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .btn-demo:hover { filter: brightness(1.08); }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Acompanhamento de execuções</h1>
+        <p class="lede">
+            <strong>O que isto serve:</strong> ver, num só sítio, o que foi pedido ao agente,
+            se já terminou, e que pontos merecem atenção na operação (revisão técnica + passos executados).
+            O detalhe em JSON fica fechado — abre só se precisares para suporte ou auditoria.
+        </p>
+        <p class="meta">{{ total_runs }} registro(s) · <a class="nav" href="/">Início</a> · <a class="nav" href="/architecture/">Revisão de arquitetura</a></p>
+    </header>
+    <main>
+        {% if messages %}
+        <div>
+            {% for message in messages %}
+            <div class="alert {% if 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="demo-box">
+            <h2>Experimentar com dados de exemplo</h2>
+            <p class="muted" style="margin:0;">Corre um cenário de teste (revisão rápida + passos simulados) e cria um registro aqui embaixo. Útil para treinar a equipe ou validar o ambiente.</p>
+            <form method="post" action="/agent-core/run-demo/">
+                {% csrf_token %}
+                <input type="hidden" name="bundle_path" value="/app/docs/architecture_bundle/mrfoo_architecture_bundle" />
+                <button type="submit" class="btn-demo">Correr exemplo</button>
+            </form>
+        </div>
+
+        {% if not runs %}
+        <div class="empty">
+            <p>Ainda não há execuções registadas.</p>
+            <p class="muted">Usa o botão acima ou pede à equipe técnica para disparar uma execução pela API.</p>
+        </div>
+        {% endif %}
+
+        {% for run in runs %}
+        <article class="card">
+            <h2>Pedido à equipe / ao sistema</h2>
+            <p style="margin:0;">{{ run.objetivo }}</p>
+
+            <div class="row">
+                {% if run.status == 'completed' %}
+                <span class="badge badge-ok">Concluído</span>
+                {% elif run.status == 'running' %}
+                <span class="badge badge-run">Em curso</span>
+                {% elif run.status == 'awaiting_human' %}
+                <span class="badge badge-wait">Aguarda decisão humana</span>
+                {% elif run.status == 'failed' %}
+                <span class="badge badge-fail">Falhou</span>
+                {% else %}
+                <span class="badge">{{ run.get_status_display }}</span>
+                {% endif %}
+                <span class="muted">Volta n.º {{ run.iteracao }} · {{ run.created_at }}</span>
+            </div>
+
+            {% if run.error_message %}
+            <p style="color:#f87171;margin-top:0.75rem;font-size:0.92rem;"><strong>Erro:</strong> {{ run.error_message }}</p>
+            {% endif %}
+
+            <div class="ops-summary">
+                <h3>Leitura rápida (operacional)</h3>
+                {% with gov=run.estado_atual.governanca %}
+                {% if gov %}
+                <p class="ops-line">
+                    <strong>Nota da revisão técnica</strong> (aderência ao desenho do sistema):
+                    {% if gov.score_arquitetural != None %}
+                    <span class="score-pill {% if gov.score_arquitetural < 6 %}low{% elif gov.score_arquitetural < 8 %}medium{% else %}high{% endif %}">{{ gov.score_arquitetural }} / 10</span>
+                    {% else %}
+                    <span class="score-pill unknown">n/d</span>
+                    {% endif %}
+                    <span class="muted">— não é nota de vendas; é checagem de consistência do desenho.</span>
+                </p>
+                {% if gov.riscos %}
+                <p class="ops-line" style="margin-top:0.65rem;"><strong>Pontos a vigiar</strong> (podem afetar manutenção ou integrações):</p>
+                <ul class="watchlist">
+                    {% for r in gov.riscos|slice:":6" %}
+                    <li>{{ r }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% else %}
+                <p class="ops-line muted">Nesta execução não entrou parecer de revisão técnica — só vês os passos abaixo.</p>
+                {% endif %}
+                {% endwith %}
+
+                {% if run.estado_atual.last_reflection.summary %}
+                <p class="ops-line" style="margin-top:0.75rem;">
+                    <strong>Conclusão desta volta:</strong>
+                    objetivo com {{ run.estado_atual.last_reflection.summary.observation_count|default:"0" }} leitura(s) de retorno
+                    {% if run.estado_atual.last_reflection.goal_reached %}— <span style="color:var(--ok);">critérios satisfeitos</span>{% else %}— critérios ainda em avaliação{% endif %}
+                </p>
+                {% endif %}
+            </div>
+
+            {% if run.estado_atual.architecture_evaluation %}
+            <details class="tech" style="margin-top:0.75rem;">
+                <summary>Dados brutos da revisão (técnicos)</summary>
+                <pre class="phase-data">{{ run.estado_atual.architecture_evaluation|pretty_json }}</pre>
+            </details>
+            {% endif %}
+
+            {% if run.plano %}
+            <details class="tech" style="margin-top:0.5rem;">
+                <summary>Último plano (técnico)</summary>
+                <pre class="phase-data">{{ run.plano|pretty_json }}</pre>
+            </details>
+            {% endif %}
+
+            <div class="timeline">
+                <div class="muted"><strong>O que aconteceu passo a passo</strong> (da decisão à ação ao retorno)</div>
+                {% for h in run.historico %}
+                <div class="phase-block {{ h.phase }}">
+                    <div class="phase-title">
+                        {% if h.phase == "plan" %}1. Plano — o que foi decidido fazer{% elif h.phase == "act" %}2. Execução — ação no sistema{% elif h.phase == "observe" %}3. Retorno — o que voltou{% elif h.phase == "reflect" %}4. Conclusão desta volta{% else %}{{ h.phase }}{% endif %}
+                    </div>
+                    <p class="phase-one-liner muted">
+                        {% if h.phase == "plan" %}Resumo: passos previstos e nota de revisão se existir.{% elif h.phase == "act" %}Resumo: uma ação foi enviada ao conector (ex.: orbital).{% elif h.phase == "observe" %}Resumo: leitura do resultado para a equipe.{% elif h.phase == "reflect" %}Resumo: fecho desta iteração (seguir ou não).{% endif %}
+                        · <span class="muted">{{ h.timestamp }}</span>
+                    </p>
+                    <details class="tech">
+                        <summary>Ver detalhe técnico</summary>
+                        <pre class="phase-data">{{ h.output|pretty_json }}</pre>
+                    </details>
+                </div>
+                {% empty %}
+                <p class="muted">Sem histórico de passos.</p>
+                {% endfor %}
+            </div>
+
+            <p class="muted" style="margin-top:1rem;font-size:0.8rem;">ID interno: {{ run.id }} (para suporte)</p>
+        </article>
+        {% endfor %}
+    </main>
+</body>
+</html>

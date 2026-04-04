@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="45">
+    <title>EOC — Centro de Operações Cognitivo | MCP SinapUm</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0b0f1a;
+            color: #e4e6eb;
+            min-height: 100vh;
+        }
+        nav {
+            background: linear-gradient(90deg, #1a1f35, #12162a);
+            padding: 0.9rem 1.5rem;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav a { color: #00e5ff; text-decoration: none; font-weight: 600; }
+        nav a:hover { text-decoration: underline; }
+        .wrap { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+        h1 { font-size: 1.5rem; margin-bottom: 0.35rem; }
+        .sub { color: #8b92a8; font-size: 0.9rem; margin-bottom: 1.25rem; }
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.25rem;
+        }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+        .panel { border-radius: 12px; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.08); }
+        .env-estavel { background: linear-gradient(145deg, #1e4620, #2d5a27); }
+        .env-pressao { background: linear-gradient(145deg, #5c4a1a, #8b6914); }
+        .env-sobrecarga { background: linear-gradient(145deg, #6b1c1c, #8b2500); }
+        .env-colapso { background: linear-gradient(145deg, #1a0a0a, #2d0808); }
+        .env-atencao { background: linear-gradient(145deg, #3d3a1a, #5c5620); }
+        .env-default { background: linear-gradient(145deg, #2a2f45, #1a1f35); }
+        .env h2 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        .env .meta { font-size: 0.95rem; opacity: 0.95; }
+        .card-light { background: #141a2e; }
+        .card-side { background: #12182a; }
+        h3 { font-size: 1rem; margin-bottom: 0.75rem; color: #00e5ff; }
+        ul.logs { list-style: none; font-size: 0.88rem; }
+        ul.logs li { padding: 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        ul.logs strong { color: #a29bfe; }
+        ul.modules { list-style: none; font-size: 0.9rem; }
+        ul.modules li { padding: 0.35rem 0; text-transform: capitalize; }
+        .alert-bar {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .alert-sobrecarga { background: #c0392b; color: #fff; }
+        .alert-pattern { background: #8e44ad; color: #fff; }
+        .alert-box { background: rgba(192, 57, 43, 0.25); border: 1px solid rgba(231, 76, 60, 0.5); padding: 1rem; border-radius: 10px; margin-top: 1rem; }
+        .muted { color: #8b92a8; font-size: 0.8rem; margin-top: 0.5rem; }
+        .mode-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+        }
+        .mode-NORMAL { background: #27ae60; color: #fff; }
+        .mode-PRESSURE { background: #f39c12; color: #1a1a1a; }
+        .mode-CRITICAL { background: #c0392b; color: #fff; }
+        .ctrl { margin-top: 1.25rem; }
+        .ctrl form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+        .ctrl button {
+            padding: 0.5rem 0.85rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            background: #00e5ff;
+            color: #0b0f1a;
+        }
+        .ctrl button:hover { filter: brightness(1.08); }
+        .cmd-list { font-size: 0.82rem; list-style: none; }
+        .cmd-list li { padding: 0.35rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .sinaplint-panel {
+            background: #fff;
+            color: #1a1f35;
+            padding: 1.25rem;
+            border-radius: 12px;
+            margin-top: 1.25rem;
+            border: 1px solid rgba(0, 229, 255, 0.25);
+        }
+        .sinaplint-panel h3 { color: #0b0f1a; margin-bottom: 0.5rem; }
+        .sinaplint-panel .score-big { font-size: 1.75rem; font-weight: 800; }
+        .sinaplint-ok { color: #1e8449; }
+        .sinaplint-warn { color: #c0392b; }
+    </style>
+</head>
+<body>
+<nav>
+    <span style="font-weight:700;letter-spacing:0.05em;">EOC — Torre SinapCore</span>
+    <div>
+        <a href="/sinapcore/">SinapCore</a>
+        &nbsp;·&nbsp;
+        <a href="/">Início</a>
+    </div>
+</nav>
+<div class="wrap">
+    <h1>Centro de Operações Cognitivo
+        <span class="mode-badge mode-{{ system_mode }}">Modo: {{ system_mode }}</span>
+    </h1>
+    <p class="sub">Estabelecimento {{ estabelecimento_id }} · atualização automática a cada 45s</p>
+
+    {% if pattern_alert %}
+    <div class="alert-bar alert-pattern">🚨 {{ pattern_alert.message }}</div>
+    {% endif %}
+
+    {% if env.state == "sobrecarga" or env.state == "colapso" %}
+    <div class="alert-bar alert-sobrecarga">
+        {% if env.state == "colapso" %}🚨 ALERTA: Colapso operacional detectado{% else %}🚨 ALERTA: Sobrecarga detectada{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="grid">
+        <div>
+            <div class="panel env {% if env.state == 'estavel' %}env-estavel{% elif env.state == 'pressao' %}env-pressao{% elif env.state == 'sobrecarga' %}env-sobrecarga{% elif env.state == 'colapso' %}env-colapso{% elif env.state == 'atencao' %}env-atencao{% else %}env-default{% endif %}">
+                <h2>Estado ambiental (IAmb)</h2>
+                <p class="meta">Estado: <strong>{{ env.state }}</strong></p>
+                <p class="meta">Score: {{ env.score }}</p>
+                {% if no_env_data %}<p class="muted">Sem dados Redis — valor por omissão.</p>{% endif %}
+            </div>
+
+            <div class="panel card-light ctrl">
+                <h3>Controlo operacional</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">Enfileira comandos (executados pelo motor SinapCore / Agent na próxima passagem).</p>
+                <form method="post" action="{% url 'eoc_send_command' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="estabelecimento_id" value="{{ estabelecimento_id }}" />
+                    <button type="submit" name="command" value="reduce_load">Reduzir carga</button>
+                    <button type="submit" name="command" value="pause_orders">Pausar pedidos</button>
+                    <button type="submit" name="command" value="normalize">Normalizar</button>
+                </form>
+            </div>
+
+            <div class="sinaplint-panel">
+                <h3>SinapLint</h3>
+                <p class="muted" style="color:#5c6b7a;margin-bottom:0.75rem;">Última execução persistida (validate_framework / CI)</p>
+                {% if sinaplint.has_data %}
+                <p class="score-big">{{ sinaplint.score }}/100 <span class="muted" style="font-size:0.9rem;">({{ sinaplint.quality }})</span></p>
+                <p class="muted" style="font-size:0.8rem;">{{ sinaplint.created_at|date:"d/m/Y H:i:s" }}</p>
+                {% if sinaplint.score < 80 %}
+                <p class="sinaplint-warn" style="margin-top:0.5rem;font-weight:600;">Qualidade arquitetural abaixo do limiar (80)</p>
+                {% else %}
+                <p class="sinaplint-ok" style="margin-top:0.5rem;font-weight:600;">Sistema dentro do limiar arquitetural</p>
+                {% endif %}
+                {% else %}
+                <p class="muted">Sem registro — execute <code>python validate_framework.py</code> ou pipeline CI.</p>
+                {% endif %}
+            </div>
+
+            <div class="panel card-light" style="margin-top:1.25rem;">
+                <h3>Comandos recentes</h3>
+                <ul class="cmd-list">
+                    {% for c in recent_commands %}
+                    <li>
+                        {{ c.created_at|date:"d/m H:i:s" }} —
+                        <strong>{{ c.get_command_display }}</strong>
+                        <span class="muted">{{ c.status }} · {{ c.source }}{% if c.executed %} ✓{% endif %}</span>
+                    </li>
+                    {% empty %}
+                    <li class="muted">Nenhum comando na fila.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="panel card-light" style="margin-top:1.25rem;">
+                <h3>Decisões recentes (logs)</h3>
+                <ul class="logs">
+                    {% for log in logs %}
+                    <li>
+                        {{ log.timestamp|date:"d/m/Y H:i:s" }} —
+                        <strong>{{ log.module }}</strong> → {{ log.decision }}
+                        {% if log.action %}<span class="muted">({{ log.action }})</span>{% endif %}
+                    </li>
+                    {% empty %}
+                    <li class="muted">Nenhum log ainda.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel card-side">
+                <h3>Módulos ativos</h3>
+                <ul class="modules">
+                    {% for m in modules %}
+                    <li>{{ m.get_name_display }} <span class="muted">(p.{{ m.priority }})</span></li>
+                    {% empty %}
+                    <li class="muted">Nenhum módulo ativo na BD.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="panel card-side" style="margin-top:1.25rem;">
+                <h3>Alertas</h3>
+                {% if env.state == "sobrecarga" or env.state == "colapso" %}
+                <p>⚠️ Sistema em estado crítico ({{ env.state }}).</p>
+                {% else %}
+                <p>Sem alertas críticos de ambiente.</p>
+                {% endif %}
+                {% if pattern_alert %}
+                <div class="alert-box">{{ pattern_alert.message }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "name": "sinaplint-vscode",
+  "displayName": "SinapLint",
+  "description": "Executa SinapLint ao salvar arquivos Python (Core_SinapUm).",
+  "version": "0.1.0",
+  "publisher": "sinapum",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Linters"],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "SinapLint",
+      "properties": {
+        "sinaplint.coreRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Caminho absoluto para a pasta Core_SinapUm (onde está sinaplint.py). Vazio = workspaceFolder."
+        },
+        "sinaplint.python": {
+          "type": "string",
+          "default": "python3",
+          "description": "Executável Python para correr sinaplint.py."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "sinaplint.runCheck",
+        "title": "SinapLint: executar check"
+      }
+    ]
+  },
+  "scripts": {}
+}

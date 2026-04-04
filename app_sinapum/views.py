@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -10,9 +10,12 @@ from .services import analyze_image_with_openmind, analyze_multiple_images
 from .models import ProdutoJSON
 import json
 import os
+import tempfile
+import threading
 import uuid
 import logging
 from pathlib import Path
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -566,3 +569,470 @@ def api_analyze_product_image(request):
             'error': str(e),
             'error_code': 'INTERNAL_ERROR'
         }, status=500)
+
+
+@require_http_methods(["GET", "POST"])
+def rag_gastronomico(request):
+    """Upload de PDF para o vectorstore + consulta RAG (integrado ao Core)."""
+    from core.services.ingestion.pdf_ingestor import ID_PREFIX, ingest_pdf_path
+    from core.services.vectorstore_client import vectorstore_search
+
+    context = {
+        "rag_results": None,
+        "query": "",
+        "id_prefix_default": ID_PREFIX,
+    }
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "upload").strip()
+        if action == "search":
+            q = (request.POST.get("query") or "").strip()
+            context["query"] = q
+            if not q:
+                messages.error(request, "Informe uma pergunta ou termo para buscar no RAG.")
+            else:
+                k = int(request.POST.get("k") or 8)
+                results = vectorstore_search(q, k=max(1, min(20, k)), include_text=True)
+                prefix = (request.POST.get("id_prefix") or ID_PREFIX).strip()
+                if prefix:
+                    results = [
+                        r for r in results if str((r or {}).get("id", "")).startswith(prefix)
+                    ]
+                context["rag_results"] = results
+                if not results:
+                    messages.warning(request, "Nenhum resultado encontrado (verifique o vectorstore e o prefixo).")
+        else:
+            pdf = request.FILES.get("pdf")
+            if not pdf:
+                messages.error(request, "Selecione um arquivo PDF.")
+            elif not pdf.name.lower().endswith(".pdf"):
+                messages.error(request, "Apenas arquivos PDF são aceitos.")
+            else:
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                try:
+                    for chunk in pdf.chunks():
+                        tmp.write(chunk)
+                    tmp.close()
+                    res = ingest_pdf_path(tmp.name, original_name=pdf.name)
+                    if res.get("ok"):
+                        messages.success(
+                            request,
+                            "PDF processado: %(chunks)s chunks enviados ao vectorstore "
+                            "(%(pages)s páginas com texto). IDs: %(prefix)s:*"
+                            % {
+                                "chunks": res.get("chunks_ingested", 0),
+                                "pages": res.get("pages", 0),
+                                "prefix": ID_PREFIX,
+                            },
+                        )
+                    else:
+                        messages.error(
+                            request,
+                            res.get("error") or "Falha na ingestão. Verifique o serviço vectorstore (VECTORSTORE_URL).",
+                        )
+                finally:
+                    try:
+                        os.unlink(tmp.name)
+                    except OSError:
+                        pass
+
+    return render(request, "app_sinapum/rag_gastronomico.html", context)
+
+
+def _rag_gastro_run_job(job_id: str, path: str, original_name: str) -> None:
+    from django.core.cache import cache
+    from django.db import connection
+
+    key = f"rag_gastro_job:{job_id}"
+    try:
+        connection.close()
+    except Exception:
+        pass
+
+    def progress_cb(phase: str, pct: int, detail=None):
+        cache.set(
+            key,
+            {
+                "job_id": job_id,
+                "phase": phase,
+                "step": phase,
+                "pct": max(0, min(100, int(pct))),
+                "detail": (detail or "")[:500],
+                "done": phase == "error",
+                "error": detail if phase == "error" else None,
+                "result": None,
+            },
+            3600,
+        )
+
+    try:
+        from core.services.ingestion.pdf_ingestor import ID_PREFIX, ingest_pdf_path
+
+        res = ingest_pdf_path(
+            path,
+            original_name=original_name,
+            progress_callback=progress_cb,
+        )
+        if res.get("ok"):
+            cache.set(
+                key,
+                {
+                    "job_id": job_id,
+                    "phase": "done",
+                    "step": "done",
+                    "pct": 100,
+                    "detail": "Ingestão concluída",
+                    "done": True,
+                    "error": None,
+                    "result": {
+                        "chunks_ingested": res.get("chunks_ingested"),
+                        "chunks_total": res.get("chunks_total"),
+                        "pages": res.get("pages"),
+                        "errors": res.get("errors") or [],
+                        "id_prefix": ID_PREFIX,
+                    },
+                },
+                3600,
+            )
+        else:
+            err = res.get("error") or "Falha na ingestão"
+            cache.set(
+                key,
+                {
+                    "job_id": job_id,
+                    "phase": "error",
+                    "step": "error",
+                    "pct": 0,
+                    "detail": err,
+                    "done": True,
+                    "error": err,
+                    "result": None,
+                },
+                3600,
+            )
+    except Exception as e:
+        logger.exception("rag_gastro_run_job")
+        cache.set(
+            key,
+            {
+                "job_id": job_id,
+                "phase": "error",
+                "step": "error",
+                "pct": 0,
+                "detail": str(e),
+                "done": True,
+                "error": str(e),
+                "result": None,
+            },
+            3600,
+        )
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+@require_POST
+def rag_gastronomico_ingest_start(request):
+    """Inicia ingestão assíncrona (PDF) — devolve job_id para polling de estado."""
+    from django.core.cache import cache
+
+    pdf = request.FILES.get("pdf")
+    if not pdf:
+        return JsonResponse({"ok": False, "error": "Campo pdf obrigatório"}, status=400)
+    if not pdf.name.lower().endswith(".pdf"):
+        return JsonResponse({"ok": False, "error": "Apenas arquivos .pdf"}, status=400)
+
+    max_mb = int(os.environ.get("RAG_GASTR_PDF_MAX_MB", "40") or 40)
+    max_bytes = max(1, max_mb) * 1024 * 1024
+    size = getattr(pdf, "size", None) or 0
+    if size and size > max_bytes:
+        return JsonResponse(
+            {"ok": False, "error": f"PDF acima do limite ({max_mb} MB)"},
+            status=400,
+        )
+
+    job_id = str(uuid.uuid4())
+    key = f"rag_gastro_job:{job_id}"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    try:
+        for chunk in pdf.chunks():
+            tmp.write(chunk)
+        tmp.close()
+        pdf_path = tmp.name
+    except Exception as e:
+        logger.exception("rag_gastronomico_ingest_start")
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+    cache.set(
+        key,
+        {
+            "job_id": job_id,
+            "phase": "upload",
+            "step": "upload",
+            "pct": 10,
+            "detail": "Ficheiro recebido no servidor",
+            "done": False,
+            "error": None,
+            "result": None,
+        },
+        3600,
+    )
+
+    threading.Thread(
+        target=_rag_gastro_run_job,
+        args=(job_id, pdf_path, pdf.name),
+        daemon=True,
+    ).start()
+
+    return JsonResponse({"ok": True, "job_id": job_id})
+
+
+def rag_gastronomico_ingest_status(request, job_id):
+    """Estado do job (barra de progresso / resultado)."""
+    from django.core.cache import cache
+
+    try:
+        uuid.UUID(str(job_id))
+    except (ValueError, TypeError):
+        return JsonResponse({"ok": False, "error": "job_id inválido"}, status=400)
+
+    key = f"rag_gastro_job:{job_id}"
+    data = cache.get(key)
+    if not data:
+        return JsonResponse({"ok": False, "error": "Job expirado ou desconhecido"}, status=404)
+
+    return JsonResponse({"ok": True, **data})
+
+
+def _rag_gastro_decision_preview(*, filename: str, chunk_count: int, pages: int) -> Dict[str, Any]:
+    """DecisionEngine (estratégia) sobre a intenção de indexar conhecimento — auditoria / produto."""
+    try:
+        from core.services.cognitive_core.context.cognitive_context import CognitiveContext
+        from core.services.cognitive_core.mediation.decision_engine import DecisionEngine
+        from core.services.cognitive_core.perception.adapters import perception_from_mcp_dict
+        from core.services.cognitive_core.reality.builder import RealityStateBuilder
+
+        raw = {
+            "text": "rag_gastro_preview",
+            "rag_gastro_preview": True,
+            "source_file": filename,
+            "chunk_count": chunk_count,
+            "pages": pages,
+        }
+        perception = perception_from_mcp_dict(raw, source="rag_gastronomico", trace_id=None)
+        ctx = CognitiveContext.from_perception(
+            perception,
+            extra={"rag_namespaces": ["gastronomia", "global"]},
+        )
+        builder = RealityStateBuilder(default_rag_k=4, default_namespaces=["global", "gastronomia"])
+        reality = builder.build(perception, ctx)
+        proposal = {
+            "proposal_id": "rag_gastro_ingest_preview",
+            "tipo": "expansao",
+            "titulo": f"Indexar conhecimento gastronómico ({filename})",
+            "descricao": f"Pré-visualização: {chunk_count} chunks, {pages} página(s) com texto.",
+            "impacto_estimado": min(0.85, 0.35 + min(chunk_count, 200) * 0.002),
+            "risco": "low",
+            "prioridade": "normal",
+            "parametros": {"acao": "rag_ingest", "chunk_count": chunk_count, "pages": pages},
+        }
+        engine = DecisionEngine()
+        out = engine.decide_strategic_support(
+            perception=perception,
+            reality=reality,
+            ctx=ctx,
+            strategy_proposal=proposal,
+        )
+        d = out.to_dict()
+        return {
+            "ok": True,
+            "confidence": d.get("confidence"),
+            "risk_level": d.get("risk_level"),
+            "reasoning": (d.get("reasoning") or "")[:1200],
+            "expected_outcome": (d.get("expected_outcome") or "")[:500],
+            "cognitive_version": getattr(out, "cognitive_version", None) or d.get("cognitive_version"),
+            "action": d.get("action"),
+            "decision_score": d.get("decision_score"),
+        }
+    except Exception as e:
+        logger.exception("_rag_gastro_decision_preview")
+        return {"ok": False, "error": str(e)}
+
+
+@require_POST
+def rag_gastronomico_preview(request):
+    """Extrai chunks + classificação, grava preview em disco, devolve snippets + decisão cognitiva."""
+    import json as json_lib
+
+    pdf = request.FILES.get("pdf")
+    if not pdf:
+        return JsonResponse({"ok": False, "error": "Campo pdf obrigatório"}, status=400)
+    if not pdf.name.lower().endswith(".pdf"):
+        return JsonResponse({"ok": False, "error": "Apenas arquivos .pdf"}, status=400)
+
+    max_mb = int(os.environ.get("RAG_GASTR_PDF_MAX_MB", "40") or 40)
+    max_bytes = max(1, max_mb) * 1024 * 1024
+    size = getattr(pdf, "size", None) or 0
+    if size and size > max_bytes:
+        return JsonResponse({"ok": False, "error": f"PDF acima do limite ({max_mb} MB)"}, status=400)
+
+    try:
+        cw = int(request.POST.get("chunk_words") or 400)
+    except (TypeError, ValueError):
+        cw = 400
+    cw = max(80, min(1200, cw))
+
+    preview_id = str(uuid.uuid4())
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+    try:
+        for chunk in pdf.chunks():
+            tmp.write(chunk)
+        tmp.close()
+        from core.services.ingestion.pdf_ingestor import extract_pdf_chunks_only
+
+        ext = extract_pdf_chunks_only(tmp.name, chunk_words=cw)
+        if not ext.get("ok"):
+            return JsonResponse(
+                {"ok": False, "error": ext.get("error") or "Extração falhou"},
+                status=400,
+            )
+
+        preview_dir = Path(settings.MEDIA_ROOT) / "rag_preview"
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "preview_id": preview_id,
+            "source_name": pdf.name,
+            "chunk_words": cw,
+            "chunks": ext["chunks"],
+            "pages": ext["pages"],
+            "truncated": ext.get("truncated"),
+        }
+        pjson = preview_dir / f"{preview_id}.json"
+        with open(pjson, "w", encoding="utf-8") as f:
+            json_lib.dump(payload, f, ensure_ascii=False)
+    except Exception as e:
+        logger.exception("rag_gastronomico_preview")
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+    else:
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
+
+    decision = _rag_gastro_decision_preview(
+        filename=pdf.name,
+        chunk_count=int(ext.get("chunk_count") or 0),
+        pages=int(ext.get("pages") or 0),
+    )
+
+    rows = []
+    for i, ch in enumerate(ext.get("chunks") or []):
+        t = ch.get("text") or ""
+        rows.append(
+            {
+                "index": i,
+                "type": ch.get("type") or "conceito",
+                "snippet": (t[:360] + "…") if len(t) > 360 else t,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "preview_id": preview_id,
+            "pages": ext.get("pages"),
+            "chunk_count": ext.get("chunk_count"),
+            "truncated": ext.get("truncated"),
+            "chunk_words": cw,
+            "chunks": rows,
+            "decision": decision,
+        }
+    )
+
+
+@require_POST
+def rag_gastronomico_commit(request):
+    """Indexa no vectorstore os chunks escolhidos a partir de um preview_id."""
+    import json as json_lib
+
+    try:
+        body = json_lib.loads((request.body or b"").decode() or "{}")
+    except json_lib.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "JSON inválido"}, status=400)
+
+    preview_id = str(body.get("preview_id") or "").strip()
+    has_indices_key = "indices" in body
+    indices = body.get("indices")
+    try:
+        uuid.UUID(preview_id)
+    except (ValueError, TypeError):
+        return JsonResponse({"ok": False, "error": "preview_id inválido"}, status=400)
+
+    pjson = Path(settings.MEDIA_ROOT) / "rag_preview" / f"{preview_id}.json"
+    if not pjson.is_file():
+        return JsonResponse({"ok": False, "error": "Preview expirado ou inexistente"}, status=404)
+
+    try:
+        with open(pjson, encoding="utf-8") as f:
+            payload = json_lib.load(f)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": f"Ficheiro preview inválido: {e}"}, status=500)
+
+    chunks_full = payload.get("chunks") or []
+    source = str(payload.get("source_name") or "preview")
+
+    selected_texts: List[str] = []
+    if not has_indices_key or indices is None:
+        for c in chunks_full:
+            if isinstance(c, dict) and (c.get("text") or "").strip():
+                selected_texts.append(str(c["text"]).strip())
+    elif isinstance(indices, list):
+        if len(indices) == 0:
+            return JsonResponse(
+                {"ok": False, "error": "Lista indices vazia — selecione pelo menos um chunk"},
+                status=400,
+            )
+        for i in indices:
+            try:
+                idx = int(i)
+            except (TypeError, ValueError):
+                continue
+            if 0 <= idx < len(chunks_full):
+                txt = (chunks_full[idx].get("text") if isinstance(chunks_full[idx], dict) else "") or ""
+                if txt.strip():
+                    selected_texts.append(txt.strip())
+    else:
+        return JsonResponse({"ok": False, "error": "indices deve ser uma lista ou omitido"}, status=400)
+
+    if not selected_texts:
+        return JsonResponse({"ok": False, "error": "Nenhum chunk selecionado para indexar"}, status=400)
+
+    from core.services.ingestion.pdf_ingestor import ID_PREFIX, ingest_chunk_strings
+
+    r = ingest_chunk_strings(selected_texts, source=source, domain="gastronomia", id_prefix=ID_PREFIX)
+    try:
+        if pjson.is_file():
+            pjson.unlink()
+    except OSError:
+        pass
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "chunks_ingested": r.get("chunks_ingested"),
+            "chunks_total": len(selected_texts),
+            "errors": r.get("errors") or [],
+            "id_prefix": ID_PREFIX,
+            "source": source,
+        }
+    )

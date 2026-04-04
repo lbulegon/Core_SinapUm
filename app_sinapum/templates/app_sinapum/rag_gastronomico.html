@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Gastronômico PRO — MCP SinapUm</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            margin: 0;
+            color: #e8e8e8;
+        }
+        nav {
+            background: rgba(0,0,0,0.25);
+            padding: 1rem 2rem;
+        }
+        nav a { color: #ff9a76; text-decoration: none; margin-right: 1.25rem; }
+        nav a:hover { text-decoration: underline; }
+        main { max-width: 920px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+        h1 {
+            font-size: 1.85rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ff7043, #ffab91);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.35rem;
+        }
+        .badge-pro {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #ffd54f, #ff9800);
+            color: #1a1a2e;
+            vertical-align: middle;
+            margin-left: 0.35rem;
+        }
+        .sub { color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem; }
+        .panel {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 1.75rem;
+            margin-bottom: 1.75rem;
+            backdrop-filter: blur(8px);
+        }
+        .panel h2 {
+            margin: 0 0 1rem;
+            font-size: 1.15rem;
+            color: #ffab91;
+        }
+        label { display: block; margin-bottom: 0.35rem; font-size: 0.9rem; color: #cbd5e1; }
+        input[type="file"], input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 0.65rem 0.85rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.35);
+            color: #f1f5f9;
+            margin-bottom: 1rem;
+        }
+        button[type="submit"], .btn-secondary {
+            background: linear-gradient(135deg, #ff7043, #ff5722);
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        button[type="submit"]:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.12);
+            margin-top: 0.75rem;
+            width: auto;
+            display: inline-block;
+        }
+        button[type="submit"]:hover:not(:disabled) { filter: brightness(1.08); }
+        .messages ul { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+        .messages li {
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+        .messages .success { background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.45); }
+        .messages .error { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45); }
+        .messages .warning { background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.45); }
+        .hint { font-size: 0.82rem; color: #64748b; margin-top: -0.5rem; margin-bottom: 1rem; }
+        .result {
+            background: rgba(0,0,0,0.25);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.88rem;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .result pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0.5rem 0 0;
+            color: #cbd5e1;
+        }
+        .score { color: #ffab91; font-weight: 600; }
+        code { background: rgba(0,0,0,0.35); padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; }
+        .progress-wrap {
+            margin-top: 1.25rem;
+            display: none;
+        }
+        .progress-wrap.visible { display: block; }
+        .progress-track {
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.35);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #ff7043, #ffab91);
+            transition: width 0.35s ease;
+        }
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .progress-phase { color: #ffab91; font-weight: 600; }
+        .progress-detail { margin-top: 0.35rem; font-size: 0.82rem; color: #cbd5e1; }
+        .job-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            font-size: 0.9rem;
+            display: none;
+        }
+        .job-result.err {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+        .job-result.visible { display: block; }
+        details.classic {
+            margin-top: 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 1rem;
+        }
+        details.classic summary {
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        #preview-flow-panel { display: none; }
+        #preview-flow-panel.visible { display: block; }
+        .preview-table-wrap { overflow-x: auto; margin-top: 1rem; max-height: 380px; overflow-y: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        table.preview-grid { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        table.preview-grid th, table.preview-grid td { padding: 0.5rem 0.65rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+        table.preview-grid th { background: rgba(0,0,0,0.35); color: #ffab91; position: sticky; top: 0; }
+        .type-badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 6px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; }
+        .type-badge.receita { background: rgba(46, 125, 50, 0.45); color: #c8e6c9; }
+        .type-badge.tecnica { background: rgba(21, 101, 192, 0.45); color: #bbdefb; }
+        .type-badge.conceito { background: rgba(93, 64, 55, 0.55); color: #d7ccc8; }
+        .decision-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(102, 126, 234, 0.12);
+            border: 1px solid rgba(102, 126, 234, 0.35);
+            font-size: 0.88rem;
+        }
+        .decision-panel h3 { margin: 0 0 0.5rem; font-size: 0.95rem; color: #a5b4fc; }
+        .decision-panel .meta { color: #94a3b8; font-size: 0.8rem; margin-bottom: 0.5rem; }
+        .decision-panel pre.reason { margin: 0; white-space: pre-wrap; word-break: break-word; color: #e2e8f0; font-family: inherit; }
+        .btn-commit { margin-top: 1rem; background: linear-gradient(135deg, #667eea, #764ba2) !important; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">← Home</a>
+        <a href="/core/">Core MCP</a>
+        <a href="/analyze/">Análise de imagens</a>
+    </nav>
+    <main>
+        <h1>RAG Gastronômico <span class="badge-pro">PRO</span></h1>
+        <p class="sub">
+            <strong>Barra de progresso</strong> (ingestão direta), <strong>pré-visualização</strong> com classificação e <strong>DecisionEngine</strong> antes de confirmar, ou modo clássico.
+            Compatível com <code>core.rag_ingest</code> / <code>core.rag_query</code>.
+        </p>
+
+        {% if messages %}
+        <div class="messages">
+            <ul>
+                {% for message in messages %}
+                <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="panel">
+            <h2>Enviar PDF (fluxo PRO)</h2>
+            <form id="rag-pro-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="pdf-pro">Ficheiro PDF</label>
+                <input type="file" name="pdf" id="pdf-pro" accept=".pdf,application/pdf" required>
+                <p class="hint">POST <code>/rag-gastronomico/api/start/</code> → polling <code>/rag-gastronomico/api/status/&lt;job_id&gt;/</code></p>
+                <button type="submit" id="rag-pro-submit">Iniciar ingestão com progresso</button>
+            </form>
+
+            <div id="rag-progress" class="progress-wrap">
+                <div class="progress-track"><div id="rag-progress-fill" class="progress-fill"></div></div>
+                <div class="progress-meta">
+                    <span id="rag-progress-pct">0%</span>
+                    <span id="rag-progress-phase" class="progress-phase">—</span>
+                </div>
+                <div id="rag-progress-detail" class="progress-detail"></div>
+            </div>
+            <div id="rag-job-result" class="job-result"></div>
+
+            <details class="classic">
+                <summary>Modo clássico (envio direto, sem barra)</summary>
+                <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="upload">
+                    <label for="pdf-classic">Ficheiro PDF</label>
+                    <input type="file" name="pdf" id="pdf-classic" accept=".pdf,application/pdf" required>
+                    <button type="submit">Processar e indexar</button>
+                </form>
+            </details>
+        </div>
+
+        <div class="panel">
+            <h2>Revisão + decisão (PRO+)</h2>
+            <p class="hint">Extrai chunks e tipos (receita / técnica / conceito), chama o <code>DecisionEngine.decide_strategic_support</code> com proposta de expansão de conhecimento; só depois indexa os chunks selecionados.</p>
+            <form id="rag-preview-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="pdf-preview">PDF para pré-visualizar</label>
+                <input type="file" name="pdf" id="pdf-preview" accept=".pdf,application/pdf" required>
+                <label for="chunk_words">Palavras por chunk</label>
+                <input type="number" name="chunk_words" id="chunk_words" value="400" min="80" max="1200" step="20">
+                <button type="submit" id="rag-preview-btn">Pré-visualizar e obter decisão</button>
+            </form>
+            <div id="preview-flow-panel">
+                <p id="preview-summary" class="hint" style="margin-top:1rem;"></p>
+                <div id="decision-panel" class="decision-panel" style="display:none;">
+                    <h3>Decisão cognitiva (auditoria)</h3>
+                    <div class="meta" id="decision-meta"></div>
+                    <pre class="reason" id="decision-reason"></pre>
+                </div>
+                <div class="preview-table-wrap">
+                    <table class="preview-grid" id="preview-table">
+                        <thead><tr><th style="width:36px;"><input type="checkbox" id="preview-sel-all" checked title="Todos"></th><th>#</th><th>Tipo</th><th>Prévia do texto</th></tr></thead>
+                        <tbody id="preview-tbody"></tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn-commit" id="rag-commit-btn" disabled>Confirmar indexação dos selecionados</button>
+                <p id="commit-result" class="hint" style="margin-top:0.75rem;"></p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Consultar conhecimento</h2>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="search">
+                <label for="query">Pergunta ou termos</label>
+                <input type="text" name="query" id="query" value="{{ query }}" placeholder="Ex.: como fazer emulsão?" autocomplete="off">
+                <label for="k">Máx. resultados (k)</label>
+                <input type="number" name="k" id="k" value="8" min="1" max="20">
+                <label for="id_prefix">Prefixo de IDs (opcional)</label>
+                <input type="text" name="id_prefix" id="id_prefix" value="{{ id_prefix_default }}" placeholder="{{ id_prefix_default }}">
+                <p class="hint">Filtra hits do vectorstore cujo <code>id</code> começa com este prefixo.</p>
+                <button type="submit">Buscar no RAG</button>
+            </form>
+
+            {% if rag_results is not None %}
+            <div class="result">
+                <strong>{{ rag_results|length }} resultado(s)</strong>
+                {% for r in rag_results %}
+                <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.1);">
+                    <div><span class="score">score</span> {{ r.score|floatformat:4 }} · <code>{{ r.id }}</code></div>
+                    {% if r.text %}<pre>{{ r.text }}</pre>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </main>
+    <script>
+    (function() {
+        const PHASE_LABEL = {
+            upload: 'Receção',
+            extracting: 'Processamento',
+            chunking: 'Chunking',
+            sending: 'Envio ao vectorstore',
+            done: 'Concluído',
+            error: 'Erro'
+        };
+        function getCsrf() {
+            const m = document.cookie.match(/csrftoken=([^;]+)/);
+            if (m) return m[1];
+            const i = document.querySelector('[name=csrfmiddlewaretoken]');
+            return i ? i.value : '';
+        }
+        const form = document.getElementById('rag-pro-form');
+        const btn = document.getElementById('rag-pro-submit');
+        const wrap = document.getElementById('rag-progress');
+        const fill = document.getElementById('rag-progress-fill');
+        const pctEl = document.getElementById('rag-progress-pct');
+        const phaseEl = document.getElementById('rag-progress-phase');
+        const detailEl = document.getElementById('rag-progress-detail');
+        const resultEl = document.getElementById('rag-job-result');
+        let pollTimer = null;
+
+        function setUI(st) {
+            const pct = typeof st.pct === 'number' ? st.pct : 0;
+            fill.style.width = pct + '%';
+            pctEl.textContent = pct + '%';
+            const ph = st.phase || st.step || '—';
+            phaseEl.textContent = PHASE_LABEL[ph] || ph;
+            detailEl.textContent = st.detail || '';
+        }
+
+        function stopPoll() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = null;
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            stopPoll();
+            resultEl.className = 'job-result';
+            resultEl.textContent = '';
+            const fd = new FormData(form);
+            btn.disabled = true;
+            wrap.classList.add('visible');
+            setUI({ pct: 2, phase: 'upload', detail: 'Enviando arquivo…' });
+
+            try {
+                const res = await fetch('/rag-gastronomico/api/start/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCsrf() },
+                    body: fd,
+                    credentials: 'same-origin'
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) {
+                    throw new Error(data.error || res.statusText);
+                }
+                const jobId = data.job_id;
+                pollTimer = setInterval(async function() {
+                    try {
+                        const r = await fetch('/rag-gastronomico/api/status/' + jobId + '/', { credentials: 'same-origin' });
+                        const j = await r.json();
+                        if (!r.ok || !j.ok) {
+                            stopPoll();
+                            btn.disabled = false;
+                            resultEl.className = 'job-result err visible';
+                            resultEl.textContent = j.error || 'Estado indisponível';
+                            return;
+                        }
+                        setUI(j);
+                        if (j.done) {
+                            stopPoll();
+                            btn.disabled = false;
+                            if (j.phase === 'done' && j.result) {
+                                const rr = j.result;
+                                resultEl.className = 'job-result visible';
+                                resultEl.innerHTML =
+                                    '<strong>Indexação concluída</strong><br>' +
+                                    'Chunks enviados: <code>' + (rr.chunks_ingested || 0) + '</code> · ' +
+                                    'Páginas: <code>' + (rr.pages || 0) + '</code><br>' +
+                                    'Prefixo: <code>' + (rr.id_prefix || '') + '</code>';
+                            } else if (j.error) {
+                                resultEl.className = 'job-result err visible';
+                                resultEl.textContent = j.error;
+                            }
+                        }
+                    } catch (err) {
+                        stopPoll();
+                        btn.disabled = false;
+                        resultEl.className = 'job-result err visible';
+                        resultEl.textContent = String(err);
+                    }
+                }, 450);
+            } catch (err) {
+                btn.disabled = false;
+                wrap.classList.add('visible');
+                setUI({ pct: 0, phase: 'error', detail: String(err) });
+                resultEl.className = 'job-result err visible';
+                resultEl.textContent = String(err);
+            }
+        });
+    })();
+    </script>
+    <script>
+    (function() {
+        function getCsrf() {
+            const m = document.cookie.match(/csrftoken=([^;]+)/);
+            if (m) return m[1];
+            const i = document.querySelector('[name=csrfmiddlewaretoken]');
+            return i ? i.value : '';
+        }
+        let currentPreviewId = null;
+        const pform = document.getElementById('rag-preview-form');
+        const pbtn = document.getElementById('rag-preview-btn');
+        const flow = document.getElementById('preview-flow-panel');
+        const tbody = document.getElementById('preview-tbody');
+        const summary = document.getElementById('preview-summary');
+        const decisionPanel = document.getElementById('decision-panel');
+        const decisionMeta = document.getElementById('decision-meta');
+        const decisionReason = document.getElementById('decision-reason');
+        const commitBtn = document.getElementById('rag-commit-btn');
+        const commitResult = document.getElementById('commit-result');
+        const selAll = document.getElementById('preview-sel-all');
+
+        pform.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            commitResult.textContent = '';
+            currentPreviewId = null;
+            commitBtn.disabled = true;
+            pbtn.disabled = true;
+            const fd = new FormData(pform);
+            try {
+                const res = await fetch('/rag-gastronomico/api/preview/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCsrf() },
+                    body: fd,
+                    credentials: 'same-origin'
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.error || res.statusText);
+                currentPreviewId = data.preview_id;
+                flow.classList.add('visible');
+                let sm = 'Páginas: <strong>' + (data.pages || 0) + '</strong> · Chunks: <strong>' + (data.chunk_count || 0) + '</strong>';
+                if (data.truncated) sm += ' <span style="color:#fbbf24">(truncado ao máx. configurado)</span>';
+                summary.innerHTML = sm;
+                tbody.innerHTML = '';
+                (data.chunks || []).forEach(function(row) {
+                    const tr = document.createElement('tr');
+                    const typ = (row.type || 'conceito').replace(/[^a-z]/gi, '');
+                    tr.innerHTML =
+                        '<td><input type="checkbox" class="chunk-cb" data-index="' + row.index + '" checked></td>' +
+                        '<td>' + row.index + '</td>' +
+                        '<td><span class="type-badge ' + typ + '">' + (row.type || '') + '</span></td>' +
+                        '<td>' + escapeHtml(row.snippet || '') + '</td>';
+                    tbody.appendChild(tr);
+                });
+                const dec = data.decision || {};
+                if (dec.ok !== false && (dec.reasoning || dec.confidence != null)) {
+                    decisionPanel.style.display = 'block';
+                    decisionMeta.textContent = 'confiança: ' + (dec.confidence != null ? dec.confidence : '—') +
+                        ' · risco: ' + (dec.risk_level || '—') +
+                        (dec.cognitive_version ? ' · ' + dec.cognitive_version : '');
+                    decisionReason.textContent = (dec.reasoning || '') + (dec.expected_outcome ? '\n\nEsperado: ' + dec.expected_outcome : '');
+                } else {
+                    decisionPanel.style.display = 'block';
+                    decisionMeta.textContent = 'Decisão indisponível';
+                    decisionReason.textContent = dec.error || '—';
+                }
+                commitBtn.disabled = false;
+            } catch (err) {
+                flow.classList.add('visible');
+                summary.textContent = String(err);
+                tbody.innerHTML = '';
+                decisionPanel.style.display = 'none';
+            }
+            pbtn.disabled = false;
+        });
+
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        selAll.addEventListener('change', function() {
+            document.querySelectorAll('.chunk-cb').forEach(function(cb) { cb.checked = selAll.checked; });
+        });
+
+        commitBtn.addEventListener('click', async function() {
+            if (!currentPreviewId) return;
+            const idx = [];
+            document.querySelectorAll('.chunk-cb:checked').forEach(function(cb) {
+                idx.push(parseInt(cb.getAttribute('data-index'), 10));
+            });
+            commitBtn.disabled = true;
+            commitResult.textContent = 'A indexar…';
+            try {
+                const res = await fetch('/rag-gastronomico/api/commit/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrf()
+                    },
+                    body: JSON.stringify({ preview_id: currentPreviewId, indices: idx }),
+                    credentials: 'same-origin'
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.error || res.statusText);
+                commitResult.innerHTML = 'Indexados <strong>' + (data.chunks_ingested || 0) + '</strong> chunk(s). Prefixo <code>' + (data.id_prefix || '') + '</code>';
+                currentPreviewId = null;
+                commitBtn.disabled = true;
+                flow.classList.remove('visible');
+            } catch (err) {
+                commitResult.textContent = String(err);
+                commitBtn.disabled = false;
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

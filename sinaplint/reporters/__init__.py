@@ -1,0 +1,1 @@
+"""Reporters SinapLint (console, JSON)."""

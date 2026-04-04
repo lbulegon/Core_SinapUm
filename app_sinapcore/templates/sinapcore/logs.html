@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs — {{ module }} | SinapCore</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e8e8e8;
+        }
+        nav {
+            background: rgba(15, 52, 96, 0.95);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .nav-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-container a { color: #a29bfe; text-decoration: none; font-weight: 600; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+        h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+        table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 0.65rem 0.85rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.9rem; }
+        th { background: rgba(108, 92, 231, 0.35); font-weight: 600; }
+        tr:hover td { background: rgba(255,255,255,0.04); }
+        .ctx { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; font-size: 0.75rem; color: #b2bec3; }
+    </style>
+</head>
+<body>
+<nav>
+    <div class="nav-container">
+        <span style="font-weight:700;">Logs: {{ module }}</span>
+        <a href="{% url 'sinapcore_dashboard' %}">← Dashboard SinapCore</a>
+    </div>
+</nav>
+<div class="wrap">
+    <h1>Auditoria de decisões</h1>
+    <p style="color:#aaa;margin-bottom:1rem;">Últimos registros (máx. 100)</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Decisão</th>
+                <th>Ação (tipo)</th>
+                <th>Contexto (resumo)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.timestamp }}</td>
+                <td>{{ log.decision }}</td>
+                <td>{{ log.action|default:"—" }}</td>
+                <td class="ctx" title="{{ log.context }}">{% if log.context %}{{ log.context }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">Sem registros para este módulo.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
