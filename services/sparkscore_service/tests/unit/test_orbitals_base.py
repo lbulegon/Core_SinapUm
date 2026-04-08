@@ -97,9 +97,9 @@ class TestOrbitalRegistry:
         orb = registry.get_orbital("csv")
         assert orb.orbital_id == "csv"
 
-    def test_get_placeholder_orbitals_inclui_csv(self):
-        # CSV está enabled: false na config
+    def test_get_active_orbitals_inclui_csv(self):
+        # CSV está agora enabled: true na config (implementado)
         registry = OrbitalRegistry()
-        placeholders = registry.get_placeholder_orbitals()
-        ids = [o.orbital_id for o in placeholders]
+        active = registry.get_active_orbitals()
+        ids = [o.orbital_id for o in active]
         assert "csv" in ids
