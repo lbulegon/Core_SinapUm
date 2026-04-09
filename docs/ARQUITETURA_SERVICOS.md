@@ -24,8 +24,13 @@ Cada serviço no MCP SinapUm é **completamente independente**, garantindo que p
 │   ├── docker-compose.yml
 │   └── (volumes: pg_data, redis_data, instances)
 │
-└── [outros serviços futuros]
+├── worldgraph_service/  # Portas 7474 (HTTP), 7687 (BOLT) - Memória Diagramática (Neo4j)
+├── vectorstore_service/ # Porta 8010 - Memória Semântica (FastAPI + FAISS)
+│
+└── [outros serviços]
 ```
+
+**Documentação dos serviços de Memória (MVP):** [MEMORIA_DIAGRAMATICA_E_SEMANTICA.md](MEMORIA_DIAGRAMATICA_E_SEMANTICA.md) — WorldGraph (Neo4j) e Vectorstore (FAISS).
 
 ## 🔒 Isolamento por Serviço
 

@@ -64,11 +64,6 @@
             color: white;
         }
         
-        .nav-menu a.grafana-link {
-            background: #667eea;
-            color: white;
-        }
-        
         main {
             flex: 1;
             padding: 2rem;
@@ -210,6 +205,9 @@
             text-align: center;
             color: #666;
         }
+        .back-to-panel { margin-top: 1.5rem; text-align: center; }
+        .back-to-panel a { color: #667eea; font-weight: 600; text-decoration: none; font-size: 1rem; }
+        .back-to-panel a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -220,7 +218,7 @@
                 <li><a href="/">Home</a></li>
                 <li><a href="/analyze/" class="active">📸 Análise de Imagens</a></li>
                 <li><a href="/admin/">Admin</a></li>
-                <li><a href="http://69.169.102.84:3000/login" target="_blank" class="grafana-link">📊 Grafana</a></li>
+                <li><a href="http://69.169.102.84:3000/login" target="_blank">📊 Grafana</a></li>
             </ul>
         </div>
     </nav>
@@ -253,6 +251,7 @@
                 </div>
                 <button type="submit" class="btn">🔍 Analisar Imagem(ns)</button>
             </form>
+            <p class="back-to-panel"><a href="/">← Voltar ao painel</a></p>
             
             <script>
                 // Mostrar arquivos selecionados

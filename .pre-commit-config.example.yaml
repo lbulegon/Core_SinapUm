@@ -1,0 +1,12 @@
+# Copiar para a raiz do repositório como `.pre-commit-config.yaml` quando o Git
+# root for apenas a pasta Core_SinapUm (sem pai "Core_SinapUm/").
+
+repos:
+  - repo: local
+    hooks:
+      - id: sinaplint-check
+        name: SinapLint Check
+        entry: python3 sinaplint.py check
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]

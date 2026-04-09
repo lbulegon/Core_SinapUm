@@ -4,6 +4,7 @@
 
 import logging
 from typing import Dict, Any, Optional
+from django.conf import settings
 from django.utils import timezone
 from ..models import EvolutionInstance
 from ..clients import EvolutionClient
@@ -86,6 +87,16 @@ class InstanceService:
         )
         
         if creation_success:
+            # Configurar webhook por instância - cada usuário recebe eventos na sua própria URL
+            webhook_base = getattr(settings, 'EVOLUTION_WEBHOOK_BASE_URL', '')
+            if webhook_base:
+                webhook_url = f"{webhook_base.rstrip('/')}/webhooks/evolution/{instance_id}/messages"
+                webhook_result = self.evolution_client.set_webhook(instance_id, webhook_url)
+                if webhook_result.get('error'):
+                    logger.warning(f"Webhook não configurado para {instance_id}: {webhook_result.get('error')}")
+                else:
+                    logger.info(f"Webhook configurado para {instance_id}: {webhook_url}")
+            
             # Atualizar instância no banco
             instance.status = EvolutionInstance.InstanceStatus.CONNECTING
             

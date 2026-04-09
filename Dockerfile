@@ -7,13 +7,18 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Instalar dependências do sistema
+# Instalar dependências do sistema (incl. Pandoc + LaTeX para md→pdf)
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     gcc \
     python3-dev \
     libpq-dev \
+    git \
     curl \
+    pandoc \
+    texlive-xetex \
+    texlive-fonts-recommended \
+    texlive-lang-european \
     && rm -rf /var/lib/apt/lists/*
 
 # Criar diretório de trabalho

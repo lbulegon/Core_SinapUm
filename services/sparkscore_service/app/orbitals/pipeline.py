@@ -5,6 +5,7 @@ Pipeline Orbital - Executa análise completa de orbitais
 from typing import Dict, List
 from app.orbitals.registry import OrbitalRegistry
 from app.orbitals.orbital_result import OrbitalResult
+from app.orbitals.ppa_bridge import compute_pipeline_ppa
 
 
 class OrbitalPipeline:
@@ -14,7 +15,9 @@ class OrbitalPipeline:
     
     def __init__(self):
         self.registry = OrbitalRegistry()
-        self.pipeline_version = "1.0.0"
+        cfg = self.registry.config.get("pipeline") or {}
+        self.pipeline_version = str(cfg.get("version", "1.0.0"))
+        self._pipeline_cfg = cfg
     
     def run_orbitals(self, payload: Dict) -> Dict:
         """
@@ -29,7 +32,8 @@ class OrbitalPipeline:
                 "pipeline_version": str,
                 "overall_score": float,
                 "orbitals": [OrbitalResult...],
-                "insights": List[Dict]
+                "insights": List[Dict],
+                "ppa": Dict (antecipacao de acao + modulacao ambiental opcional)
             }
         """
         # 1. Executar orbitais ativos
@@ -87,37 +91,62 @@ class OrbitalPipeline:
         # 5. Gerar insights
         insights = self._generate_insights(payload, active_results)
         
+        # 6. PPA / antecipação de ação (usa todos os orbitais: ativos + placeholders, p.ex. indícios ambientais)
+        ppa = compute_pipeline_ppa(all_results, self._pipeline_cfg)
+        
         return {
             "pipeline_version": self.pipeline_version,
             "overall_score": overall_score,
             "orbitals": [result.model_dump() for result in all_results],
-            "insights": insights
+            "insights": insights,
+            "ppa": ppa,
         }
     
     def _calculate_overall_score(self, active_results: List[OrbitalResult]) -> float:
         """
-        Calcula overall_score como média dos orbitais ativos
-        
-        Args:
-            active_results: Lista de resultados de orbitais ativos
-            
-        Returns:
-            Score geral (0-100)
+        Calcula overall_score: média ponderada dos orbitais ativos com score.
+
+        Pesos em `pipeline.overall_score_weights` (orbitals.yaml). Peso 0 = orbital
+        não entra na média (útil para environmental_indiciary antes da validação).
+        Se não houver mapa de pesos, mantém média simples (compatibilidade).
         """
         if not active_results:
             return 0.0
-        
-        # Filtrar apenas resultados com score válido
+
         valid_results = [r for r in active_results if r.score is not None]
-        
         if not valid_results:
             return 0.0
-        
-        # Média simples (pesos iguais por enquanto)
-        total_score = sum(r.score for r in valid_results)
-        avg_score = total_score / len(valid_results)
-        
-        return round(avg_score, 2)
+
+        weights_map = self._pipeline_cfg.get("overall_score_weights") or {}
+        if not weights_map:
+            total_score = sum(float(r.score) for r in valid_results)
+            return round(total_score / len(valid_results), 2)
+
+        bridge = self._pipeline_cfg.get("ppa_bridge") or {}
+        crit_mult = float(bridge.get("critical_state_weight_multiplier") or 1.0)
+
+        weighted_sum = 0.0
+        w_total = 0.0
+        for r in valid_results:
+            w = float(weights_map.get(r.orbital_id, 1.0))
+            if w <= 0.0:
+                continue
+            if (
+                crit_mult > 1.0
+                and r.orbital_id == "environmental_indiciary"
+                and r.raw_features
+            ):
+                est = str(r.raw_features.get("estado_ambiental") or "")
+                if est in ("sobrecarga", "colapso"):
+                    w *= crit_mult
+            weighted_sum += float(r.score) * w
+            w_total += w
+
+        if w_total <= 0.0:
+            total_score = sum(float(r.score) for r in valid_results)
+            return round(total_score / len(valid_results), 2)
+
+        return round(weighted_sum / w_total, 2)
     
     def _generate_insights(self, payload: Dict, active_results: List[OrbitalResult]) -> List[Dict]:
         """

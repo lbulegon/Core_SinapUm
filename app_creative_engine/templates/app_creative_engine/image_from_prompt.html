@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerar imagem por IA - Creative Engine</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem 2.5rem;
+            max-width: 640px;
+            margin: 0 auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        }
+        h1 { margin: 0 0 0.5rem; color: #667eea; font-size: 1.8rem; }
+        .description { margin: 0 0 1.5rem; color: #555; font-size: 0.95rem; }
+        .section-title { font-size: 1rem; font-weight: 600; color: #333; margin: 1.25rem 0 0.5rem; }
+        .field { margin-bottom: 1rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.35rem; color: #333; font-size: 0.9rem; }
+        input[type="text"], input[type="file"], select, textarea {
+            width: 100%;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        textarea { min-height: 100px; resize: vertical; }
+        .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .row .field { flex: 1; min-width: 140px; }
+        button {
+            background: #667eea;
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            padding: 0.7rem 1.6rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        button:hover { background: #5568d3; }
+        .result, .error {
+            margin-top: 1.5rem;
+            padding: 0.9rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .result {
+            background: #e6fffa;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        .error {
+            background: #fef2f2;
+            color: #991b1b;
+            border-left: 4px solid #f87171;
+        }
+        .result img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 0.5rem; }
+        a.download-link { color: #2563eb; text-decoration: none; font-weight: 600; }
+        .divider { border: 0; height: 1px; background: #e5e7eb; margin: 1.5rem 0; }
+        .back-panel { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+        .back-panel a { color: #667eea; text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+        .back-panel a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerar imagem por IA</h1>
+        <p class="description">
+            Descreva a imagem desejada ou envie uma imagem modelo + descrição para gerar uma nova (DALL·E).
+        </p>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if image_url %}
+            <div class="result">
+                Imagem gerada com sucesso.
+                <br><a href="{{ image_url }}" target="_blank" class="download-link">Abrir em nova aba</a>
+                <br><img src="{{ image_url }}" alt="Imagem gerada" style="max-width: 100%;">
+            </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <p class="section-title">1. Descrição (obrigatório)</p>
+            <div class="field">
+                <label for="prompt">O que você quer na imagem?</label>
+                <textarea id="prompt" name="prompt" placeholder="Ex.: Um servidor de rack com luzes azuis e roxas, estilo data center, fundo escuro" required></textarea>
+            </div>
+
+            <hr class="divider">
+
+            <p class="section-title">2. Imagem modelo (opcional)</p>
+            <div class="field">
+                <label for="image">Envie uma imagem para gerar uma variação/edição a partir dela</label>
+                <input id="image" type="file" name="image" accept="image/*">
+            </div>
+
+            <hr class="divider">
+
+            <p class="section-title">3. Opções (apenas quando não usa imagem modelo)</p>
+            <div class="row">
+                <div class="field">
+                    <label for="size">Tamanho</label>
+                    <select id="size" name="size">
+                        <option value="1024x1024">1024×1024</option>
+                        <option value="1024x1792">1024×1792 (retrato)</option>
+                        <option value="1792x1024">1792×1024 (paisagem)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="quality">Qualidade</label>
+                    <select id="quality" name="quality">
+                        <option value="standard">Standard</option>
+                        <option value="hd">HD</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="style">Estilo</label>
+                    <select id="style" name="style">
+                        <option value="vivid">Vivid</option>
+                        <option value="natural">Natural</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit">Gerar imagem</button>
+        </form>
+        <p class="back-panel"><a href="/">← Voltar ao painel</a></p>
+    </div>
+</body>
+</html>

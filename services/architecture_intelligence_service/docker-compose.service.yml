@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  architecture_intelligence_service:
+    build: .
+    container_name: mcp_sinapum_architecture_intelligence
+    ports:
+      - "${ARCHITECTURE_INTELLIGENCE_PORT:-7025}:7025"
+    environment:
+      - OPENMIND_SERVICE_URL=${OPENMIND_SERVICE_URL:-http://openmind:8001}
+      - ARCHITECTURE_INTELLIGENCE_PORT=7025
+      - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7025/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

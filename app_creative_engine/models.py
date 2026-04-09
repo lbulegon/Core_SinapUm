@@ -91,3 +91,73 @@ class CreativeScore(models.Model):
     
     def __str__(self):
         return f"{self.variant_id} - Score: {self.engagement_score:.2f}"
+
+
+class CreativeJob(models.Model):
+    """
+    Job assíncrono de geração de criativos (fluxo Kwai/Tamo)
+    Usuário envia foto → processamento em background → múltiplas variações
+    """
+    class JobStatus(models.TextChoices):
+        QUEUED = 'queued', 'Na fila'
+        PROCESSING = 'processing', 'Processando'
+        COMPLETED = 'completed', 'Concluído'
+        FAILED = 'failed', 'Falhou'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    shopper_id = models.CharField(max_length=128, db_index=True, null=True, blank=True)
+    product_id = models.CharField(max_length=128, db_index=True, null=True, blank=True)
+
+    # Input
+    image_path = models.CharField(max_length=512, help_text='Caminho da imagem de entrada')
+    image_url = models.URLField(null=True, blank=True, help_text='URL da imagem (alternativa)')
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=JobStatus.choices,
+        default=JobStatus.QUEUED,
+        db_index=True
+    )
+    stage = models.CharField(max_length=64, blank=True, help_text='Etapa atual: analyzing, removing_bg, generating')
+    progress = models.IntegerField(default=0, help_text='0-100')
+    description = models.TextField(blank=True, help_text='Descrição gerada do produto')
+    error_message = models.TextField(blank=True, null=True)
+
+    # Metadados
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'creative_job'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Job {self.id} - {self.get_status_display()}"
+
+
+class CreativeJobOutput(models.Model):
+    """Output gerado por um CreativeJob (imagem lifestyle, clean shot, etc)"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    job = models.ForeignKey(
+        CreativeJob,
+        on_delete=models.CASCADE,
+        related_name='outputs'
+    )
+
+    style = models.CharField(max_length=64, db_index=True)  # lifestyle, clean_product, contextual
+    template_id = models.CharField(max_length=64, blank=True)
+    image_url = models.URLField()
+    thumbnail_url = models.URLField(null=True, blank=True)
+
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'creative_job_output'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.job_id} - {self.style}"

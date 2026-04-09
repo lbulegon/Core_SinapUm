@@ -35,7 +35,7 @@ case "$RESET_TYPE" in
         echo "⏳ Aguardando 3 segundos..."
         sleep 3
         
-        echo "▶️  Recriando containers..."
+        echo "▶️  Recriando containers (inclui WorldGraph + Vectorstore)..."
         docker compose up -d
         ;;
     
@@ -66,7 +66,7 @@ case "$RESET_TYPE" in
         echo "⏳ Aguardando 3 segundos..."
         sleep 3
         
-        echo "▶️  Criando e iniciando containers..."
+        echo "▶️  Criando e iniciando containers (inclui WorldGraph + Vectorstore)..."
         docker compose up -d
         ;;
     
@@ -104,10 +104,12 @@ echo ""
 echo "✅ Reset concluído!"
 echo ""
 echo "Comandos úteis:"
-echo "  docker compose ps          - Ver status"
-echo "  docker compose logs -f     - Ver logs em tempo real"
-echo "  docker compose logs web    - Ver logs do Django"
-echo "  docker compose logs db     - Ver logs do PostgreSQL"
+echo "  docker compose ps            - Ver status"
+echo "  docker compose logs -f       - Ver logs em tempo real"
+echo "  docker compose logs web      - Ver logs do Django"
+echo "  docker compose logs db       - Ver logs do PostgreSQL"
 echo "  docker compose logs openmind - Ver logs do OpenMind AI"
+echo "  docker compose logs worldgraph_service  - Ver logs do Neo4j (Memória Diagramática)"
+echo "  docker compose logs vectorstore_service - Ver logs do FAISS (Memória Semântica)"
 echo ""
 

@@ -1,0 +1,4 @@
+# Dependências opcionais para Creative Engine (fluxo Kwai/Tamo)
+# Remoção de fundo - pip install rembg
+# rembg>=2.0.0
+# pillow  # já em requirements.txt

@@ -1,8 +1,11 @@
 """
 Motor SinapLint para o produto SinapLint SaaS (orquestração remota).
 
-GET/POST ``/api/sinaplint/internal/engine/`` — executa ``SinapLint().run()`` sobre a árvore
-do monólito (``BASE_DIR``) e retorna o JSON completo (igual ao CLI ``sinaplint check --json``).
+GET/POST ``/api/sinaplint/internal/engine/`` — retorna o JSON completo (igual ao CLI ``sinaplint check --json``).
+
+- **Sem** ``repo_url`` no corpo (ou GET): analisa a árvore do monólito (``BASE_DIR``).
+- **Com** ``repo_url`` (POST JSON): valida HTTPS (GitHub/GitLab/Codeberg), clona com ``git`` para
+  diretório temporário e analisa esse clone (produto landing / demo).
 
 Autenticação (recomendado em produção):
   - ``Authorization: Bearer <segredo>`` ou
@@ -25,6 +28,11 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from app_sinapcore.services.sinaplint_service import SinapLintService
+from app_sinaplint.services.public_repo_clone import (
+    SinapLintRepoError,
+    temporary_clone,
+    validate_public_repo_url,
+)
 
 
 def _auth_error_or_none(request: Request) -> Response | None:
@@ -56,12 +64,52 @@ def _auth_error_or_none(request: Request) -> Response | None:
     return None
 
 
+def _resolve_repo_url(request: Request) -> tuple[str | None, Response | None]:
+    """
+    Se POST JSON incluir ``repo_url`` não vazio, valida o URL HTTPS.
+    Devolve (url_normalizado, None) ou (None, Response 400).
+    """
+    if request.method != "POST":
+        return None, None
+    data = request.data if isinstance(getattr(request, "data", None), dict) else {}
+    raw = data.get("repo_url")
+    if not isinstance(raw, str) or not raw.strip():
+        return None, None
+    norm, verr = validate_public_repo_url(raw.strip())
+    if verr or not norm:
+        return None, Response(
+            {"error": "invalid_repo_url", "detail": verr or "URL inválida."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return norm, None
+
+
 @api_view(["GET", "POST"])
 @permission_classes([AllowAny])
 def engine_run(request: Request) -> Response:
     err = _auth_error_or_none(request)
     if err is not None:
         return err
+
+    repo_url, bad = _resolve_repo_url(request)
+    if bad is not None:
+        return bad
+
+    if repo_url:
+        try:
+            with temporary_clone(repo_url) as cloned:
+                result = SinapLintService().analyze(cloned)
+        except SinapLintRepoError as exc:
+            return Response(
+                {"error": "clone_failed", "detail": str(exc)},
+                status=getattr(exc, "status_code", 502),
+            )
+        except Exception as exc:
+            return Response(
+                {"error": "sinaplint_failed", "detail": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response(result, status=status.HTTP_200_OK)
 
     # BASE_DIR = raiz do monólito Core_SinapUm (pai de setup/)
     base = Path(getattr(settings, "BASE_DIR", Path(__file__).resolve().parent.parent))

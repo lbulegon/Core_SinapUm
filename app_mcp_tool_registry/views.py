@@ -267,13 +267,18 @@ def log_tool_call(request):
         
         log_entry = ToolCallLog.objects.create(
             request_id=body.get("request_id", ""),
-            trace_id=body.get("trace_id"),  # Novo campo (opcional)
+            trace_id=body.get("trace_id"),  # Opcional
             tool=body.get("tool", ""),
             version=body.get("version", ""),
             client_key=body.get("client_key", ""),
             ok=body.get("ok", False),
             status_code=body.get("status_code"),
             latency_ms=body.get("latency_ms"),
+            tokens_in=body.get("tokens_in"),
+            tokens_out=body.get("tokens_out"),
+            cost_usd=body.get("cost_usd"),
+            model=body.get("model", ""),
+            provider=body.get("provider", ""),
             input_payload=body.get("input_payload"),
             output_payload=body.get("output_payload"),
             error_payload=body.get("error_payload")
@@ -462,4 +467,86 @@ def list_executions(request):
             {"error": "Erro ao listar execuções", "detail": str(e)},
             status=500
         )
+
+
+# =============================================================================
+# MCP Resources (sinap://) — aditivo, não altera contratos existentes
+# =============================================================================
+
+def _mcp_resources_enabled():
+    """MCP_RESOURCES_ENABLED: default True. Se false, endpoints retornam 404 controlado."""
+    try:
+        from core.services.feature_flags import is_enabled
+        return is_enabled("MCP_RESOURCES_ENABLED", default=True)
+    except Exception:
+        return True
+
+
+@require_http_methods(["GET"])
+def resource_get(request):
+    """
+    GET /core/resources/?uri=sinap://vertical/entity/id
+
+    Resolve um MCP Resource por URI. Retorna 404 se URI inválida ou handler não registrado.
+    Se MCP_RESOURCES_ENABLED=false, retorna 404 com mensagem controlada.
+    """
+    if not _mcp_resources_enabled():
+        return JsonResponse({
+            "error": "MCP Resources está desabilitado",
+            "code": "MCP_RESOURCES_DISABLED",
+            "uri": request.GET.get("uri", ""),
+        }, status=404)
+    uri = request.GET.get("uri")
+    if not uri:
+        return JsonResponse({"error": "Query param 'uri' obrigatório (ex: uri=sinap://vitrinezap/catalog/123)"}, status=400)
+    try:
+        from mcp.resources import resolve_resource
+        result = resolve_resource(uri)
+        if result is None:
+            return JsonResponse({"error": "Resource não encontrado ou handler não registrado", "uri": uri}, status=404)
+        return JsonResponse({"uri": result.uri, "data": result.data, "content_type": result.content_type, "meta": result.meta or {}})
+    except ImportError as e:
+        logger.warning("mcp.resources não disponível: %s", e)
+        return JsonResponse({"error": "MCP Resources não disponível", "detail": str(e)}, status=501)
+    except Exception as e:
+        logger.exception("Erro ao resolver resource %s", uri)
+        return JsonResponse({"error": "Erro ao resolver resource", "uri": uri, "detail": str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+def resource_list(request):
+    """
+    GET /core/resources/list/?uri=sinap://vertical/entity&limit=10&cursor=...
+
+    Lista MCP Resources por URI base. Retorna 404 se handler não registrado.
+    Se MCP_RESOURCES_ENABLED=false, retorna 404 com mensagem controlada.
+    """
+    if not _mcp_resources_enabled():
+        return JsonResponse({
+            "error": "MCP Resources está desabilitado",
+            "code": "MCP_RESOURCES_DISABLED",
+            "uri": request.GET.get("uri", ""),
+        }, status=404)
+    uri = request.GET.get("uri")
+    if not uri:
+        return JsonResponse({"error": "Query param 'uri' obrigatório (ex: uri=sinap://vitrinezap/catalog)"}, status=400)
+    try:
+        from mcp.resources import list_resources
+        query = {k: request.GET.get(k) for k in ("limit", "cursor", "q") if request.GET.get(k)}
+        result = list_resources(uri, query=query or None)
+        if result is None:
+            return JsonResponse({"error": "List handler não registrado para este resource", "uri": uri}, status=404)
+        return JsonResponse({
+            "uri": result.uri,
+            "items": result.items,
+            "total": result.total,
+            "next_cursor": result.next_cursor,
+            "meta": result.meta or {},
+        })
+    except ImportError as e:
+        logger.warning("mcp.resources não disponível: %s", e)
+        return JsonResponse({"error": "MCP Resources não disponível", "detail": str(e)}, status=501)
+    except Exception as e:
+        logger.exception("Erro ao listar resources %s", uri)
+        return JsonResponse({"error": "Erro ao listar resources", "uri": uri, "detail": str(e)}, status=500)
 

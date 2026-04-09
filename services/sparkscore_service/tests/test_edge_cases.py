@@ -20,6 +20,7 @@ class TestEdgeCasesPayload:
         assert "orbitals" in result
         assert len(result["orbitals"]) > 0
         assert result["overall_score"] is not None
+        assert "ppa" in result
 
     def test_payload_com_distribution_vazio(self):
         payload = payload_minimal()

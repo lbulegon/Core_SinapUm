@@ -6,3 +6,9 @@ class AppMcpToolRegistryConfig(AppConfig):
     name = 'app_mcp_tool_registry'
     verbose_name = 'MCP Tool Registry'
 
+    def ready(self):
+        try:
+            from adapters.register_resources import register_all_resource_handlers
+            register_all_resource_handlers()
+        except Exception:
+            pass

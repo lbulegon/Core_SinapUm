@@ -13,5 +13,8 @@ urlpatterns = [
     path('tools/resolve/', views.resolve_tool, name='resolve_tool'),
     path('tools/log/', views.log_tool_call, name='log_tool_call'),
     path('executions/', views.list_executions, name='list_executions'),
+    # MCP Resources (sinap://) — aditivo
+    path('resources/', views.resource_get, name='resource_get'),
+    path('resources/list/', views.resource_list, name='resource_list'),
 ]
 

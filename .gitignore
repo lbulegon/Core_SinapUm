@@ -41,6 +41,7 @@ venv.bak/
 .venv/
 venv/
 **/.venv/
+.django_cache/
 
 # ============================================
 # Django - Arquivos do projeto
@@ -397,3 +398,9 @@ deploy_*.ps1
 !**/migrations/.gitkeep
 !**/static/.gitkeep
 !**/media/.gitkeep
+
+# Artefatos vazios acidentais na raiz (evitar commit involuntário)
+/=
+/[[]internal]
+/reading
+/transferring

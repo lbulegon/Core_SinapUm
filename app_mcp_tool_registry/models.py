@@ -84,6 +84,9 @@ class ToolVersion(models.Model):
     # opcional: referência de prompt/template
     prompt_ref = models.CharField(max_length=160, blank=True)
 
+    # PR5: idempotência declarativa — quando True, execução pode usar Redis para dedupe (best-effort)
+    is_idempotent = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -108,6 +111,13 @@ class ToolCallLog(models.Model):
     status_code = models.IntegerField(default=200)
 
     latency_ms = models.IntegerField(default=0)
+
+    # Telemetria (nullable — observabilidade MCP/ACP)
+    tokens_in = models.IntegerField(null=True, blank=True)
+    tokens_out = models.IntegerField(null=True, blank=True)
+    cost_usd = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    model = models.CharField(max_length=80, blank=True)
+    provider = models.CharField(max_length=80, blank=True)
 
     input_payload = models.JSONField(null=True, blank=True)
     output_payload = models.JSONField(null=True, blank=True)

@@ -386,3 +386,40 @@ class EvolutionClient:
         result = self._request('PUT', endpoint)
         return result
 
+    def set_webhook(self, instance_id: str, webhook_url: str) -> Dict[str, Any]:
+        """
+        Configura webhook por instância - cada usuário recebe eventos na sua própria URL.
+        
+        Permite gerenciar sessões individualmente: cada instância Evolution
+        envia eventos (QR code, mensagens, conexão) para a URL específica
+        daquele usuário.
+        
+        Args:
+            instance_id: ID da instância (ex: 'shopper_123')
+            webhook_url: URL completa do webhook (ex: 'http://host:8000/webhooks/evolution/shopper_123/messages')
+        
+        Returns:
+            {
+                'success': bool,
+                'error': '...' (se houver)
+            }
+        """
+        endpoint = f'/webhook/set/{instance_id}'
+        data = {
+            'enabled': True,
+            'url': webhook_url.rstrip('/'),
+            'webhookByEvents': False,
+            'webhookBase64': False,
+            'events': [
+                'QRCODE_UPDATED',
+                'MESSAGES_UPSERT',
+                'MESSAGES_UPDATE',
+                'MESSAGES_DELETE',
+                'SEND_MESSAGE',
+                'CONNECTION_UPDATE',
+            ],
+        }
+        result = self._request('POST', endpoint, data, raise_on_error=False)
+        if result.get('error'):
+            logger.warning(f"Erro ao configurar webhook para {instance_id}: {result.get('error')}")
+        return result

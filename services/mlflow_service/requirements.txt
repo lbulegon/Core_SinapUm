@@ -1,0 +1,5 @@
+# Requirements para rodar os client_examples localmente
+# Instalar com: pip install -r requirements.txt
+mlflow>=2.0
+scikit-learn>=1.3
+psycopg2-binary>=2.9

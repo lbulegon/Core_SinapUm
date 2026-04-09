@@ -46,7 +46,8 @@ async def analyze_piece(request: AnalyzePieceRequest):
             "pipeline_version": result["pipeline_version"],
             "overall_score": result["overall_score"],
             "orbitals": result["orbitals"],
-            "insights": result["insights"]
+            "insights": result["insights"],
+            "ppa": result["ppa"],
         }
         
         # Armazenar análise se solicitado

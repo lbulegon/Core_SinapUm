@@ -13,6 +13,10 @@ echo ""
 # Navegar para o diretório do projeto
 cd "$(dirname "$0")"
 
+# Garantir que os serviços de memória (WorldGraph + Vectorstore) estão iniciados
+echo "🔄 Garantindo serviços de memória (WorldGraph + Vectorstore)..."
+docker compose up -d worldgraph_service vectorstore_service 2>/dev/null || true
+
 echo "🔄 Reiniciando todos os serviços..."
 docker compose restart
 

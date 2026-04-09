@@ -6,6 +6,7 @@ import pytest
 from app.orbitals.base_orbital import BaseOrbital
 from app.orbitals.semiotic_orbital import SemioticOrbital
 from app.orbitals.csv_orbital import CsvOrbital
+from app.orbitals.environmental_indiciary_orbital import EnvironmentalIndiciaryOrbital
 from app.orbitals.registry import OrbitalRegistry
 from tests.conftest import payload_minimal
 
@@ -97,9 +98,55 @@ class TestOrbitalRegistry:
         orb = registry.get_orbital("csv")
         assert orb.orbital_id == "csv"
 
-    def test_get_placeholder_orbitals_inclui_csv(self):
-        # CSV está enabled: false na config
+    def test_get_placeholder_orbitals_inclui_desabilitados(self):
         registry = OrbitalRegistry()
         placeholders = registry.get_placeholder_orbitals()
         ids = [o.orbital_id for o in placeholders]
-        assert "csv" in ids
+        # environmental_indiciary: enabled false (Fase 1)
+        assert "environmental_indiciary" in ids
+
+    def test_environmental_indiciary_registrado(self):
+        registry = OrbitalRegistry()
+        assert "environmental_indiciary" in registry._orbitals
+
+
+class TestEnvironmentalIndiciaryOrbital:
+    """Orbital indiciário ambiental — entrada estruturada opcional."""
+
+    @pytest.fixture
+    def orbital(self):
+        return EnvironmentalIndiciaryOrbital()
+
+    def test_placeholder_sem_indicios(self, orbital):
+        payload = payload_minimal()
+        r = orbital.analyze(payload)
+        assert r.orbital_id == "environmental_indiciary"
+        assert r.status == "placeholder"
+        assert r.score is None
+
+    def test_inferencia_com_indicios(self, orbital):
+        payload = payload_minimal(
+            indicios_ambientais={
+                "ruido": 0.7,
+                "densidade": 0.8,
+                "contaminacao_artefato": 0.9,
+            }
+        )
+        r = orbital.analyze(payload)
+        assert r.status == "active"
+        assert r.score is not None
+        assert 0 <= r.score <= 100
+        assert r.confidence is not None
+        assert r.raw_features.get("estado_ambiental")
+        assert "score_pressao" in r.raw_features
+        assert "score_estabilidade" in r.raw_features
+        assert isinstance(r.raw_features.get("alertas"), list)
+
+    def test_indicios_via_context(self, orbital):
+        payload = payload_minimal()
+        payload["context"] = {
+            "indicios_ambientais": {"ritmo_operacional": 0.5, "densidade": 0.2},
+        }
+        r = orbital.analyze(payload)
+        assert r.status == "active"
+        assert r.raw_features.get("estado_ambiental") == "estavel"

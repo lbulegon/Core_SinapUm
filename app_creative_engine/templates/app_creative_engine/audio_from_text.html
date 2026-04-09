@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerar áudio por IA - Creative Engine</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 2rem 2.5rem;
+            max-width: 640px;
+            margin: 0 auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        }
+        h1 { margin: 0 0 0.5rem; color: #0d9488; font-size: 1.8rem; }
+        .description { margin: 0 0 1.5rem; color: #555; font-size: 0.95rem; }
+        .matrix { font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f0fdfa; border-radius: 8px; border-left: 4px solid #14b8a6; }
+        .section-title { font-size: 1rem; font-weight: 600; color: #333; margin: 1.25rem 0 0.5rem; }
+        .field { margin-bottom: 1rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.35rem; color: #333; font-size: 0.9rem; }
+        select, textarea, input[type="number"] {
+            width: 100%;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        textarea { min-height: 140px; resize: vertical; }
+        .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .row .field { flex: 1; min-width: 140px; }
+        button {
+            background: #0d9488;
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            padding: 0.7rem 1.6rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        button:hover { background: #0f766e; }
+        .result, .error {
+            margin-top: 1.5rem;
+            padding: 0.9rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .result {
+            background: #ecfdf5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        .error {
+            background: #fef2f2;
+            color: #991b1b;
+            border-left: 4px solid #f87171;
+        }
+        .result audio { width: 100%; margin-top: 0.5rem; }
+        a.download-link { color: #0d9488; text-decoration: none; font-weight: 600; }
+        .divider { border: 0; height: 1px; background: #e5e7eb; margin: 1.5rem 0; }
+        .back, .back-panel { margin-top: 1rem; }
+        .back a, .back-panel a { color: #0d9488; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+        .back-panel { padding-top: 1rem; border-top: 1px solid #e5e7eb; margin-top: 1.5rem; }
+        .hint { font-size: 0.8rem; color: #64748b; margin-top: 0.25rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerar áudio por IA</h1>
+        <p class="description">
+            Transforme texto em narração natural (MP3). Ideal para podcasts curtos, avisos de voz, trilhas verbais para combinar depois com imagem ou vídeo.
+        </p>
+        <p class="matrix">
+            <strong>Matriz criativa:</strong> PDF (verbal fixo) · Imagem (visual) · Vídeo (audiovisual) · <strong>Áudio (sonora)</strong> — no futuro, mescle as saídas em produtos híbridos.
+        </p>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if audio_url %}
+            <div class="result">
+                Áudio gerado com sucesso.
+                <br><a href="{{ audio_url }}" download class="download-link">Baixar MP3</a>
+                <br><audio src="{{ audio_url }}" controls preload="metadata"></audio>
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <p class="section-title">1. Texto para narração (obrigatório)</p>
+            <div class="field">
+                <label for="text">O que deve ser falado?</label>
+                <textarea id="text" name="text" placeholder="Cole ou digite o texto em português ou outro idioma. Ex.: Bem-vindos ao SinapUm. Hoje vamos falar sobre criatividade com inteligência artificial." required></textarea>
+                <p class="hint">Até 4.096 caracteres por geração. Para textos longos, gere em partes e depois una no editor de áudio.</p>
+            </div>
+
+            <hr class="divider">
+
+            <p class="section-title">2. Voz e qualidade</p>
+            <div class="row">
+                <div class="field">
+                    <label for="voice">Voz</label>
+                    <select id="voice" name="voice">
+                        <option value="nova">Nova (neutra, versátil)</option>
+                        <option value="alloy">Alloy</option>
+                        <option value="echo">Echo</option>
+                        <option value="fable">Fable</option>
+                        <option value="onyx">Onyx (grave)</option>
+                        <option value="shimmer">Shimmer</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="model">Modelo</label>
+                    <select id="model" name="model">
+                        <option value="tts-1-hd">TTS HD (melhor qualidade)</option>
+                        <option value="tts-1">TTS (mais rápido)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="speed">Velocidade</label>
+                    <input type="number" id="speed" name="speed" value="1.0" min="0.25" max="4" step="0.05">
+                    <p class="hint">1,0 = normal; 0,5 mais lento; 1,25 um pouco mais rápido.</p>
+                </div>
+            </div>
+
+            <button type="submit">Gerar áudio</button>
+        </form>
+        <p class="back-panel"><a href="/">← Voltar ao painel</a></p>
+    </div>
+</body>
+</html>

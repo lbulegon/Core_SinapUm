@@ -390,6 +390,40 @@ SPARKSCORE_TIMEOUT = int(os.environ.get('SPARKSCORE_TIMEOUT', 30))
 # MCP Service Configuration (para delegação opcional)
 MCP_SERVICE_URL = os.environ.get('MCP_SERVICE_URL', 'http://mcp_service:7010')
 
+# ============================================================================
+# MrFoo — comandos outbound (Chef Agno / Core → fila no MrFoo)
+# URL completa opcional; senão: MRFOO_BASE_URL + MRFOO_COMMAND_PATH
+# Chave alinhada a SINAPUM_OUTBOUND_API_KEY no MrFoo (header X-SINAPUM-KEY)
+# Bearer opcional alinhado a SINAPUM_OUTBOUND_BEARER_TOKEN no MrFoo
+# ============================================================================
+MRFOO_BASE_URL = (os.environ.get('MRFOO_BASE_URL') or '').rstrip('/')
+MRFOO_COMMAND_URL = (os.environ.get('MRFOO_COMMAND_URL') or '').strip()
+MRFOO_COMMAND_PATH = (os.environ.get('MRFOO_COMMAND_PATH') or '/api/integracoes/sinapum/command/').strip()
+MRFOO_SINAPUM_OUTBOUND_KEY = (os.environ.get('MRFOO_SINAPUM_OUTBOUND_KEY') or '').strip()
+MRFOO_OUTBOUND_BEARER_TOKEN = (os.environ.get('MRFOO_OUTBOUND_BEARER_TOKEN') or '').strip()
+MRFOO_COMMAND_TIMEOUT_SECONDS = float(os.environ.get('MRFOO_COMMAND_TIMEOUT_SECONDS', '10'))
+
+# ============================================================================
+# Chef Agno — scoring adaptativo (pesos e limiares; substituíveis por ML depois)
+# ============================================================================
+CHEF_AGNO_W_ITENS = float(os.environ.get('CHEF_AGNO_W_ITENS', '1.5'))
+CHEF_AGNO_W_MODS = float(os.environ.get('CHEF_AGNO_W_MODS', '2.0'))
+CHEF_AGNO_W_CARGA = float(os.environ.get('CHEF_AGNO_W_CARGA', '10.0'))
+CHEF_AGNO_BONUS_PICO = float(os.environ.get('CHEF_AGNO_BONUS_PICO', '5.0'))
+CHEF_AGNO_HORA_PICO_INI = int(os.environ.get('CHEF_AGNO_HORA_PICO_INI', '19'))
+CHEF_AGNO_HORA_PICO_FIM = int(os.environ.get('CHEF_AGNO_HORA_PICO_FIM', '22'))
+CHEF_AGNO_VALOR_NORMALIZADOR = float(os.environ.get('CHEF_AGNO_VALOR_NORMALIZADOR', '50.0'))
+CHEF_AGNO_GARGALO_LIMITE = float(os.environ.get('CHEF_AGNO_GARGALO_LIMITE', '0.85'))
+CHEF_AGNO_W_GARGALO_MODS = float(os.environ.get('CHEF_AGNO_W_GARGALO_MODS', '1.5'))
+CHEF_AGNO_LIMITE_CONFIRMAR = float(os.environ.get('CHEF_AGNO_LIMITE_CONFIRMAR', '10'))
+CHEF_AGNO_LIMITE_POSTERGAR = float(os.environ.get('CHEF_AGNO_LIMITE_POSTERGAR', '20'))
+CHEF_AGNO_LIMITE_REORDENAR = float(os.environ.get('CHEF_AGNO_LIMITE_REORDENAR', '30'))
+CHEF_AGNO_CAT_BAIXA_MAX = CHEF_AGNO_LIMITE_CONFIRMAR
+CHEF_AGNO_CAT_MEDIA_MAX = CHEF_AGNO_LIMITE_POSTERGAR
+CHEF_AGNO_CAT_ALTA_MAX = CHEF_AGNO_LIMITE_REORDENAR
+CHEF_AGNO_DATASET_PATH = os.environ.get('CHEF_AGNO_DATASET_PATH', 'var/chef_agno_training.jsonl')
+CHEF_AGNO_TRAINER_ENABLED = os.environ.get('CHEF_AGNO_TRAINER_ENABLED', 'true').lower() in ('1', 'true', 'yes')
+
 # Usar MCP Tool Registry para análise de imagens (/analyze/, /api/v1/analyze-product-image)
 # Quando True: chama vitrinezap.analisar_produto via Core execute; fallback para OpenMind direto se tool não existir
 # Quando False: sempre usa OpenMind direto (comportamento legado)
@@ -452,3 +486,6 @@ SINAPCORE_MODULES: dict = {}
 # SinapLint — endpoint interno /api/sinaplint/internal/engine/ (produto SinapLint SaaS)
 # ============================================================================
 SINAPLINT_ENGINE_SHARED_SECRET = os.environ.get("SINAPLINT_ENGINE_SHARED_SECRET", "").strip()
+# Clone opcional quando o body POST inclui ``repo_url`` (HTTPS público).
+SINAPLINT_ENGINE_CLONE_TIMEOUT = int(os.environ.get("SINAPLINT_ENGINE_CLONE_TIMEOUT", "300"))
+SINAPLINT_ENGINE_GIT_BIN = (os.environ.get("SINAPLINT_ENGINE_GIT_BIN", "git") or "git").strip()

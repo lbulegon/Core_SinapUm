@@ -1,0 +1,21 @@
+% Layout "Guia técnico" – tema escuro, títulos em destaque (estilo ebook técnico)
+\usepackage{xcolor}
+\usepackage{titlesec}
+
+% Cores: fundo escuro, texto claro, destaque amarelo/dourado
+\definecolor{darkbg}{RGB}{10,17,32}
+\definecolor{lighttext}{RGB}{230,230,245}
+\definecolor{accent}{RGB}{255,193,7}
+
+\AtBeginDocument{%
+  \pagecolor{darkbg}%
+  \color{lighttext}%
+}
+
+% Títulos em destaque (amarelo/dourado)
+\titleformat{\section}{\color{accent}\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\color{accent!95}\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\color{accent!85}\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+% Links legíveis no tema escuro
+\AtBeginDocument{\hypersetup{colorlinks=true,linkcolor=accent!90,urlcolor=accent!80}}

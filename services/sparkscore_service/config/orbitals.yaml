@@ -112,3 +112,93 @@ orbital_configs:
     enabled: true
     description: "Circulação Simbólica Vetorial: fluxo vetorial, propagação, adequação ao canal"
 
+  environmental_indiciary:
+    enabled: false
+
+    description: >
+      Orbital de análise indiciária do ambiente operacional. Interpreta sinais fracos
+      (indícios) gerados pela interação entre espaço, equipamentos e agentes humanos,
+      inferindo estados emergentes do sistema como pressão, sobrecarga ou estabilidade.
+
+    type: analytical
+
+    methodology:
+      base: indiciary_semiosis
+      references:
+        - peirce
+        - ginzburg
+        - out_of_control
+
+    inputs:
+      primary:
+        - indicios_ambientais
+      secondary:
+        - contexto_operacional
+        - dados_comportamentais
+
+    signals:
+      - ruido
+      - fumaca
+      - cheiro
+      - densidade
+      - contaminacao_artefato
+      - ritmo_operacional
+
+    processing:
+      model: weighted_indiciary_inference
+      normalization: 0_1
+      aggregation: weighted_mean
+      weights:
+        ruido: 0.2
+        fumaca: 0.15
+        cheiro: 0.1
+        densidade: 0.25
+        contaminacao_artefato: 0.2
+        ritmo_operacional: 0.1
+
+    outputs:
+      - estado_ambiental
+      - score_pressao
+      - score_estabilidade
+      - alertas
+
+    states:
+      - estavel
+      - atencao
+      - pressao
+      - sobrecarga
+      - colapso
+
+    thresholds:
+      atencao: 0.4
+      pressao: 0.6
+      sobrecarga: 0.8
+      colapso: 0.95
+
+    integration:
+      affects:
+        - cognitive
+        - emotional
+        - semiotic
+      passive: true
+
+    learning:
+      enabled: true
+      strategy: correlation_feedback
+
+# Pipeline Creative Engine — pesos do overall_score e ponte PPA
+pipeline:
+  version: "1.2.0"
+  # Pesos relativos (soma 1.0). Orbitais desativados saem da média; pesos restantes mantêm proporção.
+  overall_score_weights:
+    semiotic: 0.25
+    emotional: 0.20
+    cognitive: 0.25
+    csv: 0.20
+    environmental_indiciary: 0.10
+  ppa_bridge:
+    # Quanto score_pressao (0–1) amortece antecipacao_base (sinais fracos operacionais)
+    pressure_dampening_alpha: 0.12
+    # Evolução: multiplicar peso ambiental em estados críticos (ex.: 1.5 em sobrecarga/colapso)
+    critical_state_weight_multiplier: 1.5
+

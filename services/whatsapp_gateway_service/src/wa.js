@@ -127,7 +127,13 @@ function setWebhookUrl(url) {
   webhookUrl = url;
 }
 
+const eventBusPublisher = require("./utils/eventBusPublisher");
+
 async function sendWebhook(instanceId, eventType, payload) {
+  // 1. Publicar no Event Bus (Redis Streams) se habilitado
+  eventBusPublisher.publishToEventBus(instanceId, eventType, payload).catch(() => {});
+
+  // 2. Webhook legado (opcional)
   if (!webhookUrl) return;
 
   try {

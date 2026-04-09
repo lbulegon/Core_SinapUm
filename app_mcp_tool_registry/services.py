@@ -6,7 +6,7 @@ import json
 import time
 import logging
 import requests
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 from django.conf import settings
 # PermissionError é built-in do Python, não precisa importar
 from jsonschema import validate, ValidationError
@@ -100,6 +100,384 @@ def truncate_payload(payload: Any, max_bytes: int = 10000) -> Any:
     except Exception as e:
         logger.error(f"Error truncating payload: {e}")
         return {"_error": "Failed to truncate payload", "_exception": str(e)}
+
+
+def _execute_tool_core_rag_query(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Tool MCP `core.rag_query` — retrieval no vectorstore_service."""
+    from core.services.vectorstore_client import vectorstore_search
+
+    q = (input_data.get("query") or input_data.get("text") or "").strip()
+    k = int(input_data.get("k", 5) or 5)
+    include_text = input_data.get("include_text", True)
+    if isinstance(include_text, str):
+        include_text = include_text.lower() in ("1", "true", "yes", "on")
+    id_prefix = (input_data.get("id_prefix") or input_data.get("prefix") or "").strip()
+    results = vectorstore_search(q, k=k, include_text=bool(include_text))
+    if id_prefix:
+        results = [r for r in results if str(r.get("id", "")).startswith(id_prefix)]
+    return {"results": results, "query": q, "k": k, "id_prefix": id_prefix or None}
+
+
+def _execute_tool_core_rag_ingest(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Tool MCP `core.rag_ingest` — upsert de chunks de texto no vectorstore (ex.: gastronomia)."""
+    from core.services.ingestion.pdf_ingestor import (
+        DEFAULT_CHUNK_WORDS,
+        ID_PREFIX,
+        ingest_chunk_strings,
+        ingest_text_as_chunks,
+    )
+
+    domain = str(input_data.get("domain") or "gastronomia").strip() or "gastronomia"
+    id_prefix = str(input_data.get("id_prefix") or ID_PREFIX).strip() or ID_PREFIX
+    source = str(input_data.get("source") or "mcp").strip() or "mcp"
+    chunk_words = int(input_data.get("chunk_words") or DEFAULT_CHUNK_WORDS)
+
+    raw_chunks = input_data.get("chunks")
+    if isinstance(raw_chunks, list) and len(raw_chunks) > 0:
+        texts: List[str] = []
+        for c in raw_chunks:
+            if isinstance(c, dict):
+                texts.append(str(c.get("text") or ""))
+            else:
+                texts.append(str(c))
+        r = ingest_chunk_strings(texts, source=source, domain=domain, id_prefix=id_prefix)
+        r["chunks_total"] = len([t for t in texts if t.strip()])
+    else:
+        text = str(input_data.get("text") or "").strip()
+        if not text:
+            raise ValueError("core.rag_ingest: informe `text` (longo) ou `chunks` (lista de textos)")
+        r = ingest_text_as_chunks(
+            text,
+            source=source,
+            domain=domain,
+            id_prefix=id_prefix,
+            chunk_words=chunk_words,
+        )
+
+    return {
+        "ok": True,
+        "domain": domain,
+        "id_prefix": id_prefix,
+        "source": source,
+        "chunks_ingested": r.get("chunks_ingested", 0),
+        "chunks_total": r.get("chunks_total"),
+        "errors": r.get("errors") or [],
+    }
+
+
+def _execute_tool_core_eoc_enrich(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Tool MCP `core.eoc_enrich` — apenas enrich (RAG + predictive + hints), sem campo `ok`."""
+    from core.services.cognitive.eoc import eoc_enrich_from_payload
+
+    return eoc_enrich_from_payload(input_data)
+
+
+def _execute_tool_core_eoc_decide(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Tool MCP `core.eoc_decide` — legado: enrich + `ok: True` (nomenclatura histórica)."""
+    from core.services.cognitive.eoc import eoc_decide_from_payload
+
+    return eoc_decide_from_payload(input_data)
+
+
+def _execute_tool_core_decision_support(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.decision_support` — caminho orbital (ex.: MrFoo): DecisionEngine sem Evora policy.
+    """
+    from core.services.cognitive_core.context.cognitive_context import CognitiveContext
+    from core.services.cognitive_core.mediation.decision_engine import DecisionEngine
+    from core.services.cognitive_core.perception.adapters import perception_from_mcp_dict
+    from core.services.cognitive_core.reality.builder import RealityStateBuilder
+
+    raw = dict(input_data) if isinstance(input_data, dict) else {}
+    ch = raw.get("context_hint")
+    ch = dict(ch) if isinstance(ch, dict) else {}
+    tid = str(ch.get("tenant_id") or raw.get("tenant_id") or "").strip()
+    if tid:
+        ch["tenant_id"] = tid
+    raw["context_hint"] = ch
+    if tid and not str(raw.get("tenant_id") or "").strip():
+        raw["tenant_id"] = tid
+
+    q = str(
+        raw.get("rag_query")
+        or raw.get("descricao_pedido")
+        or raw.get("pedido_descricao")
+        or raw.get("text")
+        or ""
+    ).strip()
+    if not q:
+        q = "contexto_operacional_generico"
+    raw["rag_query"] = q
+
+    if not tid:
+        logger.warning(
+            "core.decision_support: tenant_id ausente no payload/context_hint — RAG híbrido por tenant não aplica"
+        )
+
+    src = str(raw.get("source") or "orbital").strip() or "orbital"
+    perception = perception_from_mcp_dict(raw, source=src, trace_id=raw.get("trace_id"))
+    extra: Dict[str, Any] = {}
+    ns = raw.get("rag_namespaces")
+    if isinstance(ns, list):
+        extra["rag_namespaces"] = [str(x) for x in ns]
+    elif isinstance(ns, str) and ns.strip():
+        extra["rag_namespaces"] = [s.strip() for s in ns.split(",") if s.strip()]
+    ctx = CognitiveContext.from_perception(perception, extra=extra or None)
+    builder = RealityStateBuilder(
+        default_rag_k=int(raw.get("k", 5) or 5),
+        default_namespaces=ctx.rag_namespaces or ["global"],
+    )
+    reality = builder.build(perception, ctx)
+    engine = DecisionEngine()
+    decision = engine.decide_orbital_support(perception=perception, reality=reality, ctx=ctx)
+    dec_meta = decision.metadata or {}
+    ol = reality.operational_live or {}
+    return {
+        "ok": True,
+        "decision": decision.to_dict(),
+        "enrich_preview": {
+            "rag_hits": len(reality.rag_long_term),
+            "namespaces": reality.rag_namespaces,
+            "operational_live_keys": list(ol.keys())[:20],
+            "dynamic_metrics": reality.dynamic_metrics,
+            "impacto_rag": ol.get("impacto_rag"),
+            "rag_impacto_resumo": ol.get("rag_impacto_resumo"),
+            "rag_query_resolved": q,
+            "tenant_id_resolved": tid or None,
+            "rag_observability": {
+                "rag_used": bool(reality.rag_long_term),
+                "rag_sources": list(ol.get("rag_sources_distinct") or []),
+                "impacto_rag": ol.get("impacto_rag"),
+                "impacto_rag_normalizado": dec_meta.get("impacto_rag_normalizado"),
+                "acao": dec_meta.get("acao"),
+                "rag_influencia": dec_meta.get("rag_influencia"),
+                "rag_context_n": dec_meta.get("rag_context_n"),
+                "previsao_atraso": dec_meta.get("previsao_atraso"),
+                "previsao_atraso_nivel": dec_meta.get("previsao_atraso_nivel"),
+                "previsao_atraso_risco": dec_meta.get("previsao_atraso_risco"),
+                "taxa_atraso_historico": dec_meta.get("taxa_atraso_historico"),
+                "previsao_atraso_score": dec_meta.get("previsao_atraso_score"),
+                "learning_weight_acao": dec_meta.get("learning_weight_acao"),
+                "alerta_aprendizado": dec_meta.get("alerta_aprendizado"),
+            },
+        },
+    }
+
+
+def _execute_tool_core_decision_feedback(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.decision_feedback` — persiste outcome vs decisão prevista (loop de aprendizado).
+    """
+    from core.services.cognitive_core.learning.decision_feedback import (
+        build_predicted_payload,
+        record_decision_feedback_event,
+    )
+
+    trace_id = str(input_data.get("trace_id") or input_data.get("event_id") or "").strip()
+    tenant_id = str(input_data.get("tenant_id") or "").strip()
+    outcome = input_data.get("outcome") or input_data.get("resultado") or {}
+    decision = input_data.get("decision") or {}
+    predicted = input_data.get("predicted") or build_predicted_payload(decision)
+    upsert = bool(input_data.get("upsert_vectorstore", False))
+    if not tenant_id:
+        raise ValueError("decision_feedback: tenant_id é obrigatório")
+    rid = record_decision_feedback_event(
+        trace_id=trace_id or f"fb:{tenant_id}",
+        tenant_id=tenant_id,
+        source=str(input_data.get("source") or "api"),
+        decision_action=str(decision.get("action") or input_data.get("decision_action") or "unknown"),
+        decision_snapshot=decision if isinstance(decision, dict) else {},
+        predicted=predicted if isinstance(predicted, dict) else {},
+        outcome=outcome if isinstance(outcome, dict) else {},
+        upsert_vectorstore=upsert,
+    )
+    return {"ok": True, "record_id": rid, "predicted": predicted}
+
+
+def _execute_tool_core_rag_feedback_save(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.rag_feedback_save` — grava feedback operacional na camada RAG operacional (vectorstore).
+    """
+    from core.services.cognitive_core.rag.rag_feedback import save_rag_feedback as rag_fb_save
+
+    tenant_id = str(input_data.get("tenant_id") or "").strip()
+    if not tenant_id:
+        raise ValueError("rag_feedback_save: tenant_id é obrigatório")
+    query = str(input_data.get("query") or input_data.get("descricao_pedido") or "").strip()
+    action = input_data.get("action")
+    if action is not None and not isinstance(action, str):
+        action = str(action)
+    outcome = str(input_data.get("outcome") or input_data.get("resultado_real") or "ok")
+    impacto = int(input_data.get("impacto_rag") or 0)
+    stored = rag_fb_save(tenant_id, query, action, outcome, impacto_rag=impacto)
+    return {"ok": True, "stored": stored}
+
+
+def _execute_tool_core_autonomy_run_cycle(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.autonomy_run_cycle` — dispara o ciclo Fase 3 (padrões → insights → ações → DecisionEngine).
+    """
+    from core.services.cognitive_core.autonomy.autonomous_loop import run_autonomous_cycle
+
+    tenant_id = str(input_data.get("tenant_id") or "").strip()
+    if not tenant_id:
+        raise ValueError("autonomy_run_cycle: tenant_id é obrigatório")
+    snap = input_data.get("operational_snapshot") or input_data.get("operational_live")
+    dm = input_data.get("dynamic_metrics")
+    ol: Dict[str, Any] = {}
+    if isinstance(snap, dict):
+        ol["client_operational_snapshot"] = snap
+        ol["operational_snapshot"] = snap
+    trace_id = input_data.get("trace_id")
+    sctx = input_data.get("strategic_context")
+    return run_autonomous_cycle(
+        tenant_id=tenant_id,
+        operational_live=ol,
+        dynamic_metrics=dm if isinstance(dm, dict) else None,
+        trace_id=str(trace_id) if trace_id else None,
+        strategic_context=sctx if isinstance(sctx, dict) else None,
+    )
+
+
+def _execute_tool_core_strategic_analyze(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.strategic_analyze` — KPI + propostas + RealityState + PatternEngine → opcional DecisionEngine.
+    """
+    from core.services.cognitive_core.context.cognitive_context import CognitiveContext
+    from core.services.cognitive_core.mediation.decision_engine import DecisionEngine
+    from core.services.cognitive_core.patterns.pattern_engine import PatternEngine
+    from core.services.cognitive_core.perception.adapters import perception_from_mcp_dict
+    from core.services.cognitive_core.reality.builder import RealityStateBuilder
+    from core.services.cognitive_core.strategic.strategy_engine import run_strategic_analysis
+
+    tenant_id = str(input_data.get("tenant_id") or "").strip()
+    if not tenant_id:
+        raise ValueError("strategic_analyze: tenant_id é obrigatório")
+    economic_payload = input_data.get("economic_payload")
+    if not isinstance(economic_payload, dict):
+        economic_payload = {}
+    snap = input_data.get("operational_snapshot")
+    dm = input_data.get("dynamic_metrics")
+    ol: Dict[str, Any] = {}
+    if isinstance(snap, dict):
+        ol["client_operational_snapshot"] = snap
+        ol["operational_snapshot"] = snap
+    op = dict(economic_payload.get("operational") or {})
+    if isinstance(dm, dict):
+        op["dynamic_metrics"] = dm
+    if isinstance(snap, dict) and snap.get("atraso_medio_segundos") is not None:
+        op["atraso_medio_segundos"] = snap.get("atraso_medio_segundos")
+    economic_payload["operational"] = op
+
+    pe = PatternEngine()
+    matches = pe.run(
+        tenant_id=tenant_id,
+        operational_live=ol,
+        dynamic_metrics=dm if isinstance(dm, dict) else {},
+    )
+
+    raw = {
+        "text": input_data.get("text") or "strategic:analyze",
+        "context_hint": {"tenant_id": tenant_id, "strategic": True},
+        "trace_id": input_data.get("trace_id"),
+    }
+    perception = perception_from_mcp_dict(raw, source="strategic", trace_id=input_data.get("trace_id"))
+    ns = input_data.get("rag_namespaces")
+    extra: Dict[str, Any] = {}
+    if isinstance(ns, list):
+        extra["rag_namespaces"] = [str(x) for x in ns]
+    elif isinstance(ns, str) and ns.strip():
+        extra["rag_namespaces"] = [s.strip() for s in ns.split(",") if s.strip()]
+    if not extra.get("rag_namespaces"):
+        extra["rag_namespaces"] = ["mrfoo", "global"]
+    ctx = CognitiveContext.from_perception(perception, extra=extra)
+    builder = RealityStateBuilder(
+        default_rag_k=int(input_data.get("k", 5) or 5),
+        default_namespaces=ctx.rag_namespaces or ["global"],
+    )
+    reality = builder.build(perception, ctx)
+
+    obj_prof = input_data.get("objective_profile")
+    if not isinstance(obj_prof, dict):
+        obj_prof = {}
+    top_k = input_data.get("strategy_top_k")
+    strategy_top_k: Optional[int]
+    if top_k is None:
+        strategy_top_k = None
+    else:
+        try:
+            strategy_top_k = max(1, min(50, int(top_k)))
+        except (TypeError, ValueError):
+            strategy_top_k = None
+
+    analysis = run_strategic_analysis(
+        tenant_id=tenant_id,
+        economic_payload=economic_payload,
+        reality=reality,
+        pattern_matches=matches,
+        objective_profile=obj_prof,
+        strategy_top_k=strategy_top_k,
+    )
+
+    out: Dict[str, Any] = {"ok": True, "analysis": analysis}
+
+    if input_data.get("with_decision") and analysis.get("proposals"):
+        first = analysis["proposals"][0]
+        engine = DecisionEngine()
+        dec = engine.decide_strategic_support(
+            perception=perception,
+            reality=reality,
+            ctx=ctx,
+            strategy_proposal=first,
+        )
+        out["decision"] = dec.to_dict()
+
+    return out
+
+
+def _execute_tool_core_strategy_feedback(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Tool MCP `core.strategy_feedback` — regista impacto previsto vs realizado."""
+    from core.services.cognitive_core.strategic.strategy_feedback_store import record_strategy_feedback
+
+    tenant_id = str(input_data.get("tenant_id") or "").strip()
+    if not tenant_id:
+        raise ValueError("strategy_feedback: tenant_id é obrigatório")
+    rid = record_strategy_feedback(
+        tenant_id=tenant_id,
+        strategy_key=str(input_data.get("strategy_key") or "generic"),
+        proposal_id=str(input_data.get("proposal_id") or ""),
+        predicted_impact=float(input_data.get("predicted_impact") or 0),
+        realized_impact=input_data.get("realized_impact"),
+        payload=input_data.get("payload") if isinstance(input_data.get("payload"), dict) else {},
+    )
+    return {"ok": True, "record_id": rid}
+
+
+def _execute_tool_core_strategic_advanced(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.strategic_advanced` — multi-loja, precificação dinâmica, expansão (bundle).
+    """
+    from core.services.cognitive_core.strategic.strategic_advanced_bundle import (
+        run_strategic_advanced_bundle,
+    )
+
+    tenant_id = str(input_data.get("tenant_id") or "").strip()
+    if not tenant_id:
+        raise ValueError("strategic_advanced: tenant_id é obrigatório")
+    mode = str(input_data.get("mode") or "all")
+    stores = input_data.get("stores")
+    if not isinstance(stores, list):
+        stores = []
+    pricing_context = input_data.get("pricing_context")
+    expansion_context = input_data.get("expansion_context")
+    bundle = run_strategic_advanced_bundle(
+        tenant_id=tenant_id,
+        mode=mode,
+        stores=stores,
+        pricing_context=pricing_context if isinstance(pricing_context, dict) else None,
+        expansion_context=expansion_context if isinstance(expansion_context, dict) else None,
+    )
+    return {"ok": True, "bundle": bundle}
 
 
 def execute_runtime_openmind_http(
@@ -423,8 +801,42 @@ def execute_runtime(
         return {"message": "No operation - tool not implemented"}
     elif runtime == "pipeline":
         return {"message": "Pipeline runtime - not implemented"}
+    elif runtime == "mrfoo_graph":
+        return _execute_runtime_mrfoo_graph(config, input_data)
     else:
         raise ValueError(f"Runtime desconhecido: {runtime}")
+
+
+def _execute_runtime_mrfoo_graph(config: Dict[str, Any], input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Executa ação do Food Knowledge Graph via MrFooAdapter (HTTP ao MrFoo)."""
+    from adapters.mrfoo_adapter import (
+        graph_status,
+        graph_sync_full,
+        graph_sync_incremental,
+        margin_per_minute,
+        complexity_score,
+        combo_suggestions,
+        new_item_suggestions,
+    )
+    action = (config.get("action") or "").strip()
+    tenant_id = (input_data.get("tenant_id") or "").strip()
+    if not tenant_id:
+        raise ValueError("mrfoo_graph runtime requer input.tenant_id")
+    if action == "status":
+        return graph_status(tenant_id)
+    if action == "sync_full":
+        return graph_sync_full(tenant_id)
+    if action == "sync_incremental":
+        return graph_sync_incremental(tenant_id)
+    if action == "margin_per_minute":
+        return margin_per_minute(tenant_id, input_data.get("timeslot"))
+    if action == "complexity_score":
+        return complexity_score(tenant_id)
+    if action == "combo_suggestions":
+        return combo_suggestions(tenant_id, input_data.get("timeslot"))
+    if action == "new_item_suggestions":
+        return new_item_suggestions(tenant_id, int(input_data.get("max_items", 10) or 10))
+    raise ValueError(f"mrfoo_graph action desconhecida: {action}")
 
 
 def execute_tool(
@@ -564,7 +976,42 @@ def execute_tool(
         logger.info(f"[{request_id}][{trace_id}] Executando runtime: {runtime}")
         
         try:
-            output_data = execute_runtime(runtime, config, input_data, prompt_text=prompt_text)
+            if tool_name == "core.rag_query":
+                output_data = _execute_tool_core_rag_query(input_data)
+            elif tool_name == "core.rag_ingest":
+                output_data = _execute_tool_core_rag_ingest(input_data)
+            elif tool_name == "core.eoc_enrich":
+                output_data = _execute_tool_core_eoc_enrich(input_data)
+            elif tool_name == "core.eoc_decide":
+                output_data = _execute_tool_core_eoc_decide(input_data)
+            elif tool_name == "core.decision_support":
+                output_data = _execute_tool_core_decision_support(input_data)
+            elif tool_name == "core.decision_feedback":
+                output_data = _execute_tool_core_decision_feedback(input_data)
+            elif tool_name == "core.rag_feedback_save":
+                output_data = _execute_tool_core_rag_feedback_save(input_data)
+            elif tool_name == "core.autonomy_run_cycle":
+                output_data = _execute_tool_core_autonomy_run_cycle(input_data)
+            elif tool_name == "core.strategic_analyze":
+                output_data = _execute_tool_core_strategic_analyze(input_data)
+            elif tool_name == "core.strategy_feedback":
+                output_data = _execute_tool_core_strategy_feedback(input_data)
+            elif tool_name == "core.strategic_advanced":
+                output_data = _execute_tool_core_strategic_advanced(input_data)
+            else:
+                output_data = execute_runtime(runtime, config, input_data, prompt_text=prompt_text)
+            # Side effects best-effort (learning/telemetry tools)
+            if tool_name == "mrfoo.order_feedback":
+                # Feedback do MrFoo: armazena contexto + outcome em memória semântica
+                # para posterior retrieval no EOC/RAG.
+                try:
+                    from core.services.learning.order_feedback_service import save_order_feedback
+
+                    save_order_feedback(payload=input_data)
+                    output_data = {"status": "ok", "stored": True}
+                except Exception as e:
+                    # Não falhar a tool call se memória estiver indisponível.
+                    output_data = {"status": "ok", "stored": False, "error": str(e)}
             logger.info(f"[{request_id}][{trace_id}] Runtime executado com sucesso")
         except Exception as e:
             error_msg = str(e)

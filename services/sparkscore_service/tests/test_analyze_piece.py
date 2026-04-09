@@ -41,6 +41,10 @@ def test_analyze_piece_minimal():
     assert "overall_score" in data
     assert "orbitals" in data
     assert "insights" in data
+    assert "ppa" in data
+    assert "antecipacao_acao" in data["ppa"]
+    assert "status" in data["ppa"]
+    assert "ambiental" in data["ppa"]
     
     # Validar overall_score
     assert isinstance(data["overall_score"], (int, float))
@@ -61,6 +65,7 @@ def test_analyze_piece_minimal():
 
     # Verificar orbital CSV (placeholder ou ativo)
     assert "csv" in orbital_ids
+    assert "environmental_indiciary" in orbital_ids
     
     # Validar estrutura de orbital ativo
     semiotic = next((o for o in data["orbitals"] if o["orbital_id"] == "semiotic"), None)
@@ -141,7 +146,7 @@ def test_analyze_piece_full():
     data = response.json()
     
     assert data["piece_id"] == "ce_2026_01_16_000123"
-    assert data["pipeline_version"] == "1.0.0"
+    assert data["pipeline_version"] == "1.2.0"
     assert len(data["orbitals"]) >= 3  # Pelo menos os 3 ativos
 
 
@@ -178,6 +183,8 @@ def test_get_analysis():
     assert data["analysis_id"] == analysis_id
     assert data["piece_id"] == "ce_test_get"
     assert "created_at" in data
+    assert "ppa" in data and "antecipacao_acao" in data["ppa"]
+    assert "ambiental" in data["ppa"]
 
 
 def test_get_analysis_not_found():

@@ -81,8 +81,34 @@ def resolve_prompt_info(prompt_ref, config=None):
         
         prompt_template = None
         
-        # Parse do formato
-        if ':' in prompt_ref:
+        # Convenção nova: vertical/purpose/vN (ex: vitrinezap/followup/v1) — sem quebrar refs antigas
+        if "/" in prompt_ref and prompt_ref.count("/") >= 2 and not prompt_ref.startswith("http"):
+            parts = prompt_ref.strip("/").split("/")
+            if len(parts) >= 3:
+                vertical, purpose, ver_part = parts[0], parts[1], parts[2]
+                ver_part = ver_part.replace("v", "") if ver_part.lower().startswith("v") else ver_part
+                try:
+                    sistema = Sistema.objects.get(codigo=vertical, ativo=True)
+                    # Nome pode ser "purpose_v1" ou "followup_v1"
+                    nome_candidate = f"{purpose}_v{ver_part}" if ver_part else purpose
+                    prompt_template = PromptTemplate.objects.filter(
+                        sistema=sistema,
+                        nome=nome_candidate,
+                        ativo=True,
+                    ).first()
+                    if not prompt_template:
+                        prompt_template = PromptTemplate.objects.filter(
+                            sistema=sistema,
+                            nome=purpose,
+                            ativo=True,
+                        ).first()
+                    if not prompt_template:
+                        prompt_template = PromptTemplate.get_prompt_ativo(purpose, sistema=sistema)
+                except Sistema.DoesNotExist:
+                    logger.debug("Sistema '%s' não encontrado para prompt_ref '%s'", vertical, prompt_ref)
+        
+        # Parse do formato legado sistema:nome ou sistema:tipo
+        if prompt_template is None and ':' in prompt_ref:
             sistema_codigo, ref = prompt_ref.split(':', 1)
             try:
                 sistema = Sistema.objects.get(codigo=sistema_codigo, ativo=True)
@@ -93,8 +119,8 @@ def resolve_prompt_info(prompt_ref, config=None):
                     prompt_template = PromptTemplate.get_prompt_ativo(ref, sistema=sistema)
             except Sistema.DoesNotExist:
                 logger.warning(f"Sistema '{sistema_codigo}' não encontrado")
-        else:
-            # Buscar global primeiro
+        if prompt_template is None:
+            # Buscar global primeiro (ref simples)
             prompt_template = PromptTemplate.objects.filter(
                 sistema=None, nome=prompt_ref, ativo=True
             ).first()

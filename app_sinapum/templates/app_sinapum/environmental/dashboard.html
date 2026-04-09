@@ -1,0 +1,246 @@
+{% load env_filters %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Ambiental — MCP SinapUm</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #333;
+        }
+        nav {
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-size: 1.5rem; font-weight: 700; color: #667eea; }
+        .nav-menu a {
+            text-decoration: none;
+            color: #555;
+            font-weight: 500;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            margin-left: 0.5rem;
+        }
+        .nav-menu a:hover { background: #f0f0f0; color: #667eea; }
+        main { flex: 1; padding: 2rem; }
+        .panel {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        }
+        h2 { color: #667eea; margin-bottom: 1rem; font-size: 1.75rem; }
+        .meta { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+        .banner-warn {
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px 14px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            border: 1px solid #ffc107;
+        }
+        .banner-critical {
+            background: #dc3545;
+            color: white;
+            padding: 12px 14px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .state-box {
+            padding: 1.5rem;
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+        .state-box h3 { font-size: 1.4rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .state-box p { opacity: 0.95; margin: 0.35rem 0; }
+        .indicios {
+            background: #f8f9fa;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+        }
+        .indicio-row { margin-bottom: 1rem; }
+        .indicio-row strong { display: block; margin-bottom: 0.35rem; color: #444; font-size: 0.9rem; }
+        .bar-bg {
+            background: #e0e0e0;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 12px;
+            border-radius: 6px;
+            min-width: 2px;
+            transition: width 0.35s ease;
+        }
+        .insights {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #fff8e6;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #856404;
+        }
+        .history { margin-top: 2rem; }
+        .history h4 { color: #667eea; margin-bottom: 0.75rem; }
+        .history ul { list-style: none; }
+        .history li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            text-align: center;
+            color: #666;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <div class="logo"><span>🌿</span> Mapa de Estado Ambiental</div>
+            <div class="nav-menu">
+                <a href="/">Home</a>
+                <a href="{% url 'environmental_dashboard' estabelecimento_id=estabelecimento_id %}">Atualizar agora</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="panel">
+            <div id="env-container">
+            <h2>Painel Ambiental</h2>
+            <p class="meta">
+                Estabelecimento <strong>#{{ estabelecimento_id }}</strong>
+                · Redis <code>env_state:{{ estabelecimento_id }}</code>
+                · Atualização leve (AJAX) a cada 5s
+            </p>
+
+            {% if no_redis_data %}
+            <div class="banner-warn">
+                Ainda não há snapshot em Redis para este estabelecimento — exibindo estado neutro (0 / estável).
+                Envie indícios via SparkScore com <code>estabelecimento_id</code>.
+            </div>
+            {% endif %}
+
+            {% if state.state == 'sobrecarga' or state.state == 'colapso' %}
+            <div class="banner-critical">
+                ALERTA: sistema em <strong>{{ state.state }}</strong> — verificar operação.
+            </div>
+            {% endif %}
+
+            <div class="state-box" style="background: linear-gradient(135deg,
+                {% if state.state == 'estavel' %}#2ecc71, #27ae60
+                {% elif state.state == 'atencao' %}#f1c40f, #f39c12
+                {% elif state.state == 'pressao' %}#e67e22, #d35400
+                {% elif state.state == 'sobrecarga' %}#e74c3c, #c0392b
+                {% elif state.state == 'colapso' %}#2c3e50, #000000
+                {% else %}#95a5a6, #7f8c8d
+                {% endif %}
+            );">
+                <h3>{{ state.state|default:"estavel" }}</h3>
+                <p>Score: {{ state.score|floatformat:3 }} (0–1)</p>
+                <p>Confiança: {{ state.confidence|floatformat:2 }}</p>
+                {% if state.timestamp %}
+                <p>Timestamp: {{ state.timestamp }}</p>
+                {% endif %}
+            </div>
+
+            {% if ppa_ambiental_live is not None %}
+            <p class="meta">PPA ambiental (live): <strong>{{ ppa_ambiental_live|floatformat:2 }}</strong></p>
+            {% endif %}
+            {% if recurring_overload %}
+            <div class="insights">Padrão: sobrecarga recorrente detetada nos últimos snapshots.</div>
+            {% endif %}
+
+            <div class="indicios">
+                <h4 style="margin-bottom:1rem;color:#667eea;">Indícios</h4>
+                {% for key, value in state.indicios.items %}
+                <div class="indicio-row">
+                    <strong>{{ key }}</strong>
+                    <div class="bar-bg">
+                        <div class="bar-fill" style="width: {{ value|percent }}%;"></div>
+                    </div>
+                    <span style="font-size:0.8rem;color:#888;">{{ value|floatformat:2 }} (0–1)</span>
+                </div>
+                {% empty %}
+                <p style="color:#888;">Nenhum indício na última leitura.</p>
+                {% endfor %}
+            </div>
+
+            <div class="history">
+                <h4>Histórico recente (até 30)</h4>
+                {% if history %}
+                <ul>
+                    {% for item in history %}
+                    <li>
+                        {{ item.timestamp|default:"—" }} — <strong>{{ item.state|default:"?" }}</strong>
+                        (score {{ item.score|floatformat:3 }})
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color:#888;">Sem histórico em <code>env_history:{{ estabelecimento_id }}</code>.</p>
+                {% endif %}
+            </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; MCP SinapUm — Estado ambiental integrado ao orbital <code>environmental_indiciary</code></p>
+    </footer>
+
+    <script>
+        (function () {
+            const url = window.location.href;
+            async function atualizarPainel() {
+                try {
+                    const res = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+                    if (!res.ok) return;
+                    const html = await res.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    const novo = doc.querySelector("#env-container");
+                    const atual = document.querySelector("#env-container");
+                    if (novo && atual) {
+                        atual.innerHTML = novo.innerHTML;
+                    }
+                } catch (e) {
+                    console.error("Erro ao atualizar painel", e);
+                }
+            }
+            setInterval(atualizarPainel, 5000);
+        })();
+    </script>
+</body>
+</html>

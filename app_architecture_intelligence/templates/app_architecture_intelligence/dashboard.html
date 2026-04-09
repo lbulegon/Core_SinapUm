@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Intelligence - MCP SinapUm</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        nav {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .nav-menu a {
+            text-decoration: none;
+            color: #555;
+            font-weight: 500;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+        .nav-menu a:hover { background: #f0f0f0; color: #667eea; }
+        main {
+            padding: 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .content {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        .header-section {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .header-section h1 {
+            color: #4a5568;
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+        .header-section .subtitle {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+        .form-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .form-section h2 {
+            color: #2d3748;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 0.65rem 0.9rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+        .bundle-preset {
+            margin-top: 0.35rem;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .helper-text {
+            display: block;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 0.35rem;
+            font-style: italic;
+        }
+        .btn-evaluate {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            border: none;
+            padding: 0.9rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s;
+        }
+        .btn-evaluate:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2d3748, #1a202c);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(45, 55, 72, 0.3);
+        }
+        .btn-evaluate:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #718096;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.6;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .summary-item {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 4px solid #4a5568;
+        }
+        .summary-item .label { font-size: 0.8rem; color: #718096; text-transform: uppercase; }
+        .summary-item .value { font-weight: 600; color: #2d3748; margin-top: 0.3rem; }
+        .scores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .score-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .score-card .score-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #4a5568;
+        }
+        .score-card .score-label {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 0.3rem;
+        }
+        .score-card.final { border-color: #4a5568; background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%); }
+        .score-card.final .score-value { color: #2d3748; }
+        .list-block {
+            margin-bottom: 1.5rem;
+        }
+        .list-block h3 {
+            color: #2d3748;
+            font-size: 1rem;
+            margin-bottom: 0.6rem;
+        }
+        .list-block ul {
+            list-style: none;
+        }
+        .list-block li {
+            padding: 0.5rem 0;
+            padding-left: 1.2rem;
+            position: relative;
+            color: #4a5568;
+        }
+        .list-block li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .list-block.strengths li::before { color: #38a169; }
+        .list-block.risks li::before { color: #e53e3e; }
+        .list-block.recommendations li::before { color: #3182ce; }
+        .verdict-block {
+            background: #edf2f7;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-top: 1.5rem;
+            border-left: 4px solid #4a5568;
+        }
+        .verdict-block h3 { color: #2d3748; margin-bottom: 0.5rem; }
+        .verdict-block p { color: #4a5568; line-height: 1.6; }
+        .error-msg {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        .back-to-panel { text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; }
+        .back-to-panel a { color: #667eea; font-weight: 600; text-decoration: none; font-size: 0.95rem; }
+        .back-to-panel a:hover { text-decoration: underline; }
+        /* Modal Popup */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.visible {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 {
+            color: #2d3748;
+            font-size: 1.3rem;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #718096;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            color: #2d3748;
+        }
+        .modal-body {
+            padding: 1.5rem;
+        }
+        .modal-body .summary-grid { margin-bottom: 1.5rem; }
+        .modal-body .scores-grid { margin-bottom: 1.5rem; }
+        .modal-body .list-block { margin-bottom: 1rem; }
+        .modal-body .verdict-block { margin-top: 1rem; }
+        /* Grand Jury */
+        .jury-section {
+            margin-bottom: 1.5rem;
+            padding-top: 1rem;
+            border-top: 2px solid #e2e8f0;
+        }
+        .jury-section h3 {
+            color: #2d3748;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        .jury-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1rem;
+        }
+        .jury-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.1rem;
+            transition: box-shadow 0.2s ease;
+        }
+        .jury-card:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.12);
+        }
+        .jury-card .agent-name {
+            font-weight: 700;
+            color: #2d3748;
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+        }
+        .jury-card .focus {
+            font-size: 0.75rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+        .jury-card .score {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #4a5568;
+            margin: 0.5rem 0;
+            padding: 0.25rem 0;
+        }
+        .jury-card .opinion {
+            font-size: 0.82rem;
+            color: #4a5568;
+            line-height: 1.4;
+            margin-bottom: 0.6rem;
+        }
+        .jury-card .jury-risks,
+        .jury-card .jury-recs {
+            font-size: 0.75rem;
+            margin-top: 0.4rem;
+        }
+        .jury-card .jury-risks strong,
+        .jury-card .jury-recs strong {
+            color: #4a5568;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+        .jury-card .jury-risks ul,
+        .jury-card .jury-recs ul {
+            list-style: none;
+            margin-top: 0.2rem;
+        }
+        .jury-card .jury-risks li::before { content: "⚠ "; color: #e53e3e; }
+        .jury-card .jury-recs li::before { content: "→ "; color: #3182ce; }
+        .consensus-block {
+            background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin: 1rem 0;
+            border-left: 4px solid #4a5568;
+        }
+        .consensus-block h3 { margin-bottom: 0.75rem; font-weight: 600; }
+        .shared-findings-title { color: #2d3748; font-size: 1rem; margin-bottom: 0.75rem; font-weight: 600; }
+        .consensus-block .agreements-list,
+        .consensus-block .disagreements-list {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-top: 0.5rem;
+        }
+        .verdict-detail {
+            background: linear-gradient(135deg, #e6fffa 0%, #b2f5ea 100%);
+            border-left: 4px solid #38b2ac;
+            padding: 1.25rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+        }
+        .verdict-detail h3 {
+            font-weight: 700;
+            color: #234e52;
+            margin-bottom: 0.75rem;
+        }
+        .verdict-detail .classification-badge {
+            display: inline-block;
+            background: #38b2ac;
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .verdict-detail .verdict-summary { margin: 0.5rem 0; }
+        /* Senate */
+        .senate-verdict-block {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+        .senate-verdict-block h3 { color: #e2e8f0; margin-bottom: 0.75rem; }
+        .senate-verdict-block .classification-badge { background: #4a5568; }
+        .consensus-matrix-item {
+            background: #f8fafc;
+            border-left: 4px solid #718096;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 8px;
+        }
+        .consensus-matrix-item.level-high { border-left-color: #38a169; }
+        .consensus-matrix-item.level-medium { border-left-color: #d69e2e; }
+        .consensus-matrix-item.level-low { border-left-color: #e53e3e; }
+        .senate-debate-card {
+            background: #edf2f7;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .senate-debate-card h4 { color: #2d3748; margin-bottom: 0.5rem; }
+        .senate-debate-card .debate-entries p { margin: 0.4rem 0; font-size: 0.9rem; }
+        .senate-debate-card .debate-result { margin-top: 0.75rem; font-style: italic; color: #4a5568; }
+        /* Tabs Grand Jury */
+        .grand-jury-tabs {
+            display: none;
+            margin: 1rem 0;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .grand-jury-tabs.visible { display: flex; }
+        .grand-jury-tabs .tab-btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            background: none;
+            color: #718096;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+        }
+        .grand-jury-tabs .tab-btn:hover { color: #4a5568; }
+        .grand-jury-tabs .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .grand-jury-tab-panel {
+            display: none;
+            padding: 1rem 0;
+            min-height: 200px;
+            max-height: 55vh;
+            overflow-y: auto;
+        }
+        .grand-jury-tab-panel.active { display: block; }
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .nav-container { flex-direction: column; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo"><span>🚀</span> MCP SinapUm</a>
+            <ul class="nav-menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/architecture/">Architecture Intelligence</a></li>
+                <li><a href="/analyze/">Análise de Imagens</a></li>
+                <li><a href="/whatsapp/">WhatsApp</a></li>
+                <li><a href="/api/creative-engine/test/">Creative Engine</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="content">
+            <div class="header-section">
+                <h1>🏛️ Architecture Intelligence</h1>
+                <p class="subtitle">Avaliação arquitetural de serviços e orbitais do ecossistema SinapUm</p>
+            </div>
+            
+            <div class="form-section">
+                <h2>Configuração da avaliação</h2>
+                <form id="evalForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="system_name">System Name</label>
+                            <input type="text" id="system_name" name="system_name" value="MrFoo" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="system_type">System Type</label>
+                            <select id="system_type" name="system_type">
+                                <option value="Orbital" selected>Orbital</option>
+                                <option value="Service">Service</option>
+                                <option value="Platform Module">Platform Module</option>
+                                <option value="Experimental">Experimental</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="bundle_path">Bundle Path</label>
+                            <input type="text" id="bundle_path" name="bundle_path" value="/app/docs/architecture_bundle/mrfoo_architecture_bundle" placeholder="/app/docs/architecture_bundle/{orbital}_architecture_bundle" required>
+                            <select id="bundle_preset" class="bundle-preset" title="Selecionar orbital para preencher bundle path">
+                                <option value="">— Preset orbital —</option>
+                                <option value="/app/docs/architecture_bundle/mrfoo_architecture_bundle">MrFoo</option>
+                                <option value="/app/docs/architecture_bundle/creative_engine_architecture_bundle">Creative Engine</option>
+                                <option value="/app/docs/architecture_bundle/ddf_architecture_bundle">DDF</option>
+                                <option value="/app/docs/architecture_bundle/shopperbot_architecture_bundle">ShopperBot</option>
+                                <option value="/app/docs/architecture_bundle/sparkscore_architecture_bundle">SparkScore</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="evaluation_mode">Evaluation Mode</label>
+                            <select id="evaluation_mode" name="evaluation_mode">
+                                <option value="full_cycle" selected>Full Cycle</option>
+                                <option value="grand_jury">Grand Jury</option>
+                                <option value="senate">Grand Jury Senate</option>
+                                <option value="design_only">Design Only</option>
+                                <option value="review_only">Review Only</option>
+                                <option value="governance">Governance</option>
+                                <option value="stress_test">Stress Test</option>
+                            </select>
+                            <span id="grandJuryHelper" class="helper-text" style="display:none;">
+                                Executa avaliação multiagente com múltiplos pareceres e veredito consolidado.
+                            </span>
+                            <span id="senateHelper" class="helper-text" style="display:none;">
+                                Executa o Grand Jury e uma rodada de deliberação institucional com debate, consenso e veredito final.
+                            </span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-evaluate" id="btnEvaluate">
+                        Executar Avaliação
+                    </button>
+                </form>
+                <div id="errorMsg" class="error-msg" style="display:none;"></div>
+            </div>
+            
+            <div id="emptyState" class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <p>Nenhuma avaliação executada ainda.</p>
+                <p>Preencha os dados e inicie uma análise arquitetural.</p>
+            </div>
+            <p class="back-to-panel"><a href="/">← Voltar ao painel</a></p>
+        </div>
+        
+        <!-- Modal Popup - Resultado da avaliação -->
+        <div id="resultsModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📊 Resultado da avaliação</h2>
+                    <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="summary-grid" id="summaryGrid"></div>
+                    <!-- Abas Grand Jury -->
+                    <div id="grandJuryWrapper" style="display:none;">
+                        <div id="grandJuryTabs" class="grand-jury-tabs visible">
+                            <button type="button" class="tab-btn active" data-tab="jury">Jury Members</button>
+                            <button type="button" class="tab-btn" data-tab="consensus">Consensus</button>
+                            <button type="button" class="tab-btn" data-tab="shared">Shared Findings</button>
+                            <button type="button" class="tab-btn" data-tab="verdict">Final Verdict</button>
+                        </div>
+                        <div id="tabJury" class="grand-jury-tab-panel active">
+                            <div class="jury-cards" id="juryCards"></div>
+                        </div>
+                        <div id="tabConsensus" class="grand-jury-tab-panel">
+                            <div class="consensus-block" id="consensusBlock">
+                                <h3>Consensus</h3>
+                                <p><strong>Agreements:</strong> <span id="consensusAgreements"></span></p>
+                                <p><strong>Disagreements:</strong> <span id="consensusDisagreements"></span></p>
+                            </div>
+                        </div>
+                        <div id="tabShared" class="grand-jury-tab-panel">
+                            <div id="sharedFindingsWrapper">
+                                <h3 class="shared-findings-title">Shared Findings</h3>
+                                <div class="list-block strengths" id="sharedStrengthsBlock">
+                                    <h4>Shared Strengths</h4>
+                                    <ul id="sharedStrengthsList"></ul>
+                                </div>
+                                <div class="list-block risks" id="sharedRisksBlock">
+                                    <h4>Shared Risks</h4>
+                                    <ul id="sharedRisksList"></ul>
+                                </div>
+                                <div class="list-block recommendations" id="sharedRecsBlock">
+                                    <h4>Shared Recommendations</h4>
+                                    <ul id="sharedRecsList"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="tabVerdict" class="grand-jury-tab-panel">
+                            <div class="verdict-detail" id="verdictDetailBlock">
+                                <h3>Final Verdict (Grand Jury)</h3>
+                                <div class="classification-badge" id="verdictClassification"></div>
+                                <p class="verdict-summary"><strong>Summary:</strong> <span id="verdictSummary"></span></p>
+                                <p><strong>Conditions:</strong> <span id="verdictConditions"></span></p>
+                            </div>
+                            <div class="scores-grid" id="scoresGridGJ"></div>
+                        </div>
+                    </div>
+                    <!-- Abas Architecture Senate -->
+                    <div id="senateWrapper" style="display:none;">
+                        <div id="senateTabs" class="grand-jury-tabs visible">
+                            <button type="button" class="tab-btn active" data-tab="senateverdict">Senate Verdict</button>
+                            <button type="button" class="tab-btn" data-tab="consensusmatrix">Consensus Matrix</button>
+                            <button type="button" class="tab-btn" data-tab="senateconsensus">Consensus</button>
+                            <button type="button" class="tab-btn" data-tab="senatedebate">Senate Debate</button>
+                            <button type="button" class="tab-btn" data-tab="senatejury">Jury Members</button>
+                            <button type="button" class="tab-btn" data-tab="senateshared">Shared Findings</button>
+                        </div>
+                        <div id="tabSenateverdict" class="grand-jury-tab-panel active">
+                            <div class="senate-verdict-block" id="senateVerdictBlock">
+                                <h3>Senate Verdict</h3>
+                                <div class="classification-badge" id="senateClassification"></div>
+                                <p class="verdict-summary"><strong>Summary:</strong> <span id="senateSummary"></span></p>
+                                <p><strong>Conditions:</strong> <span id="senateConditions"></span></p>
+                                <p><strong>Strategic Potential:</strong> <span id="senateStrategicPotential"></span></p>
+                            </div>
+                            <div class="scores-grid" id="scoresGridSenate"></div>
+                        </div>
+                        <div id="tabConsensusmatrix" class="grand-jury-tab-panel">
+                            <div id="consensusMatrixContainer"></div>
+                        </div>
+                        <div id="tabSenateconsensus" class="grand-jury-tab-panel">
+                            <div class="consensus-block" id="senateConsensusBlock">
+                                <h3>Consensus</h3>
+                                <p><strong>Agreements:</strong> <span id="senateConsensusAgreements"></span></p>
+                                <p><strong>Disagreements:</strong> <span id="senateConsensusDisagreements"></span></p>
+                            </div>
+                        </div>
+                        <div id="tabSenatedebate" class="grand-jury-tab-panel">
+                            <div id="senateDebateContainer"></div>
+                        </div>
+                        <div id="tabSenatejury" class="grand-jury-tab-panel">
+                            <div class="jury-cards" id="senateJuryCards"></div>
+                        </div>
+                        <div id="tabSenateshared" class="grand-jury-tab-panel">
+                            <div id="senateSharedFindingsWrapper">
+                                <h3 class="shared-findings-title">Shared Findings</h3>
+                                <div class="list-block strengths" id="senateSharedStrengthsBlock">
+                                    <h4>Shared Strengths</h4>
+                                    <ul id="senateSharedStrengthsList"></ul>
+                                </div>
+                                <div class="list-block risks" id="senateSharedRisksBlock">
+                                    <h4>Shared Risks</h4>
+                                    <ul id="senateSharedRisksList"></ul>
+                                </div>
+                                <div class="list-block recommendations" id="senateSharedRecsBlock">
+                                    <h4>Shared Recommendations</h4>
+                                    <ul id="senateSharedRecsList"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Conteúdo modo padrão (sem Grand Jury) -->
+                    <div id="standardContent">
+                        <div class="scores-grid" id="scoresGrid"></div>
+                        <div class="list-block strengths">
+                            <h3>Strengths</h3>
+                            <ul id="strengthsList"></ul>
+                        </div>
+                        <div class="list-block risks">
+                            <h3>Risks</h3>
+                            <ul id="risksList"></ul>
+                        </div>
+                        <div class="list-block recommendations">
+                            <h3>Recommendations</h3>
+                            <ul id="recommendationsList"></ul>
+                        </div>
+                        <div class="verdict-block">
+                            <h3>Final Verdict</h3>
+                            <p id="finalVerdict"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        const form = document.getElementById('evalForm');
+        const btnEvaluate = document.getElementById('btnEvaluate');
+        const emptyState = document.getElementById('emptyState');
+        const resultsModal = document.getElementById('resultsModal');
+        const modalClose = document.getElementById('modalClose');
+        const errorMsg = document.getElementById('errorMsg');
+        
+        function openModal() {
+            resultsModal.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal() {
+            resultsModal.classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+        modalClose.addEventListener('click', closeModal);
+        resultsModal.addEventListener('click', (e) => {
+            if (e.target === resultsModal) closeModal();
+        });
+
+        const evalModeSelect = document.getElementById('evaluation_mode');
+        function toggleGrandJuryHelper() {
+            const mode = evalModeSelect.value;
+            document.getElementById('grandJuryHelper').style.display = mode === 'grand_jury' ? 'block' : 'none';
+            document.getElementById('senateHelper').style.display = mode === 'senate' ? 'block' : 'none';
+        }
+        evalModeSelect.addEventListener('change', toggleGrandJuryHelper);
+        toggleGrandJuryHelper();
+
+        document.getElementById('bundle_preset').addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val) document.getElementById('bundle_path').value = val;
+        });
+
+        function setupTabSwitcher(wrapperId) {
+            document.querySelectorAll(`#${wrapperId} .tab-btn`).forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.tab;
+                    const wrapper = document.getElementById(wrapperId);
+                    wrapper.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    wrapper.querySelectorAll('.grand-jury-tab-panel').forEach(p => p.classList.remove('active'));
+                    btn.classList.add('active');
+                    const panelId = 'tab' + tab.charAt(0).toUpperCase() + tab.slice(1);
+                    const panel = document.getElementById(panelId);
+                    if (panel) panel.classList.add('active');
+                });
+            });
+        }
+        setupTabSwitcher('grandJuryWrapper');
+        setupTabSwitcher('senateWrapper');
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && resultsModal.classList.contains('visible')) closeModal();
+        });
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.style.display = 'none';
+            btnEvaluate.disabled = true;
+            btnEvaluate.innerHTML = '<span class="loading-spinner"></span> Executando...';
+            
+            const payload = {
+                system_name: document.getElementById('system_name').value,
+                system_type: document.getElementById('system_type').value,
+                bundle_path: document.getElementById('bundle_path').value,
+                evaluation_mode: document.getElementById('evaluation_mode').value,
+            };
+            
+            try {
+                const res = await fetch('/architecture/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    throw new Error(data.error || 'Erro na avaliação');
+                }
+                
+                renderResults(data);
+                emptyState.style.display = 'none';
+                openModal();
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorMsg.style.display = 'block';
+            } finally {
+                btnEvaluate.disabled = false;
+                btnEvaluate.innerHTML = 'Executar Avaliação';
+            }
+        });
+        
+        function escapeHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+        function renderResults(data) {
+            document.getElementById('summaryGrid').innerHTML = `
+                <div class="summary-item"><span class="label">Sistema</span><span class="value">${data.system_name || '-'}</span></div>
+                <div class="summary-item"><span class="label">Tipo</span><span class="value">${data.system_type || '-'}</span></div>
+                <div class="summary-item"><span class="label">Bundle</span><span class="value">${(data.bundle_path || '-').replace(/^\/root\//, '')}</span></div>
+                <div class="summary-item"><span class="label">Modo</span><span class="value">${data.evaluation_mode || '-'}</span></div>
+                <div class="summary-item"><span class="label">Status</span><span class="value">${data.status || '-'}</span></div>
+            `;
+            
+            // Senate ou Grand Jury: exibir abas
+            const juryMembers = data.jury_members;
+            const isSenate = data.senate_debate && data.senate_debate.length > 0;
+            if (isSenate) {
+                document.getElementById('senateWrapper').style.display = 'block';
+                document.getElementById('grandJuryWrapper').style.display = 'none';
+                document.getElementById('standardContent').style.display = 'none';
+                document.querySelectorAll('#senateWrapper .tab-btn').forEach((b, i) => { b.classList.toggle('active', i === 0); });
+                document.querySelectorAll('#senateWrapper .grand-jury-tab-panel').forEach((p, i) => { p.classList.toggle('active', i === 0); });
+                const sv = data.senate_verdict || {};
+                document.getElementById('senateClassification').textContent = sv.classification || '-';
+                document.getElementById('senateSummary').textContent = sv.summary || '-';
+                document.getElementById('senateConditions').textContent = (sv.conditions || []).join('; ') || 'Nenhuma';
+                document.getElementById('senateStrategicPotential').textContent = sv.strategic_potential || '-';
+                const scores = data.scores || {};
+                const scoreLabels = { design_score: 'Design Score', domain_coherence: 'Domain Coherence', service_separation: 'Service Separation', data_architecture: 'Data Architecture', governance: 'Governance', evolution_potential: 'Evolution Potential', final_score: 'Final Score' };
+                document.getElementById('scoresGridSenate').innerHTML = Object.entries(scoreLabels).map(([key, label]) => {
+                    const val = scores[key];
+                    return val !== undefined ? `<div class="score-card ${key === 'final_score' ? 'final' : ''}"><div class="score-value">${val}</div><div class="score-label">${label}</div></div>` : '';
+                }).filter(Boolean).join('') || '<p>Nenhum score disponível</p>';
+                const matrix = data.consensus_matrix || [];
+                document.getElementById('consensusMatrixContainer').innerHTML = matrix.length ? matrix.map(m => `
+                    <div class="consensus-matrix-item level-${escapeHtml(m.agreement_level || '')}">
+                        <strong>${escapeHtml(m.topic || '')}</strong> — ${escapeHtml(m.agreement_level || '')}
+                        <p>${escapeHtml(m.notes || '')}</p>
+                    </div>
+                `).join('') : '<p>Nenhuma matriz de consenso disponível</p>';
+                const consensus = data.consensus || {};
+                document.getElementById('senateConsensusAgreements').textContent = (consensus.agreements || []).join(' • ') || 'Nenhuma';
+                document.getElementById('senateConsensusDisagreements').textContent = (consensus.disagreements || []).join(' • ') || 'Nenhuma';
+                const debate = data.senate_debate || [];
+                document.getElementById('senateDebateContainer').innerHTML = debate.length ? debate.map(d => `
+                    <div class="senate-debate-card">
+                        <h4>${escapeHtml(d.topic || '')}</h4>
+                        <div class="debate-entries">${(d.entries || []).map(e => `
+                            <p><strong>${escapeHtml(e.agent_name || '')}</strong>${e.responds_to ? ` (responde a ${escapeHtml(e.responds_to)})` : ''}: ${escapeHtml(e.position || '')}</p>
+                        `).join('')}</div>
+                        <p class="debate-result"><strong>Resultado:</strong> ${escapeHtml(d.debate_result || '')}</p>
+                    </div>
+                `).join('') : '<p>Nenhum debate disponível</p>';
+                document.getElementById('senateJuryCards').innerHTML = (juryMembers || []).map(j => {
+                    const risks = j.risks || [], recs = j.recommendations || [];
+                    const risksHtml = risks.length ? `<div class="jury-risks"><strong>Riscos</strong><ul>${risks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>` : '';
+                    const recsHtml = recs.length ? `<div class="jury-recs"><strong>Recomendações</strong><ul>${recs.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>` : '';
+                    const opinion = (j.opinion || '').substring(0, 150) + ((j.opinion || '').length > 150 ? '…' : '');
+                    return `<div class="jury-card"><div class="agent-name">${escapeHtml(j.agent_name || '-')}</div><div class="focus">${escapeHtml(j.focus || '')}</div><div class="score">${j.score ?? '-'}/10</div><div class="opinion">${escapeHtml(opinion)}</div>${risksHtml}${recsHtml}</div>`;
+                }).join('');
+                if (data.shared_strengths && data.shared_strengths.length > 0) {
+                    document.getElementById('senateSharedStrengthsBlock').style.display = 'block';
+                    document.getElementById('senateSharedStrengthsList').innerHTML = data.shared_strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+                } else { document.getElementById('senateSharedStrengthsBlock').style.display = 'none'; }
+                if (data.shared_risks && data.shared_risks.length > 0) {
+                    document.getElementById('senateSharedRisksBlock').style.display = 'block';
+                    document.getElementById('senateSharedRisksList').innerHTML = data.shared_risks.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+                } else { document.getElementById('senateSharedRisksBlock').style.display = 'none'; }
+                if (data.shared_recommendations && data.shared_recommendations.length > 0) {
+                    document.getElementById('senateSharedRecsBlock').style.display = 'block';
+                    document.getElementById('senateSharedRecsList').innerHTML = data.shared_recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+                } else { document.getElementById('senateSharedRecsBlock').style.display = 'none'; }
+            } else if (juryMembers && juryMembers.length > 0) {
+                document.getElementById('senateWrapper').style.display = 'none';
+                document.getElementById('grandJuryWrapper').style.display = 'block';
+                document.getElementById('standardContent').style.display = 'none';
+                document.querySelectorAll('#grandJuryWrapper .tab-btn').forEach((b, i) => { b.classList.toggle('active', i === 0); });
+                document.querySelectorAll('#grandJuryWrapper .grand-jury-tab-panel').forEach((p, i) => { p.classList.toggle('active', i === 0); });
+                document.getElementById('juryCards').innerHTML = juryMembers.map(j => {
+                    const risks = j.risks || [];
+                    const recs = j.recommendations || [];
+                    const risksHtml = risks.length ? `<div class="jury-risks"><strong>Riscos</strong><ul>${risks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>` : '';
+                    const recsHtml = recs.length ? `<div class="jury-recs"><strong>Recomendações</strong><ul>${recs.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>` : '';
+                    const opinion = (j.opinion || '').substring(0, 150) + ((j.opinion || '').length > 150 ? '…' : '');
+                    return `
+                    <div class="jury-card">
+                        <div class="agent-name">${escapeHtml(j.agent_name || '-')}</div>
+                        <div class="focus">${escapeHtml(j.focus || '')}</div>
+                        <div class="score">${j.score ?? '-'}/10</div>
+                        <div class="opinion">${escapeHtml(opinion)}</div>
+                        ${risksHtml}
+                        ${recsHtml}
+                    </div>
+                    `;
+                }).join('');
+                const consensus = data.consensus || {};
+                document.getElementById('consensusAgreements').textContent = (consensus.agreements || []).length
+                    ? (consensus.agreements || []).join(' • ')
+                    : 'Nenhuma convergência explícita';
+                document.getElementById('consensusDisagreements').textContent = (consensus.disagreements || []).length
+                    ? (consensus.disagreements || []).join(' • ')
+                    : 'Nenhuma divergência significativa';
+                if (data.shared_strengths && data.shared_strengths.length > 0) {
+                    document.getElementById('sharedStrengthsBlock').style.display = 'block';
+                    document.getElementById('sharedStrengthsList').innerHTML = data.shared_strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('');
+                } else { document.getElementById('sharedStrengthsBlock').style.display = 'none'; }
+                if (data.shared_risks && data.shared_risks.length > 0) {
+                    document.getElementById('sharedRisksBlock').style.display = 'block';
+                    document.getElementById('sharedRisksList').innerHTML = data.shared_risks.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+                } else { document.getElementById('sharedRisksBlock').style.display = 'none'; }
+                if (data.shared_recommendations && data.shared_recommendations.length > 0) {
+                    document.getElementById('sharedRecsBlock').style.display = 'block';
+                    document.getElementById('sharedRecsList').innerHTML = data.shared_recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+                } else { document.getElementById('sharedRecsBlock').style.display = 'none'; }
+                const vd = data.verdict_detail || {};
+                document.getElementById('verdictClassification').textContent = vd.classification || '-';
+                document.getElementById('verdictSummary').textContent = vd.summary || '-';
+                document.getElementById('verdictConditions').textContent = (vd.conditions || []).join('; ') || 'Nenhuma';
+                // Scores na aba Final Verdict
+                const scores = data.scores || {};
+                const scoreLabels = { design_score: 'Design Score', domain_coherence: 'Domain Coherence', service_separation: 'Service Separation', data_architecture: 'Data Architecture', governance: 'Governance', evolution_potential: 'Evolution Potential', final_score: 'Final Score' };
+                let scoresGJ = '';
+                for (const [key, label] of Object.entries(scoreLabels)) {
+                    const val = scores[key];
+                    if (val !== undefined) scoresGJ += `<div class="score-card ${key === 'final_score' ? 'final' : ''}"><div class="score-value">${val}</div><div class="score-label">${label}</div></div>`;
+                }
+                document.getElementById('scoresGridGJ').innerHTML = scoresGJ || '<p>Nenhum score disponível</p>';
+            } else {
+                document.getElementById('senateWrapper').style.display = 'none';
+                document.getElementById('grandJuryWrapper').style.display = 'none';
+                document.getElementById('standardContent').style.display = 'block';
+            }
+            
+            const scores = data.scores || {};
+            const scoreLabels = {
+                design_score: 'Design Score',
+                domain_coherence: 'Domain Coherence',
+                service_separation: 'Service Separation',
+                data_architecture: 'Data Architecture',
+                governance: 'Governance',
+                evolution_potential: 'Evolution Potential',
+                final_score: 'Final Score',
+            };
+            let scoresHtml = '';
+            for (const [key, label] of Object.entries(scoreLabels)) {
+                const val = scores[key];
+                if (val !== undefined) {
+                    scoresHtml += `
+                        <div class="score-card ${key === 'final_score' ? 'final' : ''}">
+                            <div class="score-value">${val}</div>
+                            <div class="score-label">${label}</div>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('scoresGrid').innerHTML = scoresHtml || '<p>Nenhum score disponível</p>';
+            
+            const list = (arr) => (arr || []).map(s => `<li>${escapeHtml(String(s))}</li>`).join('');
+            document.getElementById('strengthsList').innerHTML = list(data.strengths);
+            document.getElementById('risksList').innerHTML = list(data.risks);
+            document.getElementById('recommendationsList').innerHTML = list(data.recommendations);
+            const fv = data.final_verdict;
+            const verdictText = typeof fv === 'object' && fv !== null
+                ? `${fv.classification || ''}: ${fv.summary || ''}`.trim() || '-'
+                : (fv || '-');
+            document.getElementById('finalVerdict').textContent = verdictText;
+        }
+    </script>
+</body>
+</html>

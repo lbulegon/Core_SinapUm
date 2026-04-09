@@ -86,6 +86,10 @@ class WhatsAppGateway:
                     from .providers.provider_baileys import ProviderBaileys
                     self._provider = ProviderBaileys()
                 
+                elif provider_name == 'gateway_service':
+                    from .providers.provider_gateway_service import ProviderGatewayService
+                    self._provider = ProviderGatewayService()
+                
                 else:
                     raise ValueError(f"Provider desconhecido: {provider_name}")
                 

@@ -21,25 +21,79 @@ Disponibilizar um *runtime* cognitivo que:
 
 ---
 
-## Arquitetura (visão de pastas)
+## Estrutura de pastas (com funcionalidades)
+
+### Mapa rápido (raiz)
 
 ```
 Core_SinapUm/
-├── agent_core/           # Runtime cognitivo (PAOR) — sem Django nos núcleos puros
-│   ├── core/             # Motor, interfaces, agent
-│   ├── modules/          # Módulos orbitais (ex.: environmental/)
-│   ├── perceptors/       # Compat / wrappers
-│   └── registry/         # Registro de módulos plugáveis
-├── command_engine/       # Handlers + registry + executor (fachada)
-├── services/             # Infraestrutura Django (Redis, fila, logs ORM, alertas)
-├── models/               # Reexport dos modelos de governança (ver abaixo)
-├── views/                # Documentação do boundary HTTP (implementação em app_sinapcore)
-├── utils/                # Utilitários (ex.: validação do framework)
-├── app_sinapcore/        # App Django: modelos ORM, EOC, templates, admin
-└── setup/                # Projeto Django (settings, urls)
+├── setup/                     # Projeto Django (settings, urls, wsgi/asgi)
+├── core/                      # Núcleo de serviços transversais (feature flags, gateway, fila, whatsapp)
+├── app_*                      # Apps Django de domínio/produto (Sinap, WhatsApp, MCP, etc.)
+├── agent_core/                # Runtime cognitivo PAOR (núcleo sem acoplamento forte a views)
+├── command_engine/            # Engine de comandos (registry, handlers, executor)
+├── services/                  # Serviços de infraestrutura e integrações (runtime + helpers)
+├── models/                    # Reexports de modelos de governança (facilita imports)
+├── views/                     # Boundary HTTP/documentação de views centrais
+├── tools/                     # Ferramentas de suporte (landing/demo/extensions/scripts)
+├── docs/                      # Documentação técnica e operacional
+├── tests/                     # Testes automatizados (unitários/integração)
+├── scripts/                   # Scripts operacionais (boot, checks, manutenção)
+├── mcp/                       # Recursos/configuração MCP
+├── sdk/                       # SDKs e adaptadores de integração
+├── adapters/                  # Adapters para integração entre camadas/serviços
+├── a2a/                       # Fluxos e endpoints agent-to-agent
+├── data/                      # Dados auxiliares locais (quando aplicável)
+├── media/ / static/ / staticfiles/  # Artefactos estáticos e media
+├── nginx/                     # Configuração de reverse proxy
+├── prompts/                   # Prompts e artefactos de IA
+└── utils/                     # Utilitários e validadores do framework
 ```
 
-**Nota:** os modelos Django (`SinapCoreModule`, `SinapCoreCommand`, `SinapCoreLog`) estão definidos em `app_sinapcore/models/`. O pacote `models/` na raiz reexporta-os para alinhar com a documentação do framework e facilitar imports consistentes.
+### Detalhamento por área
+
+| Pasta | Função principal | O que normalmente contém |
+|------|-------------------|--------------------------|
+| `setup/` | Inicialização Django | `settings.py`, `urls.py`, bootstrap do projeto |
+| `core/` | Serviços centrais da plataforma | filas, gateways, regras globais, serviços compartilhados |
+| `agent_core/` | Runtime cognitivo (PAOR) | `core/`, `modules/`, `perceptors/`, `analyzers/`, `registry/`, `planner` |
+| `command_engine/` | Execução desacoplada de comandos | base de handlers, registro, bootstrap, executor |
+| `services/` | Infra e integrações de alto nível | Redis, auditoria, execução de comandos, score arquitetural, integrações externas |
+| `models/` | Facade de modelos | reexport de modelos usados no framework (governança/auditoria) |
+| `views/` | Boundary de exposição HTTP | views/facades centrais (a implementação de UI vive nos apps) |
+| `utils/` | Utilitários internos | validadores, helpers de suporte e automação |
+| `docs/` | Fonte de verdade documental | arquitetura, playbooks, políticas e guias operacionais |
+| `tests/` | Qualidade e regressão | testes de integração/unitários e guias de teste |
+| `tools/` | Ferramentas de produto e DX | landing do SinapLint, demo server, extensão VS Code, utilitários |
+| `scripts/` | Operação local/servidor | scripts de start/restart/check/migração |
+| `mcp/` | Recursos MCP | configuração e ativos para execução via MCP |
+| `sdk/` | Integração externa | clientes, wrappers e artefactos para consumo externo |
+| `adapters/` | Pontes entre camadas | adaptadores para desacoplamento entre domínios/serviços |
+| `a2a/` | Agent-to-agent | fluxos de comunicação entre agentes |
+| `nginx/` | Entrega HTTP | confs de proxy e roteamento |
+| `prompts/` | Base de prompts | prompts versionados e auxiliares de IA |
+| `data/` | Dados auxiliares | fixtures/dados de apoio local |
+| `media/`, `static/`, `staticfiles/` | Assets | ficheiros de upload, assets e colecta estática |
+
+### Principais apps Django (`app_*`)
+
+| App | Responsabilidade |
+|-----|------------------|
+| `app_sinapcore/` | Núcleo operacional/EOC (modelos ORM, admin, templates, views de comando e auditoria) |
+| `app_sinaplint/` | Governança arquitetural (engine, regras, scoring, APIs SaaS e dashboard técnico) |
+| `app_sinapum/` | Interface principal e fluxos de produto no monólito |
+| `app_mcp/` | Endpoints e ferramentas MCP |
+| `app_mcp_tool_registry/` | Catálogo/versionamento de ferramentas MCP e telemetria |
+| `app_whatsapp*` | Integração WhatsApp (gateway, eventos, clientes, serviços) |
+| `app_inbound_events/` | Ingestão e persistência de eventos de entrada/feedback |
+| `app_creative_engine/` | Fluxos de geração criativa (conteúdo, templates e jobs) |
+| `app_leads/` | Gestão de leads e operações associadas |
+| `app_ai_bridge/` | Ponte de integração com serviços de IA externos |
+| `app_acp/` | Componentes ACP e automações relacionadas |
+| `app_architecture_intelligence/` | Recursos de inteligência arquitetural complementar |
+| `app_ifood_integration/` | Integração de domínio iFood |
+
+**Nota:** os modelos Django (`SinapCoreModule`, `SinapCoreCommand`, `SinapCoreLog`) continuam definidos em `app_sinapcore/models/`. O pacote `models/` na raiz reexporta esses tipos para manter imports consistentes no framework.
 
 ---
 

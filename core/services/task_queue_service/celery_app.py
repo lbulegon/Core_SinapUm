@@ -29,6 +29,7 @@ app.conf.update(
         "core.services.task_queue_service.tasks.domain_process": {"queue": "domain_processing"},
         "core.services.task_queue_service.tasks.webhook_out": {"queue": "webhooks_out"},
         "core.services.task_queue_service.tasks.metrics_batch": {"queue": "metrics_batch"},
+        "app_creative_engine.tasks.process_creative_job": {"queue": "ai_calls"},
     },
     task_queues=(
         Queue("events_ingest"),
@@ -45,4 +46,4 @@ try:
     app.config_from_object("django.conf:settings", namespace="CELERY")
 except Exception:
     pass
-app.autodiscover_tasks(["core.services.task_queue_service"])
+app.autodiscover_tasks(["core.services.task_queue_service", "app_creative_engine", "app_acp"])

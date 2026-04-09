@@ -1,0 +1,33 @@
+% Layout PI – tema roxo/dourado (inspirado em Pi Network / guias de mineração)
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{pifont}
+
+% Paleta: fundo roxo escuro, texto claro, destaque dourado
+\definecolor{pibg}{RGB}{35,20,55}
+\definecolor{pitext}{RGB}{255,252,245}
+\definecolor{gold}{RGB}{255,193,7}
+\AtBeginDocument{%
+  \pagecolor{pibg}%
+  \color{pitext}%
+}
+
+% Títulos em dourado (estilo capa Pi)
+\titleformat{\section}{\color{gold}\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\color{gold!95}\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\color{gold!90}\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+% Listas com marcadores: check (✓) em dourado; numeradas: número em dourado
+\renewcommand{\labelitemi}{\textcolor{gold}{\ding{51}}}
+\renewcommand{\labelenumi}{\textcolor{gold}{\theenumi.}}
+
+% Rodapé em dourado (estilo faixa da capa Pi)
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\color{gold}\small Creative Engine\quad$\cdot$\quad\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Links em dourado
+\AtBeginDocument{\hypersetup{colorlinks=true,linkcolor=gold!90,urlcolor=gold!80,citecolor=gold!80}}

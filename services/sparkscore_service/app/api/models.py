@@ -2,7 +2,7 @@
 Modelos Pydantic para API v1
 """
 
-from typing import Optional, Dict, List, Literal
+from typing import Optional, Dict, List, Literal, Any
 from pydantic import BaseModel, Field
 
 
@@ -63,6 +63,14 @@ class Context(BaseModel):
     region: Optional[str] = Field(None, description="Região")
     time_context: Optional[str] = Field(None, description="Contexto temporal")
     campaign_id: Optional[str] = Field(None, description="ID da campanha")
+    estabelecimento_id: Optional[int] = Field(
+        None,
+        description="ID do estabelecimento — grava estado em Redis (env_state:*)",
+    )
+    indicios_ambientais: Optional[Dict[str, float]] = Field(
+        None,
+        description="Indícios ambientais 0–1 (orbital environmental_indiciary)",
+    )
 
 
 class Options(BaseModel):
@@ -83,6 +91,14 @@ class AnalyzePieceRequest(BaseModel):
     distribution: Distribution = Field(..., description="Distribuição/canal")
     context: Optional[Context] = Field(None, description="Contexto adicional")
     options: Optional[Options] = Field(None, description="Opções de processamento")
+    indicios_ambientais: Optional[Dict[str, float]] = Field(
+        None,
+        description="Indícios ambientais normalizados (0–1); alternativa a context.indicios_ambientais",
+    )
+    estabelecimento_id: Optional[int] = Field(
+        None,
+        description="ID do estabelecimento para Redis (Mapa de Estado Ambiental)",
+    )
 
 
 class OrbitalResultResponse(BaseModel):
@@ -114,6 +130,10 @@ class AnalyzePieceResponse(BaseModel):
     overall_score: float = Field(..., description="Score geral (0-100)")
     orbitals: List[OrbitalResultResponse] = Field(..., description="Resultados dos orbitais")
     insights: List[Insight] = Field(default_factory=list, description="Insights gerados")
+    ppa: Dict[str, Any] = Field(
+        ...,
+        description="PPA / antecipação de ação (ponte com orbitais + modulação ambiental opcional)",
+    )
 
 
 class AnalysisResponse(BaseModel):
@@ -124,6 +144,7 @@ class AnalysisResponse(BaseModel):
     overall_score: float
     orbitals: List[OrbitalResultResponse]
     insights: List[Insight]
+    ppa: Optional[Dict[str, Any]] = None
     created_at: str
 
 

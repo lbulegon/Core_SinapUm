@@ -1,0 +1,27 @@
+# Compose standalone do worldgraph_service (Neo4j).
+# No monorepo, o serviço é incluído pelo docker-compose.yml da raiz.
+services:
+  worldgraph_service:
+    image: neo4j:5
+    container_name: worldgraph_service
+    ports:
+      - "${WORLDGRAPH_HTTP_PORT:-7474}:7474"
+      - "${WORLDGRAPH_BOLT_PORT:-7687}:7687"
+    environment:
+      - NEO4J_AUTH=${WORLDGRAPH_NEO4J_USER:-neo4j}/${WORLDGRAPH_NEO4J_PASSWORD:-neo4j12345}
+      - NEO4J_server_memory_heap_initial__size=${WORLDGRAPH_HEAP_INITIAL:-1G}
+      - NEO4J_server_memory_heap_max__size=${WORLDGRAPH_HEAP_MAX:-1G}
+      - NEO4J_server_memory_pagecache_size=${WORLDGRAPH_PAGECACHE:-1G}
+    volumes:
+      - worldgraph_data:/data
+      - worldgraph_logs:/logs
+      - ./seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  worldgraph_data:
+  worldgraph_logs:

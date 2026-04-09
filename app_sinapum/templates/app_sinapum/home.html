@@ -72,39 +72,6 @@
             color: #667eea;
         }
         
-        .nav-menu a.creative-link {
-            background: linear-gradient(135deg, #f39c12, #e67e22);
-            color: white;
-        }
-        
-        .nav-menu a.creative-link:hover {
-            background: linear-gradient(135deg, #e67e22, #d35400);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
-        }
-        
-        .nav-menu a.grafana-link {
-            background: linear-gradient(135deg, #667eea, #5568d3);
-            color: white;
-        }
-        
-        .nav-menu a.grafana-link:hover {
-            background: linear-gradient(135deg, #5568d3, #4a5bc4);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        
-        .nav-menu a.mlflow-link {
-            background: linear-gradient(135deg, #0194E2, #0174b3);
-            color: white;
-        }
-        
-        .nav-menu a.mlflow-link:hover {
-            background: linear-gradient(135deg, #0174b3, #015a8a);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(1, 148, 226, 0.4);
-        }
-        
         /* Main Content */
         main {
             flex: 1;
@@ -229,6 +196,84 @@
             color: white;
         }
         
+        .service-card.architecture {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            border-color: #4a5568;
+            color: white;
+        }
+        
+        .service-card.architecture .service-title,
+        .service-card.architecture .service-description {
+            color: white;
+        }
+
+        /* Agent Core — ciclo cognitivo PAOR (destaque próximo ao Architecture Intelligence) */
+        .service-card.agent-core {
+            background: linear-gradient(145deg, #34495e 0%, #2c3e50 45%, #1a252f 100%);
+            border-color: #2c3e50;
+            color: white;
+        }
+
+        .service-card.agent-core .service-title,
+        .service-card.agent-core .service-description {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .service-card.agent-core:hover {
+            border-color: #5dade2;
+            box-shadow: 0 12px 32px rgba(44, 62, 80, 0.45);
+        }
+
+        .service-card.sinapcore {
+            background: linear-gradient(145deg, #6c5ce7 0%, #4834d4 50%, #2d1b69 100%);
+            border-color: #4834d4;
+            color: white;
+        }
+        .service-card.sinapcore .service-title,
+        .service-card.sinapcore .service-description {
+            color: rgba(255, 255, 255, 0.95);
+        }
+        .service-card.sinapcore:hover {
+            border-color: #a29bfe;
+            box-shadow: 0 12px 32px rgba(108, 92, 231, 0.45);
+        }
+
+        .service-card.eoc-tower {
+            background: linear-gradient(145deg, #0b1f2a 0%, #0d3d4d 55%, #062029 100%);
+            border-color: rgba(0, 229, 255, 0.35);
+            color: white;
+        }
+        .service-card.eoc-tower .service-title,
+        .service-card.eoc-tower .service-description {
+            color: rgba(255, 255, 255, 0.95);
+        }
+        .service-card.eoc-tower:hover {
+            border-color: #00e5ff;
+            box-shadow: 0 12px 32px rgba(0, 229, 255, 0.25);
+        }
+        
+        .service-card.gastronomia {
+            background: linear-gradient(135deg, #ff7043 0%, #ff5722 55%, #e64a19 100%);
+            border-color: #ff7043;
+            color: white;
+        }
+        
+        .service-card.gastronomia .service-title,
+        .service-card.gastronomia .service-description {
+            color: white;
+        }
+
+        /* Painel Ambiental — Mapa de Estado Ambiental (Redis) */
+        .service-card.environmental {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            border-color: #27ae60;
+            color: white;
+        }
+        .service-card.environmental .service-title,
+        .service-card.environmental .service-description {
+            color: white;
+        }
+        
         /* Footer */
         footer {
             background: rgba(255, 255, 255, 0.95);
@@ -276,11 +321,17 @@
                 <li><a href="/">Home</a></li>
                 <li><a href="/analyze/">Análise de Imagens</a></li>
                 <li><a href="/whatsapp/">WhatsApp</a></li>
-                <li><a href="/api/creative-engine/test/" class="creative-link">Creative Engine</a></li>
+                <li><a href="/api/creative-engine/test/">Creative Engine</a></li>
+                <li><a href="/architecture/">Architecture Intelligence</a></li>
+                <li><a href="/agent-core/dashboard/">Agent Core</a></li>
+                <li><a href="/sinapcore/">SinapCore</a></li>
+                <li><a href="/eoc/">EOC</a></li>
+                <li><a href="/environmental/">Painel Ambiental</a></li>
+                <li><a href="/rag-gastronomico/">RAG Gastronômico</a></li>
                 <li><a href="/admin/">Admin</a></li>
                 <li><a href="http://69.169.102.84:3001" target="_blank">Chatwoot</a></li>
-                <li><a href="{{ grafana_url }}" target="_blank" class="grafana-link">Grafana</a></li>
-                <li><a href="http://69.169.102.84:5050/" target="_blank" class="mlflow-link">MLflow</a></li>
+                <li><a href="{{ grafana_url }}" target="_blank">Grafana</a></li>
+                <li><a href="http://69.169.102.84:5050/" target="_blank">MLflow</a></li>
             </ul>
         </div>
     </nav>
@@ -318,6 +369,86 @@
                     <div class="service-title">Creative Engine</div>
                     <div class="service-description">
                         Crie e gerencie criativos com IA para suas campanhas
+                    </div>
+                </a>
+
+                <a href="/api/creative-engine/md-to-pdf/" class="service-card">
+                    <span class="service-icon">📄</span>
+                    <div class="service-title">Markdown → PDF</div>
+                    <div class="service-description">
+                        Envie arquivos .md e baixe o PDF gerado via Pandoc + LaTeX
+                    </div>
+                </a>
+
+                <a href="/api/creative-engine/image-from-prompt/" class="service-card">
+                    <span class="service-icon">🖼️</span>
+                    <div class="service-title">Gerar imagem por IA</div>
+                    <div class="service-description">
+                        Descrição ou imagem modelo → nova imagem (DALL·E)
+                    </div>
+                </a>
+
+                <a href="/api/creative-engine/video-from-prompt/" class="service-card">
+                    <span class="service-icon">🎬</span>
+                    <div class="service-title">Gerar vídeo por IA</div>
+                    <div class="service-description">
+                        Descrição → vídeo curto (Sora / OpenAI)
+                    </div>
+                </a>
+
+                <a href="/api/creative-engine/audio-from-text/" class="service-card">
+                    <span class="service-icon">🎙️</span>
+                    <div class="service-title">Gerar áudio por IA</div>
+                    <div class="service-description">
+                        Texto → narração em voz (TTS) — matriz verbal e sonora
+                    </div>
+                </a>
+                
+                <a href="/architecture/" class="service-card architecture">
+                    <span class="service-icon">🏛️</span>
+                    <div class="service-title">Architecture Intelligence</div>
+                    <div class="service-description">
+                        Avalie arquiteturas de software, serviços e orbitais do SinapUm
+                    </div>
+                </a>
+
+                <a href="/agent-core/dashboard/" class="service-card agent-core">
+                    <span class="service-icon">🧠</span>
+                    <div class="service-title">Agent Core</div>
+                    <div class="service-description">
+                        Monitoramento e gestão do ciclo cognitivo PAOR (Plan, Act, Observe, Reflect)
+                    </div>
+                </a>
+
+                <a href="/sinapcore/" class="service-card sinapcore">
+                    <span class="service-icon">🎛️</span>
+                    <div class="service-title">SinapCore</div>
+                    <div class="service-description">
+                        Módulos cognitivos, prioridade e logs de decisão auditáveis
+                    </div>
+                </a>
+
+                <a href="/eoc/" class="service-card eoc-tower">
+                    <span class="service-icon">🗼</span>
+                    <div class="service-title">EOC — Torre</div>
+                    <div class="service-description">
+                        Centro de Operações Cognitivo: ambiente, módulos ativos e decisões em tempo quase real
+                    </div>
+                </a>
+
+                <a href="{% url 'environmental_dashboard' estabelecimento_id=1 %}" class="service-card environmental">
+                    <span class="service-icon">🌿</span>
+                    <div class="service-title">Painel Ambiental</div>
+                    <div class="service-description">
+                        Mapa de Estado Ambiental — indícios operacionais em tempo real (Redis)
+                    </div>
+                </a>
+                
+                <a href="/rag-gastronomico/" class="service-card gastronomia">
+                    <span class="service-icon">🍳</span>
+                    <div class="service-title">RAG Gastronômico</div>
+                    <div class="service-description">
+                        PDF → vectorstore com barra de progresso (PRO); consulta RAG e MCP core.rag_ingest / core.rag_query
                     </div>
                 </a>
                 

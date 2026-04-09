@@ -24,3 +24,14 @@ Abre `http://localhost:5173`. O Vite faz proxy de `/api` para o backend (por def
 ## Requisito
 
 O repositório clonado tem de ter `app_sinaplint/` na raiz (estrutura SinapLint).
+
+## Botão “Ver exemplo (sem configurar)”
+
+Opcional: define um URL público que cumpra o requisito acima (ex.: fork do monorepo):
+
+```bash
+export VITE_SINAPLINT_DEMO_REPO=https://github.com/teu-org/Core_SinapUm
+npm run dev
+```
+
+Sem esta variável, o botão extra não aparece — o utilizador cola o URL manualmente.

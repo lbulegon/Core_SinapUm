@@ -2,7 +2,13 @@
 Admin do Creative Engine
 """
 from django.contrib import admin
-from app_creative_engine.models import CreativeAsset, CreativePerformance, CreativeScore
+from app_creative_engine.models import (
+    CreativeAsset,
+    CreativePerformance,
+    CreativeScore,
+    CreativeJob,
+    CreativeJobOutput,
+)
 
 
 @admin.register(CreativeAsset)
@@ -33,3 +39,20 @@ class CreativeScoreAdmin(admin.ModelAdmin):
     search_fields = ['variant_id', 'creative_id', 'product_id']
     readonly_fields = ['calculated_at']
     ordering = ['-engagement_score']
+
+
+@admin.register(CreativeJob)
+class CreativeJobAdmin(admin.ModelAdmin):
+    """Admin para jobs de criação (fluxo Kwai/Tamo)"""
+    list_display = ['id', 'status', 'stage', 'progress', 'shopper_id', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['shopper_id', 'product_id', 'id']
+    readonly_fields = ['id', 'created_at', 'updated_at', 'completed_at']
+
+
+@admin.register(CreativeJobOutput)
+class CreativeJobOutputAdmin(admin.ModelAdmin):
+    """Admin para outputs de jobs"""
+    list_display = ['id', 'job', 'style', 'template_id', 'created_at']
+    list_filter = ['style', 'created_at']
+    search_fields = ['job__id', 'style']

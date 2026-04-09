@@ -35,6 +35,7 @@ def execute_tool(request, tool_name: str):
     - cart.add
     - order.create
     - order.status
+        - purchase.parse
     """
     try:
         data = json.loads(request.body)
@@ -53,6 +54,7 @@ def execute_tool(request, tool_name: str):
             cart_add,
             order_create,
             order_status,
+            parse_compra_texto,
         )
         
         # Mapear tools
@@ -64,6 +66,7 @@ def execute_tool(request, tool_name: str):
             'cart.add': lambda s, a: cart_add(s, a.get('customer_id', ''), a.get('product_id', ''), a.get('quantity', 1)),
             'order.create': lambda s, a: order_create(s, a.get('customer_id', ''), a.get('cart_id', ''), a.get('address', {}), a.get('payment_method', '')),
             'order.status': lambda s, a: order_status(s, a.get('order_id', '')),
+            'purchase.parse': lambda s, a: parse_compra_texto(s, a),
         }
         
         if tool_name not in tools:

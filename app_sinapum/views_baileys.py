@@ -16,7 +16,10 @@ from core.services.whatsapp_gateway_client import get_whatsapp_gateway_client
 logger = logging.getLogger(__name__)
 
 # Endpoints Baileys permitidos no proxy (whitelist)
-BAILEYS_PROXY_ALLOWED = {"v1/status", "v1/connect", "v1/qr", "v1/session/reset", "v1/disconnect"}
+BAILEYS_PROXY_ALLOWED = {
+    "v1/status", "v1/connect", "v1/qr", "v1/session/reset", "v1/disconnect",
+    "v1/send/text", "v1/send/image", "v1/send/document",
+}
 
 
 @csrf_exempt
@@ -34,9 +37,12 @@ def whatsapp_baileys_proxy(request, endpoint):
     if endpoint not in BAILEYS_PROXY_ALLOWED:
         return JsonResponse({"error": "Endpoint não permitido"}, status=404)
 
+    POST_ENDPOINTS = {"v1/connect", "v1/session/reset", "v1/disconnect", "v1/send/text", "v1/send/image", "v1/send/document"}
+    GET_ENDPOINTS = {"v1/status", "v1/qr"}
+    
     method_valid = (
-        (endpoint in ("v1/connect", "v1/session/reset", "v1/disconnect") and request.method == "POST")
-        or (endpoint in ("v1/status", "v1/qr") and request.method == "GET")
+        (endpoint in POST_ENDPOINTS and request.method == "POST")
+        or (endpoint in GET_ENDPOINTS and request.method == "GET")
     )
     if not method_valid:
         return JsonResponse({"error": f"Método {request.method} não permitido para {endpoint}"}, status=405)
@@ -50,7 +56,6 @@ def whatsapp_baileys_proxy(request, endpoint):
     if not headers["X-API-Key"]:
         return JsonResponse({"error": "X-API-Key ausente"}, status=401)
 
-    # Sessão por usuário: repassar X-Instance-Id para o gateway (ex: user_123)
     instance_id = getattr(request, "headers", {}).get("X-Instance-Id") or request.META.get("HTTP_X_INSTANCE_ID")
     if instance_id:
         headers["X-Instance-Id"] = instance_id
@@ -58,7 +63,10 @@ def whatsapp_baileys_proxy(request, endpoint):
     timeout = 20 if endpoint == "v1/connect" else 15
     try:
         if request.method == "POST":
-            resp = requests.post(url, headers=headers, timeout=timeout)
+            body = request.body if request.body else None
+            if body:
+                headers["Content-Type"] = "application/json"
+            resp = requests.post(url, headers=headers, data=body, timeout=timeout)
         else:
             resp = requests.get(url, headers=headers, timeout=timeout)
     except requests.RequestException as e:

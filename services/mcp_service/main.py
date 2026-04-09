@@ -376,6 +376,51 @@ def execute_runtime_prompt(
         )
 
 
+def extract_usage_from_runtime_output(output_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Extrai tokens e custo do retorno do runtime (OpenAI-style usage, etc.).
+    PR4 — Observabilidade: não quebra execução em caso de falha (retorna dict vazio).
+    Aceita usage no top-level ou dentro de output_data["data"] (respostas aninhadas).
+    """
+    out = {"tokens_in": None, "tokens_out": None, "cost_usd": None, "model": None, "provider": None}
+    if not output_data or not isinstance(output_data, dict):
+        return out
+    try:
+        usage = output_data.get("usage")
+        if not usage and isinstance(output_data.get("data"), dict):
+            usage = output_data["data"].get("usage")
+        if isinstance(usage, dict):
+            # OpenAI-style: prompt_tokens, completion_tokens, total_tokens
+            out["tokens_in"] = usage.get("prompt_tokens") or usage.get("input_tokens")
+            out["tokens_out"] = usage.get("completion_tokens") or usage.get("output_tokens")
+            if out["tokens_in"] is None and usage.get("total_tokens"):
+                out["tokens_in"] = usage.get("total_tokens")
+        # Model/provider (top-level ou dentro de data)
+        out["model"] = output_data.get("model") or (output_data.get("raw_response") or {}).get("model")
+        if isinstance(output_data.get("data"), dict):
+            out["model"] = out["model"] or output_data["data"].get("model")
+        out["provider"] = output_data.get("provider")
+        # Custo: usar se vier na resposta; senão estimativa grosseira para modelos conhecidos
+        cost = output_data.get("cost_usd") or (isinstance(usage, dict) and usage.get("cost_usd"))
+        if cost is not None:
+            try:
+                out["cost_usd"] = float(cost)
+            except (TypeError, ValueError):
+                pass
+        if out["cost_usd"] is None and (out["tokens_in"] or out["tokens_out"]) and out["model"]:
+            # Estimativa best-effort (USD por 1M tokens, valores aproximados)
+            model = (out["model"] or "").lower()
+            in_tok = out["tokens_in"] or 0
+            out_tok = out["tokens_out"] or 0
+            if "gpt-4o" in model or "gpt-4" in model:
+                out["cost_usd"] = round((in_tok * 2.5 + out_tok * 10.0) / 1_000_000, 6)
+            elif "gpt-3.5" in model:
+                out["cost_usd"] = round((in_tok * 0.5 + out_tok * 1.5) / 1_000_000, 6)
+    except Exception as e:
+        logger.debug("extract_usage_from_runtime_output: %s", e)
+    return out
+
+
 def execute_runtime(
     runtime: str,
     config: Dict[str, Any],
@@ -416,24 +461,16 @@ def log_tool_call(
     input_payload: Optional[Dict[str, Any]] = None,
     output_payload: Optional[Dict[str, Any]] = None,
     error_payload: Optional[Any] = None,
-    context_pack: Optional[ContextPack] = None
+    context_pack: Optional[ContextPack] = None,
+    tokens_in: Optional[int] = None,
+    tokens_out: Optional[int] = None,
+    cost_usd: Optional[float] = None,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
 ):
     """
     Registra log de chamada no Core Registry.
-    
-    Args:
-        request_id: UUID da requisição
-        trace_id: UUID do trace (opcional, será incluído no payload)
-        tool: Nome da tool
-        version: Versão da tool
-        client_key: Chave do cliente
-        ok: Sucesso/falha
-        status_code: Código HTTP
-        latency_ms: Latência em milissegundos
-        input_payload: Payload de entrada
-        output_payload: Payload de saída
-        error_payload: Payload de erro (pode ser string ou dict)
-        context_pack: Context Pack completo (opcional)
+    PR4: Inclui tokens_in, tokens_out, cost_usd, model, provider quando disponíveis.
     """
     try:
         # Enriquecer input_payload com context_pack se disponível
@@ -443,7 +480,7 @@ def log_tool_call(
         
         log_payload = {
             "request_id": request_id,
-            "trace_id": trace_id,  # Novo campo
+            "trace_id": trace_id,
             "tool": tool,
             "version": version,
             "client_key": client_key,
@@ -454,6 +491,16 @@ def log_tool_call(
             "output_payload": output_payload,
             "error_payload": error_payload
         }
+        if tokens_in is not None:
+            log_payload["tokens_in"] = tokens_in
+        if tokens_out is not None:
+            log_payload["tokens_out"] = tokens_out
+        if cost_usd is not None:
+            log_payload["cost_usd"] = cost_usd
+        if model:
+            log_payload["model"] = model
+        if provider:
+            log_payload["provider"] = provider
         
         requests.post(
             f"{SINAPUM_CORE_URL}/core/tools/log/",
@@ -620,7 +667,32 @@ async def call_tool(
                 raise ValueError(str(e))
         
         # 4. Executar runtime (passa prompt_text para runtime "prompt")
-        if runtime:
+        # mrfoo_graph: delega execução ao Core (adapter roda no Core)
+        if runtime == "mrfoo_graph":
+            logger.info(f"[{request_id}][{trace_id}] Delegando mrfoo_graph ao Core")
+            try:
+                core_execute_url = f"{SINAPUM_CORE_URL}/core/tools/{tool_name}/execute/"
+                exec_body = {"input": request.input, "client_key": client_key}
+                exec_headers = dict(headers) if headers else {}
+                exec_resp = requests.post(
+                    core_execute_url,
+                    json=exec_body,
+                    headers=exec_headers,
+                    timeout=60,
+                )
+                exec_resp.raise_for_status()
+                result = exec_resp.json()
+                output_data = result.get("output") or {}
+                logger.info(f"[{request_id}][{trace_id}] Core executou mrfoo_graph com sucesso")
+            except Exception as e:
+                error_detail = ErrorDetail(
+                    code="RUNTIME_EXECUTION_ERROR",
+                    message=f"mrfoo_graph (Core) failed: {str(e)}",
+                    details={"runtime": runtime},
+                )
+                status_code = 500
+                raise
+        elif runtime:
             logger.info(f"[{request_id}][{trace_id}] Executando runtime: {runtime}")
             try:
                 output_data = execute_runtime(runtime, config, request.input, prompt_text=prompt_text)
@@ -672,6 +744,13 @@ async def call_tool(
         # 6. Calcular latency
         latency_ms = int((time.time() - start_time) * 1000)
         
+        # 6b. PR4 — Extrair usage (tokens/custo) do runtime para observabilidade
+        usage = {}
+        try:
+            usage = extract_usage_from_runtime_output(output_data)
+        except Exception as e:
+            logger.debug("Falha ao extrair usage (não crítico): %s", e)
+        
         # 7. Registrar log (assíncrono, não bloqueia)
         log_tool_call(
             request_id=request_id,
@@ -684,7 +763,12 @@ async def call_tool(
             latency_ms=latency_ms,
             input_payload=request.input,
             output_payload=output_data,
-            context_pack=context_pack
+            context_pack=context_pack,
+            tokens_in=usage.get("tokens_in"),
+            tokens_out=usage.get("tokens_out"),
+            cost_usd=usage.get("cost_usd"),
+            model=usage.get("model"),
+            provider=usage.get("provider"),
         )
         
         # 8. Retornar resposta

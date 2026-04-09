@@ -59,10 +59,10 @@ def handle_incoming_whatsapp_event(request: HttpRequest):
         
         if expected_key and api_key != expected_key:
             logger.warning(f"API Key inválida no webhook: {api_key[:10]}...")
-            return {
+            return JsonResponse({
                 'success': False,
                 'error': 'API Key inválida'
-            }
+            }, status=403)
         
         # Parse payload
         import json
@@ -99,10 +99,10 @@ def handle_incoming_whatsapp_event(request: HttpRequest):
             
     except Exception as e:
         logger.error(f"Erro ao processar webhook do WhatsApp Gateway: {e}", exc_info=True)
-        return {
+        return JsonResponse({
             'success': False,
             'error': str(e)
-        }
+        }, status=500)
 
 
 def _handle_message_event(payload: Dict[str, Any], timestamp: str) -> Dict[str, Any]:
@@ -169,17 +169,17 @@ def _handle_qr_event(payload: Dict[str, Any], timestamp: str) -> Dict[str, Any]:
         # - Salvar em cache/banco de dados
         # - Notificar frontend via WebSocket
         
-        return {
+        return JsonResponse({
             'success': True,
             'message': 'QR Code recebido'
-        }
+        })
         
     except Exception as e:
         logger.error(f"Erro ao processar evento de QR: {e}", exc_info=True)
-        return {
+        return JsonResponse({
             'success': False,
             'error': str(e)
-        }
+        }, status=500)
 
 
 def _handle_connected_event(payload: Dict[str, Any], timestamp: str) -> Dict[str, Any]:

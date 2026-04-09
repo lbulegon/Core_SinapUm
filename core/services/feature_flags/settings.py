@@ -57,6 +57,28 @@ FEATURE_FLAGS = {
         'description': 'Habilita emissão de eventos para SKM Score',
         'type': 'bool',
     },
+
+    # MCP/ACP/A2A — PR3
+    'ACP_ENABLED': {
+        'default': True,
+        'description': 'Habilita execução via ACP (AgentTask + Celery). Se false, /a2a/run executa síncrono via MCP.',
+        'type': 'bool',
+    },
+    'MCP_RESOURCES_ENABLED': {
+        'default': True,
+        'description': 'Habilita endpoints GET /core/resources/ e /core/resources/list/. Se false, retorna 404 controlado.',
+        'type': 'bool',
+    },
+    'A2A_ENABLED': {
+        'default': True,
+        'description': 'Habilita endpoint POST /a2a/run. Se false, retorna 503.',
+        'type': 'bool',
+    },
+    'DUAL_RUN_ENABLED': {
+        'default': False,
+        'description': 'Executa caminho legado/sync e ACP em paralelo, compara e loga divergência (best effort).',
+        'type': 'bool',
+    },
 }
 
 

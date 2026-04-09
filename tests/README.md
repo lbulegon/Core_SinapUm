@@ -7,14 +7,16 @@ Bateria de testes cobrindo **todos os serviços ativos** do stack.
 ```
 tests/
 ├── services_config.py       # Portas e URLs dos serviços
+├── unit/                    # PR5: testes unitários (não exigem serviços)
+│   ├── test_a2a_planner.py  # PlannerAgent (fallback, padrões)
+│   ├── test_a2a_executor.py # ExecutorAgent sync (mock)
+│   ├── test_mcp_uri.py      # Parser/validação sinap://
+│   └── test_adapters.py     # BaseAdapter e adapter concreto
 ├── integration/             # Testes que exigem serviços rodando
-│   ├── test_all_services_health.py   # Health de: Web, OpenMind, DDF, SparkScore, ShopperBot
-│   ├── test_sparkscore.py            # SparkScore: analyze_piece, orbital CSV
-│   ├── test_openmind.py              # OpenMind: health
-│   ├── test_ddf.py                   # DDF: health, detect
-│   ├── test_shopperbot.py            # ShopperBot: health, intent classify
-│   ├── test_web.py                   # Web Django: health, admin
-│   └── test_mcp_ifood.py             # MCP, iFood: health
+│   ├── test_acp_a2a_smoke.py # PR5: smoke ACP, A2A, Resources
+│   ├── test_all_services_health.py
+│   ├── test_mcp_full.py
+│   └── ...
 ```
 
 ## Execução
@@ -43,6 +45,9 @@ pytest tests/integration/ -v
 ### Rodar testes unitários (não exigem serviços)
 
 ```bash
+# A2A, MCP URI, adapters (PR5) — executar na raiz do projeto
+pytest tests/unit/ -v --tb=short
+
 # SparkScore
 cd services/sparkscore_service && pytest tests/ --ignore=tests/regression/ -v
 
