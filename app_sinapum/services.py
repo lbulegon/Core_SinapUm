@@ -26,6 +26,24 @@ FALLBACK_PROMPT_ANALISE_PRODUTO = (
 )
 
 
+def _build_openmind_image_base_urls():
+    """Monta lista de bases candidatas para endpoint legado de análise de imagem."""
+    candidates = [
+        getattr(settings, 'OPENMIND_IMAGE_URL', None),
+        getattr(settings, 'OPENMIND_AI_URL', None),
+        getattr(settings, 'OPENMIND_BASE_URL', None),
+        'http://openmind:8001',
+    ]
+    bases = []
+    for raw in candidates:
+        if not raw:
+            continue
+        base = str(raw).strip().rstrip('/')
+        if base and base not in bases:
+            bases.append(base)
+    return bases
+
+
 def _analyze_image_via_mcp(image_file, image_path=None, image_url=None):
     """
     Analisa imagem via MCP Tool Registry (vitrinezap.analisar_produto).
@@ -206,15 +224,9 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
                 'parametros': {}
             }
         
-        url = f"{OPENMIND_AI_URL}/api/v1/analyze-product-image"
-        
         headers = {}
         if OPENMIND_AI_KEY:
             headers['Authorization'] = f'Bearer {OPENMIND_AI_KEY}'
-        
-        files = {
-            'image': (image_file.name, image_file.read(), image_file.content_type)
-        }
         
         # Prompt deve sempre estar presente (vem do banco ou fallback)
         if not prompt or not prompt.strip():
@@ -242,9 +254,39 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
             f"📤 Enviando imagem para análise: {image_file.name} | "
             f"Prompt: {prompt_source} ({len(prompt)} caracteres)"
         )
-        
+
+        image_bytes = image_file.read()
+        image_content_type = image_file.content_type or 'application/octet-stream'
+        response = None
+        last_error = None
+
         # Timeout otimizado: 30 segundos (reduzido de 60)
-        response = requests.post(url, files=files, data=data, headers=headers, timeout=30)
+        for base_url in _build_openmind_image_base_urls():
+            url = f"{base_url}/api/v1/analyze-product-image"
+            files = {
+                'image': (image_file.name, image_bytes, image_content_type)
+            }
+            try:
+                response = requests.post(url, files=files, data=data, headers=headers, timeout=30)
+            except requests.exceptions.RequestException as request_error:
+                last_error = request_error
+                logger.warning("Falha ao conectar em %s: %s", url, request_error)
+                continue
+
+            # OpenMind cloud pode não expor este endpoint legado; tenta próximo candidato.
+            if response.status_code in (404, 405, 501):
+                logger.warning("Endpoint de imagem indisponível em %s (status=%s), tentando fallback", url, response.status_code)
+                continue
+            break
+
+        if response is None:
+            error_msg = f"Erro de conexão com OpenMind AI: {str(last_error) if last_error else 'nenhuma URL respondeu'}"
+            logger.error(error_msg)
+            return {
+                'success': False,
+                'error': error_msg,
+                'error_code': 'CONNECTION_ERROR'
+            }
         
         # Verificar se a resposta é JSON válido
         content_type = response.headers.get('Content-Type', '')

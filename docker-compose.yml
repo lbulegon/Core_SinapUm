@@ -75,6 +75,7 @@ services:
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
       - OPENMIND_AI_URL=${OPENMIND_AI_URL:-http://openmind:8001}
+      - OPENMIND_IMAGE_URL=${OPENMIND_IMAGE_URL:-http://openmind:8001}
       - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - SPARKSCORE_BASE_URL=${SPARKSCORE_BASE_URL:-http://sparkscore_service:8006}

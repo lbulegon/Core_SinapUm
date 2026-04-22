@@ -293,6 +293,9 @@ else:
 # OpenMind AI Configuration
 OPENMIND_AI_URL = os.environ.get('OPENMIND_AI_URL', 'http://127.0.0.1:8001')
 OPENMIND_AI_KEY = os.environ.get('OPENMIND_AI_KEY', 'om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1')
+# Endpoint dedicado para análise de imagem.
+# Permite usar OpenMind cloud para chat e serviço local para /api/v1/analyze-product-image.
+OPENMIND_IMAGE_URL = os.environ.get('OPENMIND_IMAGE_URL', OPENMIND_AI_URL)
 
 # CrewAI Configuration (para orquestração de agentes)
 # IMPORTANTE: O CrewAI usa OpenMind.org como backend LLM!
