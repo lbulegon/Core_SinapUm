@@ -34,7 +34,7 @@ services:
     environment:
       - OPENMIND_AI_HOST=0.0.0.0
       - OPENMIND_AI_PORT=8001
-      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.org/v1}
+      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.com/api/core/openai}
       - OPENMIND_ORG_MODEL=${OPENMIND_ORG_MODEL:-gpt-4o}
       - OPENMIND_AI_API_KEY=${OPENMIND_AI_KEY:-}
     volumes:

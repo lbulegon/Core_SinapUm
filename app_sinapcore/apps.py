@@ -8,6 +8,8 @@ class AppSinapcoreConfig(AppConfig):
     verbose_name = "SinapCore (módulos cognitivos)"
 
     def ready(self) -> None:
+        import core.admin  # noqa: F401 — regista PricingLog no site admin
+
         from command_engine.bootstrap import register_handlers
 
         register_handlers()

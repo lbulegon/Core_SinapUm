@@ -40,7 +40,7 @@ def enrich_markdown_with_ai(
         logger.warning("Django ou requests não disponível para enriquecimento")
         return None
 
-    base_url = getattr(settings, "OPENMIND_ORG_BASE_URL", "https://api.openmind.org/api/core/openai")
+    base_url = getattr(settings, "OPENMIND_ORG_BASE_URL", "https://api.openmind.com/api/core/openai")
     api_key = getattr(settings, "OPENMIND_AI_KEY", "") or getattr(settings, "OPENMIND_ORG_API_KEY", "")
     model = getattr(settings, "OPENMIND_ORG_MODEL", "gpt-4o")
 

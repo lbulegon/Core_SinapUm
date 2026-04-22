@@ -6,6 +6,92 @@ Este documento é a referência técnica oficial para desenvolvimento, onboardin
 
 ---
 
+## Backlog levantado — 2026-04-08 e 2026-04-09
+
+Referência: **ontem = 2026-04-08**, **hoje = 2026-04-09**.
+
+### Histórico Git
+
+Se o `Core_SinapUm` estiver num clone onde a pasta é ignorada pelo Git da raiz (ex.: monorepo em `/root`), os commits destas datas podem não aparecer no repositório pai — validar com `git log` **neste** repositório.
+
+### 2026-04-08 (ontem)
+
+| Área | Estado / notas |
+|------|------------------|
+| Commits | Verificar localmente; se não houver entradas nesta data, foi dia de alinhamento ou trabalho ainda não integrado. |
+| `.env` | Confirmar se `AGNO_API_SHARED_SECRET` já foi definido (pendência frequente). |
+
+### 2026-04-09 (hoje)
+
+| # | Tema | Detalhe (caminhos relativos a `Core_SinapUm/`) |
+|---|------|-----------------------------------------------|
+| 1 | Chef Agnos — API canónica | `POST /agno/chef/message/` — `app_sinapcore/api_agno.py` (`agno_chef_message`), `app_sinapcore/agno_urls.py` (`chef/message/`), rota global em `setup/urls.py` sob prefixo `agno/`. |
+| 2 | Motor conversacional | `services/chef_agno/conversational.py` — `run_chef_conversational_turn` alinhado a `core.decision_support`. |
+| 3 | Feature flag | `AGNO_CHEF_MESSAGE_ENABLED` em `core/services/feature_flags/settings.py`; listada em `GET /agno/flags/`. |
+| 4 | Segredo na config Django | `AGNO_API_SHARED_SECRET` em `setup/settings.py` (ler de `os.environ`). |
+| 5 | Documentação de ambiente | Secção em `.env.example` para `AGNO_API_SHARED_SECRET`. |
+| 6 | Isolamento multi-tenant | `services/chef_agno/tenant_isolation_tasks.py` (tarefas CORE-AGNO-*, MRFOO-AGNO-*, X-TEST-001). |
+
+**Cliente orbital (repositório MrFoo):** `CHEF_AGNO_BACKEND`, `sinapum_core_client.chef_agno_process_message`, `chef_agno_service.py`, `.env.example` e `app_mrfoo/services/chef_agno_tenant_isolation_tasks.py` (espelho de IDs).
+
+### Pendências (alinhadas ao levantamento)
+
+1. Definir **`AGNO_API_SHARED_SECRET`** no `.env` (e o mesmo valor no MrFoo como `SINAPUM_AGNO_API_SECRET` / Railway).
+2. Executar tarefas em `tenant_isolation_tasks.py` (p.ex. **CORE-AGNO-002**, **X-TEST-001**).
+3. Manter rollout de feature flags conforme estratégia (ver checkpoint abaixo).
+
+---
+
+## Backlog de hoje (checkpoint)
+
+### Concluído
+
+- [x] **MrFoo/Agno — Dynamic Pricing operacional**:
+  - `services/agno/pricing_engine.py` (preço sugerido em tempo real com custo + demanda + PPA + carga + tempo).
+  - proteção de margem/piso mínimo e retorno não persistente (uso estratégico em API/KDS/frontend).
+- [x] **Observabilidade do Chef Agno**:
+  - modelo `AgnoDecisionLog` em `app_sinapcore/models/agno_decision_log.py`.
+  - serviço `ChefAgnoDecisionLogger` em `app_sinapcore/services/agno_decision_logger.py`.
+  - exposição no Django Admin (`app_sinapcore/admin.py`).
+- [x] **Feature flags de maturidade operacional** (safe rollout):
+  - `AGNO_API_ENABLED`
+  - `AGNO_SMART_QUEUE_ENABLED`
+  - `AGNO_DYNAMIC_MENU_ENABLED`
+  - `AGNO_SMART_BATCH_ENABLED`
+  - `AGNO_DYNAMIC_PRICING_ENABLED`
+  - `AGNO_CACHE_ENABLED`
+- [x] **Camada de exposição read-only** (`/agno/*`):
+  - `GET|POST /agno/fila/`
+  - `GET|POST /agno/menu/`
+  - `GET|POST /agno/batch/`
+  - `GET|POST /agno/pricing/`
+  - `GET /agno/flags/`
+  - implementação em `app_sinapcore/api_agno.py` e `app_sinapcore/agno_urls.py`, roteada em `setup/urls.py`.
+- [x] **Contexto operacional real (camada base)**:
+  - `services/agno/operational_context.py` (enriquecimento com `carga_cozinha`, `pedidos_em_preparo`, `tempo_medio_real_min`, `ocupacao_por_estacao` quando disponível).
+  - integração via `app_sinapcore/services/agno_runtime.py`.
+- [x] **Cache best-effort de performance**:
+  - utilitário `services/agno/cache_utils.py`.
+  - cache aplicado em `PrevisaoEngine` e `PPAEngine` (Django cache quando disponível, fallback memória local por TTL).
+
+### Pendente imediato (operação)
+
+- [ ] Executar migração nova no ambiente alvo:
+  - `app_sinapcore/migrations/0007_agno_decision_log.py`.
+- [ ] Configurar segredo de API para produção:
+  - `AGNO_API_SHARED_SECRET`.
+- [ ] Ligar módulos por feature flag conforme estratégia de rollout:
+  - começar por `AGNO_API_ENABLED=true` + restantes em `false`, depois ativação progressiva.
+
+### Próximo ciclo recomendado
+
+- [ ] Dashboard operacional Agno (fila/menu/pricing/batch em tempo real).
+- [ ] Rate limiting e quotas por tenant/canal para `/agno/*`.
+- [ ] Telemetria de efetividade por decisão (resultado real vs sugestão).
+- [ ] Evoluir cache para Redis dedicado em produção de alto tráfego.
+
+---
+
 ## Objetivo
 
 Disponibilizar um *runtime* cognitivo que:

@@ -306,7 +306,12 @@ CREWAI_CONFIG = {
 
 # OpenMind.org Configuration (para CrewAI LLM backend)
 # Usa a MESMA chave do OpenMind AI - não precisa de chaves separadas!
-OPENMIND_ORG_BASE_URL = 'https://api.openmind.org/api/core/openai'
+# Mantém fallback para OPENMIND_ORS_BASE_URL por compatibilidade de ambientes legados.
+OPENMIND_ORG_BASE_URL = (
+    os.environ.get('OPENMIND_ORG_BASE_URL')
+    or os.environ.get('OPENMIND_ORS_BASE_URL')
+    or 'https://api.openmind.com/api/core/openai'
+)
 OPENMIND_ORG_API_KEY = OPENMIND_AI_KEY  # Mesma chave!
 OPENMIND_ORG_MODEL = 'gpt-4o'  # Pode ser: claude-3-opus, gemini-pro, etc.
 
@@ -481,6 +486,24 @@ ENVIRONMENTAL_STATE_REDIS_ENABLED = os.environ.get(
 # SinapCore — módulos cognitivos plugáveis (defaults estáticos: agent_core.config.settings.MODULE_DEFAULTS)
 # ============================================================================
 SINAPCORE_MODULES: dict = {}
+
+# ============================================================================
+# SinapCore — API /agno/* (Chef Agnos, fila, menu, etc.) — Bearer / X-Agno-Key
+# ============================================================================
+AGNO_API_SHARED_SECRET = (os.environ.get("AGNO_API_SHARED_SECRET", "") or "").strip()
+
+# PricingContextBuilder (core.pricing) + PricingLog no Admin — auditoria /agno/pricing/
+try:
+    PRICING_BUILDER_DEMAND_REF_UNITS = float(os.environ.get("PRICING_BUILDER_DEMAND_REF_UNITS", "50"))
+except ValueError:
+    PRICING_BUILDER_DEMAND_REF_UNITS = 50.0
+try:
+    PRICING_BUILDER_OPS_REF_ORDERS = float(os.environ.get("PRICING_BUILDER_OPS_REF_ORDERS", "20"))
+except ValueError:
+    PRICING_BUILDER_OPS_REF_ORDERS = 20.0
+_pcp = os.environ.get("PRICING_CLIMA_PLACEHOLDER", "")
+PRICING_CLIMA_PLACEHOLDER = _pcp.strip() if _pcp.strip() != "" else None
+PRICING_LOG_PERSIST = os.environ.get("PRICING_LOG_PERSIST", "true").lower() in ("1", "true", "yes")
 
 # ============================================================================
 # SinapLint — endpoint interno /api/sinaplint/internal/engine/ (produto SinapLint SaaS)

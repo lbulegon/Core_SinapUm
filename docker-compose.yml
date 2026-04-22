@@ -34,7 +34,7 @@ services:
     environment:
       - OPENMIND_AI_HOST=0.0.0.0
       - OPENMIND_AI_PORT=8001
-      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.org/v1}
+      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.com/api/core/openai}
       - OPENMIND_ORG_MODEL=${OPENMIND_ORG_MODEL:-gpt-4o}
       # OPENMIND_AI_API_KEY vem do env_file (.env), não sobrescrever aqui
       # Se precisar sobrescrever, use: - OPENMIND_AI_API_KEY=${OPENMIND_AI_KEY:-valor_do_env_file}
@@ -432,7 +432,7 @@ services:
       - "7025:7025"
     environment:
       # Usa OpenMind.org API (chat/completions). Local openmind não expõe esse endpoint.
-      - OPENMIND_SERVICE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.org/api/core/openai}
+      - OPENMIND_SERVICE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.com/api/core/openai}
       - ARCHITECTURE_INTELLIGENCE_PORT=7025
       - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
     depends_on:

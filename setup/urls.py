@@ -109,6 +109,8 @@ urlpatterns = [
     path('agent-core/', include('agent_core.urls')),
     # SinapCore — dashboard módulos + logs de auditoria (staff)
     path('sinapcore/', include('app_sinapcore.urls')),
+    # MrFoo Agno — exposição read-only (KDS/apps) — protegida por segredo + feature flags
+    path('agno/', include('app_sinapcore.agno_urls')),
     # SinapLint Cloud (API key por tenant) — análise arquitetural
     path('api/sinaplint/', include('app_sinapcore.api_urls')),
     # SinapLint SaaS — utilizador Django, Stripe, limites mensais

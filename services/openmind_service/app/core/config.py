@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
     
     # OpenMind.org Configuration (para análise de imagens)
-    # URL base deve ser apenas o domínio, sem /api/core/openai
-    OPENMIND_ORG_BASE_URL: str = os.getenv("OPENMIND_ORG_BASE_URL", "https://api.openmind.org/v1")
+    # Base OpenMind compatível com Chat Completions.
+    OPENMIND_ORG_BASE_URL: str = os.getenv("OPENMIND_ORG_BASE_URL", "https://api.openmind.com/api/core/openai")
     OPENMIND_ORG_MODEL: str = os.getenv("OPENMIND_ORG_MODEL", "gpt-4o")
     
     # Ollama (opcional)

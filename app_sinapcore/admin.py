@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from app_sinapcore.models.architecture_score import ArchitectureScore
+from app_sinapcore.models.agno_decision_log import AgnoDecisionLog
 from app_sinapcore.models.sinapcore_command import SinapCoreCommand
 from app_sinapcore.models.sinapcore_log import SinapCoreLog
 from app_sinapcore.models.sinapcore_module import SinapCoreModule
@@ -44,6 +45,18 @@ class SinapCoreLogAdmin(admin.ModelAdmin):
     search_fields = ("decision", "action", "module")
     ordering = ("-timestamp",)
     readonly_fields = ("timestamp", "module", "decision", "action", "context")
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+
+@admin.register(AgnoDecisionLog)
+class AgnoDecisionLogAdmin(admin.ModelAdmin):
+    list_display = ("created_at", "module", "action", "product_id", "product_name", "reason")
+    list_filter = ("module", "action")
+    search_fields = ("reason", "product_name", "module", "action")
+    ordering = ("-created_at",)
+    readonly_fields = ("created_at", "module", "action", "product_id", "product_name", "reason", "payload")
 
     def has_add_permission(self, request) -> bool:
         return False

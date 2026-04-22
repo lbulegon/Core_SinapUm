@@ -79,6 +79,43 @@ FEATURE_FLAGS = {
         'description': 'Executa caminho legado/sync e ACP em paralelo, compara e loga divergência (best effort).',
         'type': 'bool',
     },
+
+    # MrFoo Agno (exposicao + modulos)
+    'AGNO_API_ENABLED': {
+        'default': True,
+        'description': 'Habilita endpoints /agno/* (ainda protegidos por AGNO_API_SHARED_SECRET fora do DEBUG).',
+        'type': 'bool',
+    },
+    'AGNO_SMART_QUEUE_ENABLED': {
+        'default': False,
+        'description': 'Habilita /agno/fila/ (fila inteligente + plano operacional).',
+        'type': 'bool',
+    },
+    'AGNO_DYNAMIC_MENU_ENABLED': {
+        'default': False,
+        'description': 'Habilita /agno/menu/ (cardapio dinamico sugerido).',
+        'type': 'bool',
+    },
+    'AGNO_SMART_BATCH_ENABLED': {
+        'default': False,
+        'description': 'Habilita /agno/batch/ (batch inteligente / antecipado).',
+        'type': 'bool',
+    },
+    'AGNO_DYNAMIC_PRICING_ENABLED': {
+        'default': False,
+        'description': 'Habilita /agno/pricing/ (preco dinamico sugerido; nao persiste no banco).',
+        'type': 'bool',
+    },
+    'AGNO_CACHE_ENABLED': {
+        'default': True,
+        'description': 'Habilita cache best-effort (Django cache -> memoria) para previsao/PPA.',
+        'type': 'bool',
+    },
+    'AGNO_CHEF_MESSAGE_ENABLED': {
+        'default': True,
+        'description': 'Habilita POST /agno/chef/message/ — turno conversacional Chef Agnos (decision_support orbital).',
+        'type': 'bool',
+    },
 }
 
 
