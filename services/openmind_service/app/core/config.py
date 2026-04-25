@@ -3,6 +3,7 @@ Configurações do OpenMind AI Server
 """
 import os
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from typing import List
 
 
@@ -10,7 +11,7 @@ class Settings(BaseSettings):
     """Configurações da aplicação"""
     
     # API
-    OPENMIND_AI_API_KEY: str = os.getenv("OPENMIND_AI_API_KEY", "om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1")
+    OPENMIND_AI_API_KEY: str = os.getenv("OPENMIND_AI_API_KEY", "")
     OPENMIND_AI_HOST: str = os.getenv("OPENMIND_AI_HOST", "0.0.0.0")
     OPENMIND_AI_PORT: int = int(os.getenv("OPENMIND_AI_PORT", "8000"))
     
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
     
     # OpenMind.org Configuration (para análise de imagens)
     # Base OpenMind compatível com Chat Completions.
-    OPENMIND_ORG_BASE_URL: str = os.getenv("OPENMIND_ORG_BASE_URL", "https://api.openmind.com/api/core/openai")
+    OPENMIND_ORG_BASE_URL: str = os.getenv("OPENMIND_ORG_BASE_URL", "")
     OPENMIND_ORG_MODEL: str = os.getenv("OPENMIND_ORG_MODEL", "gpt-4o")
     
     # Ollama (opcional)
@@ -73,6 +74,28 @@ class Settings(BaseSettings):
         if self.CORS_ORIGINS == "*":
             return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
+    @field_validator("OPENMIND_AI_API_KEY", mode="before")
+    @classmethod
+    def validate_api_key(cls, value: str) -> str:
+        v = str(value or "").strip()
+        if not v:
+            raise ValueError("OPENMIND_AI_API_KEY não configurada")
+        return v
+
+    @field_validator("OPENMIND_ORG_BASE_URL", mode="before")
+    @classmethod
+    def validate_org_base_url(cls, value: str) -> str:
+        v = str(value or "").strip().rstrip("/")
+        if not v:
+            raise ValueError("OPENMIND_ORG_BASE_URL não configurada")
+        if "api.openmind.org" in v:
+            raise ValueError(
+                "OPENMIND_ORG_BASE_URL inválida: use endpoint explícito válido do seu provedor/ambiente, sem api.openmind.org"
+            )
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("OPENMIND_ORG_BASE_URL deve começar com http:// ou https://")
+        return v
     
     class Config:
         env_file = ".env"

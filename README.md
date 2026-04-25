@@ -92,6 +92,83 @@ Se o `Core_SinapUm` estiver num clone onde a pasta é ignorada pelo Git da raiz 
 
 ---
 
+## Operação no Railway (CLI)
+
+Esta seção reúne comandos essenciais para diagnóstico, ajuste de variáveis e validação de deploy no Railway.
+
+### Pré-requisitos
+
+```bash
+railway login
+railway link
+railway whoami
+railway status
+```
+
+### Variáveis de ambiente (imagem/proxy)
+
+Use endpoints públicos no `evora` para evitar hostnames internos (ex.: `openmind`, `web`, `localhost`) em produção Railway.
+
+```bash
+railway variables
+
+railway variables --set "OPENMIND_IMAGE_URL=http://69.169.102.84:5000"
+railway variables --set "CORE_SINAPUM_BASE_URL=http://69.169.102.84:5000"
+railway variables --set "OPENMIND_BASE_URL=http://69.169.102.84:5000"
+railway variables --set "IS_RAILWAY=true"
+```
+
+Comandos úteis de limpeza/ajuste:
+
+```bash
+railway variables --remove OPENMIND_IMAGE_URL
+railway variables --remove CORE_SINAPUM_BASE_URL
+railway variables --remove OPENMIND_BASE_URL
+```
+
+### Deploy e reinício
+
+```bash
+railway up
+railway redeploy
+railway restart
+```
+
+### Logs e observabilidade
+
+```bash
+railway logs
+railway logs --tail 200
+railway logs --service <nome-do-servico>
+```
+
+### Execução remota para debug
+
+```bash
+railway run env | sort
+railway run python manage.py check
+railway run python manage.py showmigrations
+railway run sh -lc 'ls -lah /app/media/uploads | head'
+```
+
+### Comandos auxiliares de projeto/serviço
+
+```bash
+railway service
+railway service <nome-do-servico>
+railway domains
+railway open
+```
+
+### Checklist rápido de validação (produção)
+
+1. `railway variables` e confirmar URLs públicas para imagem.
+2. `railway redeploy` após alterar variáveis.
+3. `railway logs --tail 200` e validar ausência de erro de DNS para host interno.
+4. Abrir o cadastro/listagem e verificar se `/api/images/proxy/...` retorna imagem.
+
+---
+
 ## Objetivo
 
 Disponibilizar um *runtime* cognitivo que:

@@ -26,7 +26,7 @@ class ImageAnalyzer:
             raise ValueError("OPENMIND_AI_API_KEY não configurada")
         
         # URL base do OpenMind.org (endpoint válido atual).
-        self.base_url = getattr(settings, 'OPENMIND_ORG_BASE_URL', 'https://api.openmind.com/api/core/openai')
+        self.base_url = getattr(settings, 'OPENMIND_ORG_BASE_URL', '')
         self.model = getattr(settings, 'OPENMIND_ORG_MODEL', 'gpt-4o')
         
         logger.info(f"Inicializado ImageAnalyzer com OpenMind.org | Base URL: {self.base_url} | Modelo: {self.model}")
@@ -108,10 +108,10 @@ class ImageAnalyzer:
                 "temperature": temperature
             }
             
-            # Usa a base configurada e corrige domínio legado (.org -> .com).
+            # Usa apenas a base configurada explicitamente no ambiente.
             base = str(self.base_url).rstrip("/")
-            if "api.openmind.org" in base:
-                base = base.replace("api.openmind.org", "api.openmind.com")
+            if not base:
+                raise Exception("OPENMIND_ORG_BASE_URL não configurada")
             api_url = f"{base}/chat/completions"
             
             logger.info(f"🚀 Enviando para OpenMind.org: {api_url} | max_tokens={max_tokens}, temperature={temperature}")

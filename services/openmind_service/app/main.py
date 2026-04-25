@@ -22,6 +22,17 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
+def _validate_startup_config() -> None:
+    """
+    Fail-fast para erros de configuração críticos.
+    Evita subir serviço com chave/endpoint inválidos.
+    """
+    if not settings.OPENMIND_AI_API_KEY:
+        raise RuntimeError("OPENMIND_AI_API_KEY não configurada")
+    if not settings.OPENMIND_ORG_BASE_URL:
+        raise RuntimeError("OPENMIND_ORG_BASE_URL não configurada")
+
 # Criar aplicação FastAPI
 app = FastAPI(
     title="OpenMind AI Server",
@@ -52,6 +63,9 @@ app.include_router(
     prefix="/api/v1",
     tags=["Agente"]
 )
+
+# Validação de configuração crítica ao iniciar o app
+_validate_startup_config()
 
 # Servir arquivos de mídia (imagens salvas)
 media_root = Path(settings.MEDIA_ROOT)

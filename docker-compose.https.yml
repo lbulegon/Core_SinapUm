@@ -34,11 +34,11 @@ services:
     environment:
       - OPENMIND_AI_HOST=0.0.0.0
       - OPENMIND_AI_PORT=8001
-      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-https://api.openmind.com/api/core/openai}
+      - OPENMIND_ORG_BASE_URL=${OPENMIND_ORG_BASE_URL:-}
       - OPENMIND_ORG_MODEL=${OPENMIND_ORG_MODEL:-gpt-4o}
       - OPENMIND_AI_API_KEY=${OPENMIND_AI_KEY:-}
     volumes:
-      - openmind_images:/data/vitrinezap/images:rw
+      - /root/data/vitrinezap/images:/data/vitrinezap/images:rw
       - openmind_logs:/var/log/openmind-ai:rw
     networks:
       - mcp_network
@@ -61,7 +61,7 @@ services:
       - .:/app
       - media_data:/app/media
       - static_data:/app/static
-      - vitrinezap_images:/data/vitrinezap/images
+      - /root/data/vitrinezap/images:/data/vitrinezap/images
     # Remover exposição direta da porta 5000 (nginx vai fazer proxy)
     expose:
       - "5000"
@@ -162,10 +162,6 @@ volumes:
   media_data:
     driver: local
   static_data:
-    driver: local
-  vitrinezap_images:
-    driver: local
-  openmind_images:
     driver: local
   openmind_logs:
     driver: local

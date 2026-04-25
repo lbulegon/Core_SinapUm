@@ -177,8 +177,10 @@ if AGNOS_AVAILABLE and agnos_views:
         path('api/agnos/validate/', agnos_views.api_validate_agnos, name='api_agnos_validate'),
     ]
 
-# Servir arquivos de mídia (necessário para servir imagens salvas)
-# Em produção, considere usar nginx ou outro servidor web para servir arquivos estáticos
+# Mídia: imagens de produto (VitrineZap) em MEDIA_ROOT (ex.: /data/vitrinezap/images).
+# O front Évora (Source/evora) usa /api/images/proxy/ e, se o ficheiro não estiver no disco
+# do Évora, faz GET em <Core>/media/... — isso tem de responder 200 no Railway, não só em DEBUG.
+# (Em produção, ficheiros estáticos vêm do WhiteNoise; mídia de upload continua em MEDIA_ROOT.)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

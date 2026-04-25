@@ -34,7 +34,7 @@ services_data = [
         'nome': 'OpenMind.org API',
         'tipo_servico': 'openai',
         'ambiente': 'producao',
-        'url_base': 'https://api.openmind.com/api/core/openai',
+        'url_base': '',
         'api_key': getattr(settings, 'OPENMIND_AI_KEY', ''),
         'credenciais_adicionais': {'model': 'gpt-4o', 'description': 'API unificada para múltiplos LLMs'},
         'observacoes': 'OpenMind.org oferece acesso a múltiplos modelos de IA através de uma API unificada'

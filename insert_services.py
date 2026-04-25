@@ -63,7 +63,7 @@ def insert_services():
         tipo_servico="openai",
         ambiente="producao",
         defaults={
-            'url_base': getattr(settings, 'OPENMIND_ORG_BASE_URL', 'https://api.openmind.com/api/core/openai'),
+            'url_base': getattr(settings, 'OPENMIND_ORG_BASE_URL', ''),
             'api_key': getattr(settings, 'OPENMIND_AI_KEY', ''),
             'credenciais_adicionais': {
                 'model': getattr(settings, 'OPENMIND_ORG_MODEL', 'gpt-4o'),

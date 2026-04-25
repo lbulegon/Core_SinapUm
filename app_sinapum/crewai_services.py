@@ -37,7 +37,7 @@ def get_openmind_llm(temperature: float = 0.7, model: str = None):
     
     # URL base do OpenMind.org para LLMs
     # OpenMind.org oferece endpoints compatíveis com OpenAI para múltiplos modelos
-    base_url = getattr(settings, 'OPENMIND_ORG_BASE_URL', 'https://api.openmind.com/api/core/openai')
+    base_url = getattr(settings, 'OPENMIND_ORG_BASE_URL', '')
     
     # Modelo padrão (pode ser gpt-4o, claude-3-opus, gemini-pro, etc.)
     model_name = model or getattr(settings, 'OPENMIND_ORG_MODEL', 'gpt-4o')

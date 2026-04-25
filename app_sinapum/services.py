@@ -27,16 +27,21 @@ FALLBACK_PROMPT_ANALISE_PRODUTO = (
 
 
 def _build_openmind_image_base_urls():
-    """Monta lista de bases candidatas para endpoint legado de análise de imagem."""
+    """Monta lista de bases candidatas para endpoint de análise de imagem (fonte única)."""
+    def _is_cloud_openmind(raw: str) -> bool:
+        value = str(raw or "").strip().lower()
+        return ("api.openmind.com" in value) or ("api.openmind.org" in value)
+
     candidates = [
         getattr(settings, 'OPENMIND_IMAGE_URL', None),
-        getattr(settings, 'OPENMIND_AI_URL', None),
         getattr(settings, 'OPENMIND_BASE_URL', None),
         'http://openmind:8001',
     ]
     bases = []
     for raw in candidates:
         if not raw:
+            continue
+        if _is_cloud_openmind(raw):
             continue
         base = str(raw).strip().rstrip('/')
         if base and base not in bases:
@@ -58,7 +63,14 @@ def _analyze_image_via_mcp(image_file, image_path=None, image_url=None):
         
         # Verificar se a tool existe
         if not Tool.objects.filter(name='vitrinezap.analisar_produto', is_active=True).exists():
-            logger.info("Tool vitrinezap.analisar_produto não registrada; usando fluxo legado")
+            logger.warning("Tool vitrinezap.analisar_produto não registrada")
+            strict_mcp = getattr(settings, 'ANALYZE_IMAGE_MCP_STRICT', True)
+            if strict_mcp:
+                return {
+                    'success': False,
+                    'error': 'Tool MCP vitrinezap.analisar_produto não registrada',
+                    'error_code': 'MCP_TOOL_NOT_REGISTERED',
+                }
             return None
         
         image_file.seek(0)
@@ -80,10 +92,24 @@ def _analyze_image_via_mcp(image_file, image_path=None, image_url=None):
         
         if not result.get('ok'):
             logger.warning(f"MCP execute falhou: {result.get('error')}; fallback para legado")
+            strict_mcp = getattr(settings, 'ANALYZE_IMAGE_MCP_STRICT', True)
+            if strict_mcp:
+                return {
+                    'success': False,
+                    'error': result.get('error') or 'Falha na execução MCP para análise de imagem',
+                    'error_code': 'MCP_ANALYZE_EXECUTION_FAILED',
+                }
             return None
         
         output = result.get('output') or {}
         if not output.get('success'):
+            strict_mcp = getattr(settings, 'ANALYZE_IMAGE_MCP_STRICT', True)
+            if strict_mcp:
+                return {
+                    'success': False,
+                    'error': output.get('error') or 'MCP retornou falha na análise de imagem',
+                    'error_code': output.get('error_code', 'MCP_ANALYZE_FAILED'),
+                }
             return None
         
         # Adicionar image_path/image_url ao retorno
@@ -97,6 +123,13 @@ def _analyze_image_via_mcp(image_file, image_path=None, image_url=None):
         
     except Exception as e:
         logger.warning(f"Erro ao usar MCP para análise: {e}; fallback para legado", exc_info=True)
+        strict_mcp = getattr(settings, 'ANALYZE_IMAGE_MCP_STRICT', True)
+        if strict_mcp:
+            return {
+                'success': False,
+                'error': f'Erro ao usar MCP para análise: {e}',
+                'error_code': 'MCP_ANALYZE_EXCEPTION',
+            }
         return None
 
 
@@ -138,6 +171,13 @@ def analyze_image_with_openmind(image_file, image_path=None, image_url=None, pro
                 except Exception as te:
                     logger.warning(f"Erro ao transformar dados MCP: {te}")
             return mcp_result
+        strict_mcp = getattr(settings, 'ANALYZE_IMAGE_MCP_STRICT', True)
+        if strict_mcp:
+            return {
+                'success': False,
+                'error': 'Fluxo MCP obrigatório: análise sem fallback legado',
+                'error_code': 'MCP_ONLY_ENFORCED',
+            }
         image_file.seek(0)
     
     try:

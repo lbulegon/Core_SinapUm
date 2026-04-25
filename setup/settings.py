@@ -313,7 +313,7 @@ CREWAI_CONFIG = {
 OPENMIND_ORG_BASE_URL = (
     os.environ.get('OPENMIND_ORG_BASE_URL')
     or os.environ.get('OPENMIND_ORS_BASE_URL')
-    or 'https://api.openmind.com/api/core/openai'
+    or ''
 )
 OPENMIND_ORG_API_KEY = OPENMIND_AI_KEY  # Mesma chave!
 OPENMIND_ORG_MODEL = 'gpt-4o'  # Pode ser: claude-3-opus, gemini-pro, etc.
