@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 import requests
 import jsonschema
 from jsonschema import validate, ValidationError
+import re
 
 # Configuração de logging
 logging.basicConfig(
@@ -26,7 +27,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuração
-SINAPUM_CORE_URL = os.getenv("SINAPUM_CORE_URL", "http://web:5000")
+SINAPUM_CORE_URL = os.getenv("SINAPUM_CORE_URL", "http://web:5000").rstrip("/")
 OPENMIND_SERVICE_URL = os.getenv("OPENMIND_SERVICE_URL", "http://openmind:8001")
 BASE_PATH = "/mcp"
 
@@ -195,6 +196,22 @@ def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> None:
         validate(instance=data, schema=schema)
     except ValidationError as e:
         raise ValueError(f"Schema validation failed: {e.message}")
+
+
+def normalize_tool_input(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normaliza payload para compatibilidade entre clientes.
+    Se o cliente legado enviar apenas image_base64/image_url, preenche também `image`.
+    """
+    if not isinstance(input_data, dict):
+        return {}
+    normalized = dict(input_data)
+    if "image" not in normalized:
+        if normalized.get("image_base64"):
+            normalized["image"] = normalized["image_base64"]
+        elif normalized.get("image_url"):
+            normalized["image"] = normalized["image_url"]
+    return normalized
 
 def execute_runtime_openmind_http(
     config: Dict[str, Any], 
@@ -449,6 +466,19 @@ def execute_runtime(
     else:
         raise ValueError(f"Runtime desconhecido: {runtime}")
 
+
+def normalize_version_for_registry(version: Optional[str]) -> Optional[str]:
+    """
+    Normaliza versão curta para semver compatível com o Core Registry.
+    Ex.: "1.0" -> "1.0.0".
+    """
+    if not version:
+        return version
+    v = str(version).strip()
+    if re.match(r"^\d+\.\d+$", v):
+        return f"{v}.0"
+    return v
+
 def log_tool_call(
     request_id: str,
     trace_id: Optional[str],
@@ -544,10 +574,10 @@ async def list_tools():
     Consulta o Core Registry (Django) e repassa a resposta.
     """
     try:
-        logger.info(f"Consultando tools no Core: {SINAPUM_CORE_URL}/core/tools")
+        logger.info(f"Consultando tools no Core: {SINAPUM_CORE_URL}/core/tools/")
         
         response = requests.get(
-            f"{SINAPUM_CORE_URL}/core/tools",
+            f"{SINAPUM_CORE_URL}/core/tools/",
             timeout=5
         )
         response.raise_for_status()
@@ -609,13 +639,15 @@ async def call_tool(
     
     try:
         # 2. Consultar Core Registry para resolver a tool
+        normalized_input = normalize_tool_input(request.input)
+
         resolve_payload = {
             "tool": request.tool,
-            "input": request.input
+            "input": normalized_input
         }
         
         if request.version:
-            resolve_payload["version"] = request.version
+            resolve_payload["version"] = normalize_version_for_registry(request.version)
         
         # Opcionalmente enviar context_pack ao Core Registry (se aceitar)
         # Por enquanto, mantemos compatibilidade: Core Registry não precisa aceitar ainda
@@ -627,10 +659,10 @@ async def call_tool(
         if x_sinapum_key:
             headers["X-SINAPUM-KEY"] = x_sinapum_key
         
-        logger.info(f"[{request_id}][{trace_id}] Resolvendo tool no Core: {SINAPUM_CORE_URL}/core/tools/resolve")
+        logger.info(f"[{request_id}][{trace_id}] Resolvendo tool no Core: {SINAPUM_CORE_URL}/core/tools/resolve/")
         
         resolve_response = requests.post(
-            f"{SINAPUM_CORE_URL}/core/tools/resolve",
+            f"{SINAPUM_CORE_URL}/core/tools/resolve/",
             json=resolve_payload,
             headers=headers,
             timeout=10
@@ -655,13 +687,13 @@ async def call_tool(
         # 3. Validar input_schema
         if input_schema:
             try:
-                validate_json_schema(request.input, input_schema)
+                validate_json_schema(normalized_input, input_schema)
                 logger.info(f"[{request_id}][{trace_id}] Input validado contra schema")
             except ValueError as e:
                 error_detail = ErrorDetail(
                     code="INPUT_VALIDATION_FAILED",
                     message=f"Input validation failed: {str(e)}",
-                    details={"schema": input_schema, "input": request.input}
+                    details={"schema": input_schema, "input": normalized_input}
                 )
                 status_code = 400
                 raise ValueError(str(e))
@@ -672,7 +704,7 @@ async def call_tool(
             logger.info(f"[{request_id}][{trace_id}] Delegando mrfoo_graph ao Core")
             try:
                 core_execute_url = f"{SINAPUM_CORE_URL}/core/tools/{tool_name}/execute/"
-                exec_body = {"input": request.input, "client_key": client_key}
+                exec_body = {"input": normalized_input, "client_key": client_key}
                 exec_headers = dict(headers) if headers else {}
                 exec_resp = requests.post(
                     core_execute_url,
@@ -695,7 +727,7 @@ async def call_tool(
         elif runtime:
             logger.info(f"[{request_id}][{trace_id}] Executando runtime: {runtime}")
             try:
-                output_data = execute_runtime(runtime, config, request.input, prompt_text=prompt_text)
+                output_data = execute_runtime(runtime, config, normalized_input, prompt_text=prompt_text)
                 logger.info(f"[{request_id}][{trace_id}] Runtime executado com sucesso")
                 
                 # Adicionar informações do prompt no cadastro_meta se o output tiver essa estrutura
@@ -761,7 +793,7 @@ async def call_tool(
             ok=True,
             status_code=status_code,
             latency_ms=latency_ms,
-            input_payload=request.input,
+            input_payload=normalized_input,
             output_payload=output_data,
             context_pack=context_pack,
             tokens_in=usage.get("tokens_in"),
@@ -806,7 +838,7 @@ async def call_tool(
             ok=False,
             status_code=status_code,
             latency_ms=latency_ms,
-            input_payload=request.input,
+            input_payload=normalized_input,
             error_payload=error_detail.dict(),
             context_pack=context_pack
         )
@@ -847,7 +879,7 @@ async def call_tool(
             ok=False,
             status_code=status_code,
             latency_ms=latency_ms,
-            input_payload=request.input,
+            input_payload=normalized_input,
             error_payload=error_detail.dict(),
             context_pack=context_pack
         )
@@ -887,7 +919,7 @@ async def call_tool(
             ok=False,
             status_code=status_code,
             latency_ms=latency_ms,
-            input_payload=request.input,
+            input_payload=normalized_input,
             error_payload=error_detail.dict(),
             context_pack=context_pack
         )
