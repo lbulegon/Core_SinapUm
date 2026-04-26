@@ -83,6 +83,14 @@ WHATSAPP_ASSIGNMENT_POLICY = os.environ.get('WHATSAPP_ASSIGNMENT_POLICY', 'defau
 # OpenMind AI - Nova Arquitetura
 OPENMIND_BASE_URL = os.environ.get('OPENMIND_BASE_URL', 'http://69.169.102.84:8001')
 OPENMIND_TOKEN = os.environ.get('OPENMIND_TOKEN', '')
+# app_ai_bridge: process_inbound via dispatcher MCP (core.openmind_process_inbound)
+OPENMIND_INBOUND_VIA_MCP = os.environ.get('OPENMIND_INBOUND_VIA_MCP', 'true').lower() in ('true', '1', 'yes')
+# llm_gateway: geração via execute_tool (core.openmind_chat_completions)
+OPENMIND_CHAT_VIA_MCP = os.environ.get('OPENMIND_CHAT_VIA_MCP', 'true').lower() in ('true', '1', 'yes')
+# app_sinapum CrewAI: analisar_imagem via MCP
+CREWAI_OPENMIND_VIA_MCP = os.environ.get('CREWAI_OPENMIND_VIA_MCP', 'true').lower() in ('true', '1', 'yes')
+# creative_engine: análise de imagem via MCP
+CREATIVE_ENGINE_OPENMIND_VIA_MCP = os.environ.get('CREATIVE_ENGINE_OPENMIND_VIA_MCP', 'true').lower() in ('true', '1', 'yes')
 
 # VitrineZap API - Para MCP Tools
 # NOTA: Évora/VitrineZap está no Railway, não no servidor SinapUm
@@ -292,7 +300,11 @@ else:
 
 # OpenMind AI Configuration
 OPENMIND_AI_URL = os.environ.get('OPENMIND_AI_URL', 'http://127.0.0.1:8001')
-OPENMIND_AI_KEY = os.environ.get('OPENMIND_AI_KEY', 'om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1')
+# No Docker, o serviço openmind expõe OPENMIND_AI_API_KEY; o contentor `web` pode reutilizar a mesma chave.
+_OPENMIND_KEY = os.environ.get('OPENMIND_AI_KEY', '').strip()
+if not _OPENMIND_KEY:
+    _OPENMIND_KEY = os.environ.get('OPENMIND_AI_API_KEY', '').strip()
+OPENMIND_AI_KEY = _OPENMIND_KEY or 'om1_live_7d4102a1bf72cc497d7651beb6a98292764b1f77df947c82d086506038ea6b9921efb9d9833045d1'
 # Endpoint dedicado para análise de imagem.
 # Permite usar OpenMind cloud para chat e serviço local para /api/v1/analyze-product-image.
 OPENMIND_IMAGE_URL = os.environ.get('OPENMIND_IMAGE_URL', OPENMIND_AI_URL)

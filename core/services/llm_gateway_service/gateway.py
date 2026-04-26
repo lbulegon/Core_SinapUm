@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from typing import Any, Dict
 
 import requests
@@ -38,19 +39,22 @@ def _format_cognitive_extras(context: Dict[str, Any]) -> str:
     return "\n\n".join(parts) if parts else ""
 
 
-def llm_generate(
+def _llm_generate_direct_http(
     prompt_input: str,
     context: Dict[str, Any],
     prompt_version: str,
     contract_version: str,
 ) -> str:
-    """
-    Geração via OpenMind (chat/completions) quando configurado; fallback seguro se indisponível.
-    Assinatura pública inalterada para compatibilidade com o restante do Core.
-    """
-    base_url = getattr(settings, "OPENMIND_AI_URL", None) or getattr(settings, "OPENMIND_BASE_URL", "http://127.0.0.1:8001")
+    """Caminho legado: POST directo a /chat/completions (OPENMIND_CHAT_VIA_MCP=False ou fallback)."""
+    base_url = getattr(settings, "OPENMIND_AI_URL", None) or getattr(
+        settings, "OPENMIND_BASE_URL", "http://127.0.0.1:8001"
+    )
     base_url = str(base_url).rstrip("/")
-    api_key = getattr(settings, "OPENMIND_AI_KEY", None) or getattr(settings, "OPENMIND_TOKEN", None) or ""
+    api_key = (
+        getattr(settings, "OPENMIND_AI_KEY", None)
+        or getattr(settings, "OPENMIND_TOKEN", None)
+        or ""
+    )
 
     cognitive_block = _format_cognitive_extras(context)
     system_parts = [
@@ -86,8 +90,63 @@ def llm_generate(
             if content:
                 return str(content).strip()
     except Exception as e:
-        logger.warning("llm_generate OpenMind indisponível, usando fallback: %s", e)
+        logger.warning("llm_generate OpenMind indisponível (HTTP directo), usando fallback: %s", e)
 
     return (
         f"Entendi. Vou te ajudar com isso. (route={context.get('route')}, v={prompt_version})"
+    )
+
+
+def llm_generate(
+    prompt_input: str,
+    context: Dict[str, Any],
+    prompt_version: str,
+    contract_version: str,
+) -> str:
+    """
+    Geração via OpenMind (chat/completions). Por defeito usa MCP
+    (core.openmind_chat_completions → ToolCallLog); fallback seguro.
+    """
+    use_mcp = getattr(settings, "OPENMIND_CHAT_VIA_MCP", True)
+    if not use_mcp:
+        return _llm_generate_direct_http(
+            prompt_input, context, prompt_version, contract_version
+        )
+
+    cognitive_block = _format_cognitive_extras(context)
+    system_parts = [
+        "Você é o assistente do SinapUm. Responda de forma útil e concisa em português.",
+        f"Versão de prompt: {prompt_version}. Contrato: {contract_version}.",
+    ]
+    if cognitive_block:
+        system_parts.append(cognitive_block)
+    system_content = "\n".join(system_parts)
+
+    try:
+        from app_mcp_tool_registry.services import execute_tool
+
+        mcp = execute_tool(
+            "core.openmind_chat_completions",
+            {
+                "messages": [
+                    {"role": "system", "content": system_content},
+                    {"role": "user", "content": prompt_input or ""},
+                ],
+                "model": getattr(settings, "OPENMIND_ORG_MODEL", "gpt-4o"),
+                "temperature": 0.4,
+                "max_tokens": 1024,
+            },
+            request_id=str(uuid.uuid4()),
+            trace_id=str(uuid.uuid4()),
+        )
+        if mcp.get("ok") and mcp.get("output"):
+            content = mcp["output"].get("content")
+            if content and str(content).strip():
+                return str(content).strip()
+        logger.warning("llm_generate MCP sem content: %s", mcp.get("error"))
+    except Exception as e:
+        logger.warning("llm_generate MCP falhou, caindo para HTTP directo: %s", e, exc_info=True)
+
+    return _llm_generate_direct_http(
+        prompt_input, context, prompt_version, contract_version
     )

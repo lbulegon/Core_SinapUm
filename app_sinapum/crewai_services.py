@@ -5,7 +5,9 @@ Integração com OpenMind AI para análise de produtos
 O CrewAI usa o OpenMind.org como backend LLM, que oferece acesso a múltiplos
 modelos (OpenAI, Anthropic, Gemini, etc.) através de uma API unificada.
 """
+import base64
 import logging
+import uuid
 import requests
 from typing import Dict, Any, List, Optional
 from django.conf import settings
@@ -76,6 +78,7 @@ OPENMIND_AI_KEY = getattr(settings, 'OPENMIND_AI_KEY', None)
 def analisar_imagem_openmind(image_path: str) -> Dict[str, Any]:
     """
     Analisa uma imagem de produto usando o servidor OpenMind AI.
+    Por defeito: dispatcher MCP (core.openmind_analyze_product_image); fallback HTTP.
     
     Args:
         image_path: Caminho local da imagem ou dados da imagem
@@ -85,27 +88,50 @@ def analisar_imagem_openmind(image_path: str) -> Dict[str, Any]:
     """
     if not CREWAI_AVAILABLE:
         return {"error": "CrewAI não está disponível"}
-    
+
+    use_mcp = getattr(settings, "CREWAI_OPENMIND_VIA_MCP", True)
+    if use_mcp:
+        try:
+            from app_mcp_tool_registry.services import execute_tool
+
+            with open(image_path, "rb") as img_file:
+                b64 = base64.b64encode(img_file.read()).decode("utf-8")
+            r = execute_tool(
+                "core.openmind_analyze_product_image",
+                {
+                    "image_base64": b64,
+                    "prompt": (
+                        "Analise esta imagem de produto e retorne um JSON estruturado com "
+                        "nome, descrição, categoria, preço e atributos visíveis."
+                    ),
+                },
+                request_id=str(uuid.uuid4()),
+                trace_id=str(uuid.uuid4()),
+            )
+            if r.get("ok") and r.get("output"):
+                out = r["output"]
+                if isinstance(out, dict) and out.get("success") and out.get("data"):
+                    return out["data"]
+                return out if isinstance(out, dict) else {"error": "resposta inválida"}
+            return {"error": r.get("error", "MCP falhou")}
+        except Exception as e:
+            logger.error("analisar_imagem_openmind (MCP): %s", e, exc_info=True)
+
     try:
         url = f"{OPENMIND_AI_URL}/api/v1/analyze-product-image"
-        
         headers = {}
         if OPENMIND_AI_KEY:
-            headers['Authorization'] = f'Bearer {OPENMIND_AI_KEY}'
-        
-        # Abrir e enviar imagem
-        with open(image_path, 'rb') as img_file:
-            files = {'image': img_file}
+            headers["Authorization"] = f"Bearer {OPENMIND_AI_KEY}"
+        with open(image_path, "rb") as img_file:
+            files = {"image": img_file}
             response = requests.post(url, files=files, headers=headers, timeout=60)
-        
         if response.status_code == 200:
             result = response.json()
-            if result.get('success') and result.get('data'):
-                return result['data']
-        
+            if result.get("success") and result.get("data"):
+                return result["data"]
         return {"error": f"Erro na análise: {response.status_code}"}
     except Exception as e:
-        logger.error(f"Erro ao analisar imagem: {str(e)}")
+        logger.error("Erro ao analisar imagem: %s", e)
         return {"error": str(e)}
 
 

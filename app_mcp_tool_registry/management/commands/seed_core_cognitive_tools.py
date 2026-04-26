@@ -421,8 +421,90 @@ class Command(BaseCommand):
         outadv = {"type": "object", "properties": {"ok": {"type": "boolean"}, "bundle": {"type": "object"}}}
         _upsert_tool_version(tadv, "1.0.0", input_schema=inadv, output_schema=outadv, client=mrfoo)
 
+        # --- core.openmind_process_inbound (app_ai_bridge → OpenMind; substitui HTTP directo) ---
+        toi, _ = Tool.objects.get_or_create(
+            name="core.openmind_process_inbound",
+            defaults={
+                "description": "Ponte AI Bridge: evento canónico + contexto → POST /api/v1/process-message no serviço OpenMind (registo em ToolCallLog).",
+                "is_active": True,
+            },
+        )
+        toi.is_active = True
+        toi.save()
+        in_oi = {
+            "type": "object",
+            "properties": {
+                "event": {
+                    "type": "object",
+                    "description": "Evento canónico (incl. conversation_id, etc.)",
+                },
+                "context": {
+                    "type": "object",
+                    "description": "Contexto: last_messages, conversation",
+                },
+            },
+            "required": ["event"],
+        }
+        out_oi = {
+            "type": "object",
+            "properties": {
+                "intent": {"type": "string"},
+                "confidence": {"type": "number"},
+                "suggested_reply": {"type": "string"},
+                "actions": {"type": "array"},
+            },
+        }
+        _upsert_tool_version(toi, "1.0.0", input_schema=in_oi, output_schema=out_oi, client=mrfoo)
+
+        # --- core.openmind_analyze_product_image (análise imagem; openmind HTTP) ---
+        timg, _ = Tool.objects.get_or_create(
+            name="core.openmind_analyze_product_image",
+            defaults={
+                "description": "POST /api/v1/analyze-product-image (multipart) — imagem + prompt opcional; registo em ToolCallLog.",
+                "is_active": True,
+            },
+        )
+        timg.is_active = True
+        timg.save()
+        in_img = {
+            "type": "object",
+            "properties": {
+                "image_base64": {"type": "string"},
+                "image_url": {"type": "string"},
+                "prompt": {"type": "string"},
+                "prompt_params": {"type": "object"},
+                "timeout_s": {"type": "integer", "default": 60},
+            },
+        }
+        out_img = {"type": "object"}
+        _upsert_tool_version(
+            timg, "1.0.0", input_schema=in_img, output_schema=out_img, client=mrfoo
+        )
+
+        # --- core.openmind_chat_completions (LLM gateway) ---
+        tch, _ = Tool.objects.get_or_create(
+            name="core.openmind_chat_completions",
+            defaults={
+                "description": "POST /chat/completions no serviço OpenMind (messages OpenAI-compat).",
+                "is_active": True,
+            },
+        )
+        tch.is_active = True
+        tch.save()
+        in_ch = {
+            "type": "object",
+            "properties": {
+                "messages": {"type": "array", "description": "Lista {role, content}."},
+                "model": {"type": "string"},
+                "temperature": {"type": "number"},
+                "max_tokens": {"type": "integer"},
+            },
+        }
+        out_ch = {"type": "object", "properties": {"content": {"type": "string"}, "raw_response": {}}}
+        _upsert_tool_version(tch, "1.0.0", input_schema=in_ch, output_schema=out_ch, client=mrfoo)
+
         self.stdout.write(
             self.style.SUCCESS(
-                "Tools cognitivas registradas (incl. core.strategic_advanced, Fase 4: core.strategic_analyze, core.strategy_feedback)."
+                "Tools cognitivas registradas (incl. core.openmind_*, core.strategic_advanced, Fase 4: core.strategic_analyze, core.strategy_feedback)."
             )
         )

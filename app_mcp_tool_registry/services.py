@@ -102,6 +102,94 @@ def truncate_payload(payload: Any, max_bytes: int = 10000) -> Any:
         return {"_error": "Failed to truncate payload", "_exception": str(e)}
 
 
+def _execute_tool_core_openmind_process_inbound(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.openmind_process_inbound` — evento canónico + contexto → serviço OpenMind
+    (POST /api/v1/process-message). Substitui chamada HTTP directa a partir do app_ai_bridge.
+    """
+    event = input_data.get("event")
+    context = input_data.get("context")
+    if not event or not isinstance(event, dict):
+        raise ValueError("core.openmind_process_inbound: 'event' (object) é obrigatório")
+    if context is None:
+        context = {}
+    if not isinstance(context, dict):
+        raise ValueError("core.openmind_process_inbound: 'context' deve ser object")
+
+    base = str(
+        getattr(settings, "OPENMIND_BASE_URL", "http://127.0.0.1:8001") or "http://127.0.0.1:8001"
+    ).rstrip("/")
+    url = f"{base}/api/v1/process-message"
+    # O serviço OpenMind (FastAPI) valida o Bearer contra OPENMIND_AI_API_KEY; no Core costuma
+    # coincidir com OPENMIND_AI_KEY. OPENMIND_TOKEN é o alias usado no bridge.
+    token = str(
+        getattr(settings, "OPENMIND_TOKEN", None)
+        or getattr(settings, "OPENMIND_AI_KEY", None)
+        or ""
+    ).strip()
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    timeout = int(getattr(settings, "OPENMIND_TIMEOUT", 30) or 30)
+    from .openmind_process_message import (
+        build_process_message_request,
+        map_process_message_response_to_bridge,
+    )
+
+    try:
+        payload = build_process_message_request(event, context)
+    except ValueError as e:
+        logger.error("core.openmind_process_inbound: payload inválido: %s", e)
+        raise
+
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as e:
+        logger.error("core.openmind_process_inbound: erro HTTP OpenMind: %s", e)
+        raise ValueError(f"OpenMind indisponível: {e}") from e
+    if not isinstance(data, dict):
+        raise ValueError("Resposta OpenMind inválida (não-JSON object)")
+
+    return map_process_message_response_to_bridge(data)
+
+
+def _execute_tool_core_openmind_analyze_product_image(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.openmind_analyze_product_image` — POST analyze-product-image (openmind_http).
+    Input: image_base64 e/ou image_url; opcional prompt, prompt_params, timeout_s.
+    """
+    url_base = str(
+        getattr(settings, "OPENMIND_IMAGE_URL", None)
+        or getattr(settings, "OPENMIND_AI_URL", None)
+        or "http://127.0.0.1:8001"
+    ).rstrip("/")
+    config = {
+        "url": f"{url_base}/api/v1/analyze-product-image",
+        "timeout_s": int(input_data.get("timeout_s", 60) or 60),
+    }
+    prompt_text = (input_data.get("prompt") or "").strip() or None
+    return execute_runtime_openmind_http(config, input_data, prompt_text=prompt_text)
+
+
+def _execute_tool_core_openmind_chat_completions(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool MCP `core.openmind_chat_completions` — POST /chat/completions no serviço OpenMind.
+    Input: `messages` (lista OpenAI) ou corpo mínimo; model/temperature/max_tokens opcionais.
+    """
+    base = str(
+        getattr(settings, "OPENMIND_AI_URL", None) or getattr(settings, "OPENMIND_BASE_URL", "http://127.0.0.1:8001")
+    ).rstrip("/")
+    config: Dict[str, Any] = {
+        "url": f"{base}/chat/completions",
+        "model": input_data.get("model") or getattr(settings, "OPENMIND_ORG_MODEL", "gpt-4o"),
+        "temperature": float(input_data.get("temperature", 0.4)),
+        "max_tokens": int(input_data.get("max_tokens", 1024)),
+    }
+    return execute_runtime_prompt(config, input_data, prompt_text=None)
+
+
 def _execute_tool_core_rag_query(input_data: Dict[str, Any]) -> Dict[str, Any]:
     """Tool MCP `core.rag_query` — retrieval no vectorstore_service."""
     from core.services.vectorstore_client import vectorstore_search
@@ -597,12 +685,13 @@ def execute_runtime_prompt(
         ValueError: Se prompt_text não disponível
         requests.RequestException: Se erro na requisição
     """
-    if not prompt_text:
-        # Tentar buscar prompt inline do config
-        prompt_text = config.get("prompt_inline")
+    has_messages = isinstance(input_data.get("messages"), list) and len(input_data["messages"]) > 0
+    if not has_messages:
         if not prompt_text:
-            raise ValueError("Runtime 'prompt' requer prompt_text ou config.prompt_inline")
-    
+            prompt_text = config.get("prompt_inline")
+            if not prompt_text:
+                raise ValueError("Runtime 'prompt' requer prompt_text, config.prompt_inline ou input_data.messages")
+
     # Configurações do LLM
     url = config.get("url", f"{OPENMIND_AI_URL}/chat/completions")
     model = config.get("model", "gpt-4o")
@@ -610,7 +699,7 @@ def execute_runtime_prompt(
     max_tokens = config.get("max_tokens", 2000)
     
     # Preparar mensagens para o chat
-    if isinstance(input_data.get("messages"), list):
+    if has_messages:
         messages = input_data["messages"]
     else:
         # Formatar prompt com input_data
@@ -634,7 +723,8 @@ def execute_runtime_prompt(
         "max_tokens": max_tokens
     }
     
-    logger.info(f"Executando runtime prompt: model={model}, prompt_length={len(prompt_text)}")
+    plen = len(prompt_text or "")
+    logger.info(f"Executando runtime prompt: model={model}, prompt_length={plen}")
     
     headers = {}
     if OPENMIND_AI_KEY:
@@ -976,7 +1066,13 @@ def execute_tool(
         logger.info(f"[{request_id}][{trace_id}] Executando runtime: {runtime}")
         
         try:
-            if tool_name == "core.rag_query":
+            if tool_name == "core.openmind_process_inbound":
+                output_data = _execute_tool_core_openmind_process_inbound(input_data)
+            elif tool_name == "core.openmind_analyze_product_image":
+                output_data = _execute_tool_core_openmind_analyze_product_image(input_data)
+            elif tool_name == "core.openmind_chat_completions":
+                output_data = _execute_tool_core_openmind_chat_completions(input_data)
+            elif tool_name == "core.rag_query":
                 output_data = _execute_tool_core_rag_query(input_data)
             elif tool_name == "core.rag_ingest":
                 output_data = _execute_tool_core_rag_ingest(input_data)

@@ -2,11 +2,17 @@
 ImageAnalyzer - Análise de imagens de produtos
 Usa OpenMind quando disponível, fallback para análise básica
 """
+import base64
 import logging
+import uuid
 from typing import Dict, Any, Optional
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_ANALYZE_PROMPT = (
+    "Analise esta imagem de produto e retorne nome, descrição, preço, cor, material, categoria."
+)
 
 
 class ImageAnalyzer:
@@ -46,39 +52,75 @@ class ImageAnalyzer:
         return self._fallback_analysis(image_path)
 
     def _analyze_via_openmind(self, image_path: str, image_url: Optional[str]) -> Optional[Dict[str, Any]]:
-        """Chama OpenMind analyze-product-image (compatível com Django/Vitrinezap)"""
+        """Chama OpenMind analyze-product-image via MCP (core.openmind_analyze_product_image) ou HTTP legado."""
         try:
             from django.conf import settings
             import requests
 
-            url = getattr(settings, 'OPENMIND_BASE_URL', 'http://localhost:8001')
-            endpoint = f"{url.rstrip('/')}/api/v1/analyze-product-image"
-            token = getattr(settings, 'OPENMIND_TOKEN', '')
+            use_mcp = getattr(settings, "CREATIVE_ENGINE_OPENMIND_VIA_MCP", True)
+            if use_mcp and image_url and not (image_path and Path(image_path).exists()):
+                from app_mcp_tool_registry.services import execute_tool
 
+                r = execute_tool(
+                    "core.openmind_analyze_product_image",
+                    {
+                        "image_url": image_url,
+                        "prompt": _DEFAULT_ANALYZE_PROMPT,
+                    },
+                    request_id=str(uuid.uuid4()),
+                    trace_id=str(uuid.uuid4()),
+                )
+                if r.get("ok") and r.get("output"):
+                    out = r["output"]
+                    if isinstance(out, dict) and out.get("success") and out.get("data"):
+                        return out["data"]
+                    if isinstance(out, dict):
+                        return out
+            elif use_mcp and image_path and Path(image_path).exists():
+                from app_mcp_tool_registry.services import execute_tool
+
+                with open(image_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                r = execute_tool(
+                    "core.openmind_analyze_product_image",
+                    {
+                        "image_base64": b64,
+                        "prompt": _DEFAULT_ANALYZE_PROMPT,
+                    },
+                    request_id=str(uuid.uuid4()),
+                    trace_id=str(uuid.uuid4()),
+                )
+                if r.get("ok") and r.get("output"):
+                    out = r["output"]
+                    if isinstance(out, dict) and out.get("success") and out.get("data"):
+                        return out["data"]
+                    if isinstance(out, dict):
+                        return out
+
+            url = getattr(settings, "OPENMIND_BASE_URL", "http://localhost:8001")
+            endpoint = f"{str(url).rstrip('/')}/api/v1/analyze-product-image"
+            token = getattr(settings, "OPENMIND_TOKEN", "")
             headers = {}
             if token:
-                headers['Authorization'] = f'Bearer {token}'
-
+                headers["Authorization"] = f"Bearer {token}"
             if Path(image_path).exists():
-                with open(image_path, 'rb') as f:
-                    files = {'image': (Path(image_path).name, f, 'image/jpeg')}
-                    data = {'prompt': 'Analise esta imagem de produto e retorne nome, descrição, preço, cor, material, categoria.'}
+                with open(image_path, "rb") as f:
+                    files = {"image": (Path(image_path).name, f, "image/jpeg")}
+                    data = {"prompt": _DEFAULT_ANALYZE_PROMPT}
                     resp = requests.post(endpoint, files=files, data=data, headers=headers, timeout=60)
             elif image_url:
-                # OpenMind pode aceitar image_url em alguns setups
                 return None
             else:
                 return None
-
             if resp.status_code == 200:
                 result = resp.json()
-                if result.get('success') and result.get('data'):
-                    return result['data']
+                if result.get("success") and result.get("data"):
+                    return result["data"]
                 return result
         except ImportError:
             pass
         except Exception as e:
-            logger.debug(f"OpenMind não disponível: {e}")
+            logger.debug("OpenMind não disponível: %s", e)
         return None
 
     def _normalize_analysis(self, raw: Dict[str, Any]) -> Dict[str, Any]:
