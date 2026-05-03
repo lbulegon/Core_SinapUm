@@ -10,7 +10,8 @@ from .models import (
     ProdutoJSON,
     ServicoExterno,
     Sistema,
-    PromptTemplate
+    PromptTemplate,
+    OrchestratedHumanTask,
 )
 
 
@@ -364,3 +365,11 @@ class PromptTemplateAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         """Override para garantir lógica de prompt padrão"""
         super().save_model(request, obj, form, change)
+
+
+@admin.register(OrchestratedHumanTask)
+class OrchestratedHumanTaskAdmin(admin.ModelAdmin):
+    list_display = ("orchestration_id", "title", "status", "min_responses", "created_at")
+    list_filter = ("status",)
+    readonly_fields = ("orchestration_id", "created_at", "updated_at")
+    search_fields = ("title", "body")

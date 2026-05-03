@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app_platform_billing.catalog_limits import repos_limit
 from app_sinaplint.models_repository import Repository
 from app_sinaplint.services.usage_limits import get_effective_plan
 
@@ -38,7 +39,7 @@ def ensure_repository_for_user(
     if existing:
         return existing
 
-    limit = int(plan.max_repos or 0)
+    limit = int(repos_limit(plan) or 0)
     used = Repository.objects.filter(user=user).count()
     if limit > 0 and used >= limit:
         raise RepoLimitExceeded(

@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator, URLValidator
 from django.core.exceptions import ValidationError
@@ -773,3 +775,35 @@ class PromptTemplate(models.Model):
         Pode ser estendido para incluir formatação dinâmica
         """
         return self.prompt_text
+
+
+# --- Ponte MarketFish (tarefas humanas + Pi) ---
+
+
+class OrchestratedHumanTask(models.Model):
+    """Registo orquestrado no Core para tasks humanas consumidas pelo MarketFish."""
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Aberta"
+        RESULT_RECEIVED = "result_received", "Resultado recebido"
+
+    orchestration_id = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False, db_index=True
+    )
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    min_responses = models.PositiveSmallIntegerField(default=3)
+    status = models.CharField(
+        max_length=32, choices=Status.choices, default=Status.OPEN, db_index=True
+    )
+    result_payload = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Tarefa humana orquestrada (MarketFish)"
+        verbose_name_plural = "Tarefas humanas orquestradas (MarketFish)"
+        ordering = ["-id"]
+
+    def __str__(self) -> str:
+        return f"{self.orchestration_id} — {self.title[:40]}"

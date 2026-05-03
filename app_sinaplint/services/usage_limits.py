@@ -1,5 +1,5 @@
 """
-Limites mensais de análise por plano.
+Limites mensais de análise por plano (catálogo plataforma ``CatalogPlan``).
 """
 
 from __future__ import annotations
@@ -13,12 +13,20 @@ from django.utils import timezone
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
 
-from app_sinaplint.models_billing import Plan, Subscription
+from app_platform_billing.catalog_limits import (
+    analyses_monthly_limit,
+    get_free_catalog_plan,
+    get_platform_subscription,
+    get_saas_product,
+    repos_limit,
+    SINAPLINT_PRODUCT_SLUG,
+)
+from app_platform_billing.models import CatalogPlan
 from app_sinaplint.models_usage import Usage
 
 
 class UsageLimitExceeded(Exception):
-    """Limite de análises mensais atingido."""
+    """Limite mensal de análises atingido."""
 
     def __init__(self, message: str, *, limit: int, used: int) -> None:
         self.limit = limit
@@ -32,17 +40,17 @@ def _month_start(d: date | None = None) -> date:
     return date(d.year, d.month, 1)
 
 
-def get_effective_plan(user: AbstractUser) -> Plan | None:
-    """Plano ativo ou Free (slug ``free``)."""
+def get_effective_plan(user: AbstractUser) -> CatalogPlan | None:
+    """Plano ativo (assinatura Stripe) ou plano Free do catálogo SinapLint."""
     if not getattr(user, "is_authenticated", False):
         return None
-    try:
-        sub: Subscription = user.sinaplint_subscription
-    except Subscription.DoesNotExist:
-        sub = None
-    if sub and sub.status in ("active", "trialing") and sub.plan_id:
-        return sub.plan
-    return Plan.objects.filter(slug="free").first()
+    prod = get_saas_product(SINAPLINT_PRODUCT_SLUG)
+    if not prod:
+        return None
+    ps = get_platform_subscription(user.pk, SINAPLINT_PRODUCT_SLUG)
+    if ps and ps.status in ("active", "trialing") and ps.plan_id:
+        return ps.plan
+    return get_free_catalog_plan(prod)
 
 
 @transaction.atomic
@@ -60,7 +68,7 @@ def check_and_increment_usage(user: AbstractUser) -> Usage:
             used=0,
         )
 
-    limit = plan.max_analyses_per_month
+    limit = analyses_monthly_limit(plan)
     m = _month_start()
     usage, _ = Usage.objects.select_for_update().get_or_create(
         user=user,
@@ -96,7 +104,7 @@ def check_limit(user: AbstractUser) -> None:
             limit=0,
             used=0,
         )
-    limit = plan.max_analyses_per_month
+    limit = analyses_monthly_limit(plan)
     if limit < 0:
         return
     m = _month_start()

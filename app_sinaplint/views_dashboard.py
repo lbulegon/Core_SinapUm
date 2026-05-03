@@ -14,7 +14,12 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from app_sinaplint.models_billing import Subscription
+from app_platform_billing.catalog_limits import (
+    analyses_monthly_limit,
+    get_platform_subscription,
+    repos_limit,
+    SINAPLINT_PRODUCT_SLUG,
+)
 from app_sinaplint.models_repository import Analysis, AnalysisDelta
 from app_sinaplint.models_usage import Usage
 from app_sinaplint.services.usage_limits import get_effective_plan
@@ -31,9 +36,9 @@ def build_summary_payload(user: AbstractUser) -> dict:
     m = _month_start()
     usage = Usage.objects.filter(user=user, month=m).first()
     used = int(usage.analyses_count) if usage else 0
-    limit = int(plan.max_analyses_per_month) if plan else 0
+    limit = analyses_monthly_limit(plan) if plan else 0
     repo_count = user.sinaplint_repositories.count()
-    max_repos = int(plan.max_repos) if plan else 0
+    max_repos = repos_limit(plan) if plan else 0
 
     return {
         "plan": {
@@ -89,7 +94,7 @@ def build_history_payload(user: AbstractUser, limit: int = 50) -> list[dict]:
 
 def build_billing_payload(user: AbstractUser) -> dict:
     plan = get_effective_plan(user)
-    sub = Subscription.objects.filter(user=user).first()
+    sub = get_platform_subscription(user.pk, SINAPLINT_PRODUCT_SLUG)
     return {
         "plan": {
             "name": plan.name if plan else "—",

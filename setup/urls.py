@@ -113,6 +113,8 @@ urlpatterns = [
     path('agno/', include('app_sinapcore.agno_urls')),
     # SinapLint Cloud (API key por tenant) — análise arquitetural
     path('api/sinaplint/', include('app_sinapcore.api_urls')),
+    # Billing plataforma — catálogo + checkout + webhook Stripe (multi-SaaS)
+    path('api/platform/billing/', include('app_platform_billing.urls')),
     # SinapLint SaaS — utilizador Django, Stripe, limites mensais
     path('api/sinaplint/saas/', include('app_sinaplint.urls_saas')),
     # EOC — Centro de Operações Cognitivo (torre SinapCore + ambiente + logs)
@@ -126,6 +128,8 @@ urlpatterns = [
     # WhatsApp Gateway Service Webhook
     path('webhooks/whatsapp/', webhook_handler.handle_incoming_whatsapp_event, name='whatsapp_gateway_webhook'),
     path('admin/', admin.site.urls),
+    # MarketFish — orquestração de tasks humanas (token interno)
+    path('sinapum/', include('app_sinapum.urls_marketfish')),
 ]
 
 # ============================================================================

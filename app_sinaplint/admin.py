@@ -1,35 +1,13 @@
 """
-Admin Django — planos, assinaturas, API keys e uso.
+Admin Django — API keys, repositórios, análises e uso.
+(Billing: ver ``app_platform_billing`` no Admin.)
 """
 
 from django.contrib import admin
 
 from app_sinaplint.models_api import APIKey
-from app_sinaplint.models_billing import Plan, Subscription
 from app_sinaplint.models_repository import Analysis, AnalysisDelta, Repository
 from app_sinaplint.models_usage import Usage
-
-
-@admin.register(Plan)
-class PlanAdmin(admin.ModelAdmin):
-    list_display = (
-        "name",
-        "slug",
-        "max_analyses_per_month",
-        "max_repos",
-        "stripe_price_id",
-        "is_public",
-        "sort_order",
-    )
-    list_filter = ("is_public",)
-    search_fields = ("name", "slug", "stripe_price_id")
-
-
-@admin.register(Subscription)
-class SubscriptionAdmin(admin.ModelAdmin):
-    list_display = ("user", "plan", "status", "stripe_customer_id", "current_period_end")
-    list_filter = ("status",)
-    raw_id_fields = ("user", "plan")
 
 
 @admin.register(APIKey)

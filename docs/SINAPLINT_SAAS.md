@@ -1,6 +1,8 @@
 # SinapLint SaaS (Django)
 
-Blueprint integrado no `app_sinaplint`: **planos**, **Stripe**, **API keys por utilizador**, **uso mensal**.
+Blueprint integrado no `app_sinaplint`: **Stripe**, **API keys por utilizador**, **uso mensal**.
+
+**Planos e assinaturas** residem em `app_platform_billing` (`SaaSProduct` / `CatalogPlan` / `PlatformSubscription`); as rotas `/api/sinaplint/saas/billing/*` mantêm o mesmo contrato HTTP. Detalhes: [`PLATFORM_BILLING.md`](./PLATFORM_BILLING.md).
 
 ## Rotas
 
@@ -17,12 +19,11 @@ Blueprint integrado no `app_sinaplint`: **planos**, **Stripe**, **API keys por u
 
 ## Modelos
 
-- **Plan** — `stripe_price_id`, `max_analyses_per_month`, `max_repos`
-- **Subscription** — `status` (substitui o antigo boolean `active`)
+- **Billing (Core)** — `app_platform_billing`: produto `sinaplint`, `CatalogPlan` (limites em JSON), `PlatformSubscription` por utilizador.
 - **Repository** — por utilizador, URL única por user
 - **Analysis** — resultado JSON + score; **AnalysisDelta** opcional (1:1)
 
-Migração `0002_repository_analysis_delta_plan_sub` aplica renomeação `price_id` → `stripe_price_id` e novos modelos.
+As tabelas antigas `Plan` / `Subscription` em `app_sinaplint` foram removidas após migração de dados (`0003` → `0004`).
 
 ## Frontend
 
@@ -36,11 +37,11 @@ Migração `0002_repository_analysis_delta_plan_sub` aplica renomeação `price_
 ## Arranque
 
 ```bash
-python manage.py migrate app_sinaplint
+python manage.py migrate
 python manage.py sinaplint_seed_plans
 ```
 
-Preencher `price_id` dos planos Pro/Scale no Admin (Stripe Dashboard → Prices).
+Preencher `stripe_price_id` dos planos Pro/Scale no **Admin** em `app_platform_billing` → Catalog plan (Stripe Dashboard → Prices).
 
 ## Autenticação
 

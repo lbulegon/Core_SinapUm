@@ -149,6 +149,8 @@ INSTALLED_APPS = [
     'agent_core.apps.AgentCoreConfig',
     # SinapCore — módulos cognitivos (Admin: enable / priority / JSON config)
     'app_sinapcore.apps.AppSinapcoreConfig',
+    # Billing multi-SaaS (Stripe + catálogo por produto; webhook pode substituir o legado)
+    'app_platform_billing.apps.AppPlatformBillingConfig',
     # SinapLint — motor CLI + regras + modelos SaaS opcionais (billing, API key, uso)
     'app_sinaplint.apps.AppSinaplintConfig',
     # ACP — Agent Communication Protocol (execução de tarefas de agente)

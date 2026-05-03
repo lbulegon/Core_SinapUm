@@ -2,13 +2,15 @@
 
 from django.urls import path
 
-from app_sinaplint import views_billing, views_dashboard, views_saas_analyze
-from app_sinaplint.views_stripe_webhook import StripeWebhookView
+from app_platform_billing.views import SinapLintCompatCheckoutView, SinapLintCompatPlansView
+from app_platform_billing.views_webhook import PlatformStripeWebhookView
+
+from app_sinaplint import views_dashboard, views_saas_analyze
 
 urlpatterns = [
-    path("billing/checkout/", views_billing.CreateCheckoutSessionView.as_view(), name="sinaplint_checkout"),
-    path("billing/plans/", views_billing.PlansListView.as_view(), name="sinaplint_plans"),
-    path("webhooks/stripe/", StripeWebhookView.as_view(), name="sinaplint_stripe_webhook"),
+    path("billing/checkout/", SinapLintCompatCheckoutView.as_view(), name="sinaplint_checkout"),
+    path("billing/plans/", SinapLintCompatPlansView.as_view(), name="sinaplint_plans"),
+    path("webhooks/stripe/", PlatformStripeWebhookView.as_view(), name="sinaplint_stripe_webhook"),
     path("v1/analyze/", views_saas_analyze.analyze_with_usage, name="sinaplint_saas_analyze"),
     path("dashboard/summary/", views_dashboard.DashboardSummaryView.as_view(), name="sinaplint_dashboard_summary"),
     path("dashboard/history/", views_dashboard.DashboardHistoryView.as_view(), name="sinaplint_dashboard_history"),
