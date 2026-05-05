@@ -12,7 +12,8 @@ import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, Header, Request
+from starlette.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import requests
@@ -135,6 +136,30 @@ def _describe_exception(exc: BaseException) -> str:
     if s:
         return s
     return f"{type(exc).__name__}: {exc!r}"
+
+
+def _is_http_exception_like(exc: BaseException) -> bool:
+    """
+    Starlette/FastAPI HTTPException: em alguns deploys a classe não casa com 'except HTTPException'
+    se o raise vier de outro import. Duck-typing evita INTERNAL_ERROR genérico.
+    """
+    return (
+        type(exc).__name__ == "HTTPException"
+        and hasattr(exc, "detail")
+        and hasattr(exc, "status_code")
+    )
+
+
+def _format_http_exception_detail(exc: BaseException) -> str:
+    d = getattr(exc, "detail", None)
+    if isinstance(d, str):
+        return d
+    if d is None:
+        return ""
+    try:
+        return json.dumps(d, ensure_ascii=False)
+    except Exception:
+        return str(d)
 
 
 def generate_minimal_context_pack(request_id: Optional[str] = None, trace_id: Optional[str] = None) -> ContextPack:
@@ -429,9 +454,9 @@ def execute_runtime_prompt(
             
     except requests.exceptions.RequestException as e:
         logger.error(f"Erro ao executar runtime prompt: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"LLM service error: {str(e)}"
+        raise OpenMindUpstreamError(
+            f"LLM service error: {_describe_exception(e)}",
+            http_status=503,
         )
 
 
@@ -985,17 +1010,8 @@ async def call_tool(
         )
 
     except HTTPException as he:
-        # Ex.: falha ao chamar OpenMind em execute_runtime_openmind_http — não mascarar como INTERNAL_ERROR
-        def _http_exc_message(h: HTTPException) -> str:
-            d = h.detail
-            if isinstance(d, str):
-                return d
-            try:
-                return json.dumps(d, ensure_ascii=False)
-            except Exception:
-                return str(d)
-
-        detail_msg = _http_exc_message(he) or "Erro no serviço upstream (ex.: OpenMind)"
+        # Ex.: falha upstream — não mascarar como INTERNAL_ERROR
+        detail_msg = _format_http_exception_detail(he) or "Erro no serviço upstream (ex.: OpenMind)"
         out_status = he.status_code if 400 <= he.status_code <= 599 else 502
         error_detail = ErrorDetail(
             code="UPSTREAM_HTTP_ERROR",
@@ -1034,6 +1050,48 @@ async def call_tool(
         )
 
     except Exception as e:
+        # HTTPException que não casou com 'except HTTPException' (imports diferentes / worker reload)
+        if _is_http_exception_like(e):
+            detail_msg = _format_http_exception_detail(e) or "Erro no serviço upstream (ex.: OpenMind)"
+            sc_raw = getattr(e, "status_code", 502)
+            try:
+                sc = int(sc_raw)
+            except (TypeError, ValueError):
+                sc = 502
+            out_status = sc if 400 <= sc <= 599 else 502
+            error_detail = ErrorDetail(
+                code="UPSTREAM_HTTP_ERROR",
+                message=detail_msg[:8000],
+                details={"upstream_http_status": sc, "exception_type": "HTTPException"},
+            )
+            logger.error(f"[{request_id}][{trace_id}] {error_detail.code} (duck-type): {detail_msg[:500]}")
+            latency_ms = int((time.time() - start_time) * 1000)
+            log_tool_call(
+                request_id=request_id,
+                trace_id=trace_id,
+                tool=tool_name or request.tool,
+                version=tool_version or request.version or "unknown",
+                client_key=client_key or "unknown",
+                ok=False,
+                status_code=out_status,
+                latency_ms=latency_ms,
+                input_payload=normalized_input,
+                error_payload=error_detail.dict(),
+                context_pack=context_pack,
+            )
+            return JSONResponse(
+                status_code=out_status,
+                content=ToolCallResponse(
+                    request_id=request_id,
+                    trace_id=trace_id,
+                    tool=tool_name or request.tool,
+                    version=tool_version or request.version or "unknown",
+                    ok=False,
+                    error=error_detail,
+                    latency_ms=latency_ms,
+                ).dict(),
+            )
+
         status_code = 500
         desc = _describe_exception(e)
         error_detail = ErrorDetail(
