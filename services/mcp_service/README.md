@@ -15,10 +15,15 @@ O MCP Service é o ponto de entrada para aplicações que precisam chamar tools 
 
 ## 🚀 Como Subir
 
+Após `git pull` no servidor, **recrie a imagem** para aplicar mudanças em `main.py`:
+`docker compose build --no-cache mcp_service && docker compose up -d mcp_service`.
+Só `docker restart mcp_sinapum_mcp` **não** atualiza o código dentro da imagem.
+
 ### Opção 1: Docker Compose (Recomendado)
 
 ```bash
 cd /root/Core_SinapUm/services/mcp_service
+docker compose build --no-cache
 docker compose up -d
 ```
 

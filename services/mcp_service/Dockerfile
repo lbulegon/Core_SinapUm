@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Instalar dependências do sistema
-RUN apt-get update && apt-get install -y \
+# curl: healthcheck do docker-compose usa curl -f http://localhost:7010/health
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements e instalar dependências Python
