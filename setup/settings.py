@@ -149,7 +149,9 @@ INSTALLED_APPS = [
     'agent_core.apps.AgentCoreConfig',
     # SinapCore — módulos cognitivos (Admin: enable / priority / JSON config)
     'app_sinapcore.apps.AppSinapcoreConfig',
-    # Billing multi-SaaS (Stripe + catálogo por produto; webhook pode substituir o legado)
+    # Execução Stripe (gateway + serviço fino; sem regras de produto)
+    'app_billing.apps.AppBillingConfig',
+    # Billing multi-SaaS (Stripe + catálogo por produto; regras + webhook)
     'app_platform_billing.apps.AppPlatformBillingConfig',
     # SinapLint — motor CLI + regras + modelos SaaS opcionais (billing, API key, uso)
     'app_sinaplint.apps.AppSinaplintConfig',

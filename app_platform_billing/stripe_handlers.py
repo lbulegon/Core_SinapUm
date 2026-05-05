@@ -6,6 +6,10 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from app_platform_billing.models import CatalogPlan, PlatformSubscription, SaaSProduct
+from app_platform_billing.subscription_stripe_sync import (
+    infer_product_slug_from_subscription_price,
+    upsert_platform_subscription_from_stripe_payload,
+)
 from app_platform_billing.stripe_utils import stripe_obj_get, stripe_period_end_aware, stripe_subscription_price_id
 
 
@@ -70,10 +74,15 @@ def sync_subscription_updated(sub_obj: dict, product_slug: str | None) -> None:
         product_slug = meta.get("product_slug")
 
     if not product_slug:
+        product_slug = infer_product_slug_from_subscription_price(sub_obj)
+
+    if not product_slug:
+        upsert_platform_subscription_from_stripe_payload(sub_obj)
         return
 
     product = SaaSProduct.objects.filter(slug=product_slug, is_active=True).first()
     if not product:
+        upsert_platform_subscription_from_stripe_payload(sub_obj)
         return
 
     user = _user_from_meta(meta)
@@ -94,6 +103,7 @@ def sync_subscription_updated(sub_obj: dict, product_slug: str | None) -> None:
             user = User.objects.filter(pk=row).first()
 
     if not user:
+        upsert_platform_subscription_from_stripe_payload(sub_obj)
         return
 
     price_id = stripe_subscription_price_id(sub_obj)

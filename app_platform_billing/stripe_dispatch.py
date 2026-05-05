@@ -4,14 +4,18 @@ Verificação de assinatura Stripe + despacho único para todos os eventos supor
 
 from __future__ import annotations
 
-from django.conf import settings
+import logging
+
 from django.http import HttpResponse
 
+from app_billing.webhooks.stripe_webhook import parse_stripe_webhook_event
 from app_platform_billing.stripe_handlers import (
     mark_platform_subscription_canceled,
     sync_checkout_completed,
     sync_subscription_updated,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def process_stripe_event(event: dict) -> None:
@@ -29,31 +33,16 @@ def process_stripe_event(event: dict) -> None:
         sync_subscription_updated(data, str(slug))
     elif et == "customer.subscription.deleted":
         mark_platform_subscription_canceled(data)
+    elif et == "invoice.paid":
+        logger.info("Stripe invoice.paid: %s", data.get("id"))
+    elif et == "invoice.payment_failed":
+        logger.warning("Stripe invoice.payment_failed: %s", data.get("id"))
 
 
 def verify_and_process_stripe_request(payload: bytes, sig_header: str) -> HttpResponse:
-    if not getattr(settings, "STRIPE_WEBHOOK_SECRET", None):
-        return HttpResponse("Webhook não configurado", status=503)
-
-    try:
-        import stripe
-    except ImportError:
-        return HttpResponse("stripe não instalado", status=503)
-
-    stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", "")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            settings.STRIPE_WEBHOOK_SECRET,
-        )
-    except ValueError:
-        return HttpResponse("payload inválido", status=400)
-    except Exception as e:
-        if "Signature" in type(e).__name__:
-            return HttpResponse("assinatura inválida", status=400)
-        raise
-
+    event, err = parse_stripe_webhook_event(payload, sig_header)
+    if err is not None:
+        return err
+    assert event is not None
     process_stripe_event(event)
     return HttpResponse(status=200)

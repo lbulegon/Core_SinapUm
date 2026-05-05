@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 
+from app_billing.services.billing_service import BillingService
 from app_platform_billing.catalog_limits import get_platform_subscription, get_saas_product
 from app_platform_billing.models import CatalogPlan, PlatformSubscription
 
@@ -70,11 +71,11 @@ def create_checkout_session_url(
     customer_id = ps.stripe_customer_id if ps and ps.stripe_customer_id else None
 
     if not customer_id:
-        cust = stripe.Customer.create(
-            email=getattr(user, "email", None) or None,
+        customer_id = BillingService.create_customer(
+            name=user.get_full_name() or getattr(user, "username", "") or "",
+            email=getattr(user, "email", "") or "",
             metadata={"user_id": str(user.pk), "product_slug": product.slug},
         )
-        customer_id = cust.id
         PlatformSubscription.objects.update_or_create(
             user=user,
             product=product,
