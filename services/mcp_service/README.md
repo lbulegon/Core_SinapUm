@@ -46,6 +46,9 @@ cd /root/Core_SinapUm
   - Padrão: `http://69.169.102.84:8001`
   - Pode usar container_name: `http://openmind_service:8001`
 
+- `MCP_CORE_RESOLVE_TIMEOUT_S`: timeout (segundos) do `POST` ao Core em `/core/tools/resolve/`
+  - Padrão: `30` (antes era fixo 10s e gerava `Read timed out` se o Core demorasse)
+
 ### Porta
 
 - **Porta fixa:** 7010

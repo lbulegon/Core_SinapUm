@@ -157,6 +157,8 @@ services:
       - SINAPUM_CORE_URL=http://web:5000
       - OPENMIND_SERVICE_URL=http://openmind:8001
       - OPENMIND_AI_KEY=${OPENMIND_AI_KEY:-}
+      # Opcional: se /core/tools/resolve/ demorar (Core lento), aumentar ex.: 45 ou 60
+      - MCP_CORE_RESOLVE_TIMEOUT_S=${MCP_CORE_RESOLVE_TIMEOUT_S:-30}
     depends_on:
       web:
         condition: service_healthy

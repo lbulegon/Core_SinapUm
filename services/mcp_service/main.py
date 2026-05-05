@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 # Configuração
 SINAPUM_CORE_URL = os.getenv("SINAPUM_CORE_URL", "http://web:5000").rstrip("/")
 OPENMIND_SERVICE_URL = os.getenv("OPENMIND_SERVICE_URL", "http://openmind:8001")
+# POST /core/tools/resolve/ pode demorar (DB, prompt grande); padrão 30s evita Read timeout=10 em Core lento
+MCP_CORE_RESOLVE_TIMEOUT_S = float(os.getenv("MCP_CORE_RESOLVE_TIMEOUT_S", "30"))
 BASE_PATH = "/mcp"
 
 # Inicializar FastAPI
@@ -732,7 +734,7 @@ async def call_tool(
             f"{SINAPUM_CORE_URL}/core/tools/resolve/",
             json=resolve_payload,
             headers=headers,
-            timeout=10
+            timeout=MCP_CORE_RESOLVE_TIMEOUT_S,
         )
         resolve_response.raise_for_status()
         
