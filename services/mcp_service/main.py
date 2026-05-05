@@ -8,6 +8,7 @@ e executa chamadas seguindo o protocolo MCP.
 import os
 import uuid
 import time
+import json
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional, List
@@ -120,6 +121,22 @@ class ToolCallResponse(BaseModel):
 # Helpers
 # ============================================================================
 
+class OpenMindUpstreamError(Exception):
+    """Falha ao chamar o serviço OpenMind (HTTP, rede ou corpo inválido)."""
+
+    def __init__(self, message: str, http_status: int = 502):
+        super().__init__(message)
+        self.http_status = http_status
+
+
+def _describe_exception(exc: BaseException) -> str:
+    """Evita mensagens vazias em INTERNAL_ERROR (ex.: Exception sem argumentos)."""
+    s = str(exc).strip()
+    if s:
+        return s
+    return f"{type(exc).__name__}: {exc!r}"
+
+
 def generate_minimal_context_pack(request_id: Optional[str] = None, trace_id: Optional[str] = None) -> ContextPack:
     """
     Gera um Context Pack mínimo quando não fornecido na requisição.
@@ -202,6 +219,7 @@ def normalize_tool_input(input_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Normaliza payload para compatibilidade entre clientes.
     Se o cliente legado enviar apenas image_base64/image_url, preenche também `image`.
+    Se vier só `image` (base64 cru ou data URI), preenche image_base64 para o runtime openmind_http.
     """
     if not isinstance(input_data, dict):
         return {}
@@ -211,6 +229,13 @@ def normalize_tool_input(input_data: Dict[str, Any]) -> Dict[str, Any]:
             normalized["image"] = normalized["image_base64"]
         elif normalized.get("image_url"):
             normalized["image"] = normalized["image_url"]
+    if not normalized.get("image_base64") and not normalized.get("image_url"):
+        img = normalized.get("image")
+        if isinstance(img, str) and img.strip():
+            if img.strip().startswith("data:"):
+                normalized["image_base64"] = img.strip()
+            else:
+                normalized["image_base64"] = f"data:image/jpeg;base64,{img.strip()}"
     return normalized
 
 def execute_runtime_openmind_http(
@@ -288,12 +313,29 @@ def execute_runtime_openmind_http(
             timeout=timeout
         )
         response.raise_for_status()
-        return response.json()
+        text_preview = (response.text or "")[:3000]
+        try:
+            return response.json()
+        except ValueError:
+            raise OpenMindUpstreamError(
+                f"OpenMind HTTP {response.status_code}: resposta não é JSON. Trecho: {text_preview}",
+                http_status=502,
+            )
+    except requests.exceptions.HTTPError as e:
+        snippet = ""
+        if e.response is not None:
+            snippet = (e.response.text or "")[:2500]
+        logger.error(f"Erro HTTP ao chamar OpenMind: {e} body={snippet[:500]}")
+        code = e.response.status_code if e.response else 502
+        raise OpenMindUpstreamError(
+            f"OpenMind HTTP {code}: {snippet or _describe_exception(e)}",
+            http_status=502 if code >= 500 else code,
+        )
     except requests.exceptions.RequestException as e:
-        logger.error(f"Erro ao chamar OpenMind: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"OpenMind service error: {str(e)}"
+        logger.error(f"Erro ao chamar OpenMind (rede): {e}")
+        raise OpenMindUpstreamError(
+            f"OpenMind indisponível ou timeout: {_describe_exception(e)}",
+            http_status=503,
         )
 
 def execute_runtime_prompt(
@@ -753,10 +795,12 @@ async def call_tool(
                                 'parametros': {},
                                 'prompt_ref': execution_plan.get('prompt_ref')
                             }
+            except OpenMindUpstreamError:
+                raise
             except Exception as e:
                 error_detail = ErrorDetail(
                     code="RUNTIME_EXECUTION_ERROR",
-                    message=f"Runtime '{runtime}' execution failed: {str(e)}",
+                    message=f"Runtime '{runtime}' execution failed: {_describe_exception(e)}",
                     details={"runtime": runtime, "config": config}
                 )
                 status_code = 500
@@ -898,12 +942,107 @@ async def call_tool(
             ).dict()
         )
     
+    except OpenMindUpstreamError as oe:
+        detail_msg = _describe_exception(oe)
+        out_status = oe.http_status if 400 <= oe.http_status <= 599 else 502
+        error_detail = ErrorDetail(
+            code="OPENMIND_UPSTREAM_ERROR",
+            message=detail_msg[:8000],
+            details={
+                "upstream_http_status": oe.http_status,
+                "exception_type": type(oe).__name__,
+            },
+        )
+        logger.error(f"[{request_id}][{trace_id}] {error_detail.code}: {detail_msg[:500]}")
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        log_tool_call(
+            request_id=request_id,
+            trace_id=trace_id,
+            tool=tool_name or request.tool,
+            version=tool_version or request.version or "unknown",
+            client_key=client_key or "unknown",
+            ok=False,
+            status_code=out_status,
+            latency_ms=latency_ms,
+            input_payload=normalized_input,
+            error_payload=error_detail.dict(),
+            context_pack=context_pack,
+        )
+
+        return JSONResponse(
+            status_code=out_status,
+            content=ToolCallResponse(
+                request_id=request_id,
+                trace_id=trace_id,
+                tool=tool_name or request.tool,
+                version=tool_version or request.version or "unknown",
+                ok=False,
+                error=error_detail,
+                latency_ms=latency_ms,
+            ).dict(),
+        )
+
+    except HTTPException as he:
+        # Ex.: falha ao chamar OpenMind em execute_runtime_openmind_http — não mascarar como INTERNAL_ERROR
+        def _http_exc_message(h: HTTPException) -> str:
+            d = h.detail
+            if isinstance(d, str):
+                return d
+            try:
+                return json.dumps(d, ensure_ascii=False)
+            except Exception:
+                return str(d)
+
+        detail_msg = _http_exc_message(he) or "Erro no serviço upstream (ex.: OpenMind)"
+        out_status = he.status_code if 400 <= he.status_code <= 599 else 502
+        error_detail = ErrorDetail(
+            code="UPSTREAM_HTTP_ERROR",
+            message=detail_msg[:8000],
+            details={"upstream_http_status": he.status_code, "exception_type": "HTTPException"},
+        )
+        logger.error(f"[{request_id}][{trace_id}] {error_detail.code}: {detail_msg[:500]}")
+
+        latency_ms = int((time.time() - start_time) * 1000)
+
+        log_tool_call(
+            request_id=request_id,
+            trace_id=trace_id,
+            tool=tool_name or request.tool,
+            version=tool_version or request.version or "unknown",
+            client_key=client_key or "unknown",
+            ok=False,
+            status_code=out_status,
+            latency_ms=latency_ms,
+            input_payload=normalized_input,
+            error_payload=error_detail.dict(),
+            context_pack=context_pack,
+        )
+
+        return JSONResponse(
+            status_code=out_status,
+            content=ToolCallResponse(
+                request_id=request_id,
+                trace_id=trace_id,
+                tool=tool_name or request.tool,
+                version=tool_version or request.version or "unknown",
+                ok=False,
+                error=error_detail,
+                latency_ms=latency_ms,
+            ).dict(),
+        )
+
     except Exception as e:
         status_code = 500
+        desc = _describe_exception(e)
         error_detail = ErrorDetail(
             code="INTERNAL_ERROR",
-            message=f"Internal error: {str(e)}",
-            details={"exception_type": type(e).__name__}
+            message=f"Internal error: {desc}",
+            details={
+                "exception_type": type(e).__name__,
+                "repr": repr(e)[:2000],
+            },
         )
         logger.error(f"[{request_id}][{trace_id}] {error_detail.message}", exc_info=True)
         
