@@ -24,6 +24,8 @@ def resolve_prompt_info(prompt_ref, config=None):
             'prompt_ref': str  # Referência original
         } ou None se não encontrado
     """
+    safe_config = config if isinstance(config, dict) else {}
+
     prompt_info = {
         'text': None,
         'nome': None,
@@ -37,8 +39,8 @@ def resolve_prompt_info(prompt_ref, config=None):
     
     if not prompt_ref:
         # Tentar buscar prompt inline no config
-        if config and config.get("prompt_inline"):
-            prompt_info['text'] = config["prompt_inline"]
+        if safe_config.get("prompt_inline"):
+            prompt_info['text'] = safe_config["prompt_inline"]
             prompt_info['nome'] = 'Inline (config)'
             prompt_info['versao'] = 'N/A'
             prompt_info['fonte'] = 'inline'
@@ -66,8 +68,8 @@ def resolve_prompt_info(prompt_ref, config=None):
             return None
     
     # 2. Verificar se é prompt inline no config (prioridade sobre prompt_ref)
-    if config and config.get("prompt_inline"):
-        prompt_info['text'] = config["prompt_inline"]
+    if safe_config.get("prompt_inline"):
+        prompt_info['text'] = safe_config["prompt_inline"]
         prompt_info['nome'] = 'Inline (config)'
         prompt_info['versao'] = 'N/A'
         prompt_info['fonte'] = 'inline'

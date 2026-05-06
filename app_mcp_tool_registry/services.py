@@ -685,18 +685,19 @@ def execute_runtime_prompt(
         ValueError: Se prompt_text não disponível
         requests.RequestException: Se erro na requisição
     """
+    safe_config = config if isinstance(config, dict) else {}
     has_messages = isinstance(input_data.get("messages"), list) and len(input_data["messages"]) > 0
     if not has_messages:
         if not prompt_text:
-            prompt_text = config.get("prompt_inline")
+            prompt_text = safe_config.get("prompt_inline")
             if not prompt_text:
                 raise ValueError("Runtime 'prompt' requer prompt_text, config.prompt_inline ou input_data.messages")
 
     # Configurações do LLM
-    url = config.get("url", f"{OPENMIND_AI_URL}/chat/completions")
-    model = config.get("model", "gpt-4o")
-    temperature = config.get("temperature", 0.7)
-    max_tokens = config.get("max_tokens", 2000)
+    url = safe_config.get("url", f"{OPENMIND_AI_URL}/chat/completions")
+    model = safe_config.get("model", "gpt-4o")
+    temperature = safe_config.get("temperature", 0.7)
+    max_tokens = safe_config.get("max_tokens", 2000)
     
     # Preparar mensagens para o chat
     if has_messages:
@@ -1039,10 +1040,11 @@ def execute_tool(
         # 5. Resolver prompt_ref para prompt_text
         prompt_text = None
         prompt_info = None
-        if tool_version.prompt_ref or (tool_version.config and tool_version.config.get("prompt_inline")):
+        safe_config = tool_version.config if isinstance(tool_version.config, dict) else {}
+        if tool_version.prompt_ref or safe_config.get("prompt_inline"):
             prompt_info = resolve_prompt_info(
                 tool_version.prompt_ref,
-                config=tool_version.config
+                config=safe_config
             )
             if prompt_info and prompt_info.get('text'):
                 prompt_text = prompt_info['text']
@@ -1061,7 +1063,7 @@ def execute_tool(
         
         # 7. Executar runtime
         runtime = tool_version.runtime
-        config = tool_version.config or {}
+        config = safe_config
         
         logger.info(f"[{request_id}][{trace_id}] Executando runtime: {runtime}")
         

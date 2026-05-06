@@ -199,11 +199,12 @@ def resolve_tool(request):
         # Usa múltiplas fontes: PostgreSQL, URLs, inline no config
         prompt_text = None
         prompt_info = None
-        if tool_version.prompt_ref or (tool_version.config and tool_version.config.get("prompt_inline")):
+        safe_config = tool_version.config if isinstance(tool_version.config, dict) else {}
+        if tool_version.prompt_ref or safe_config.get("prompt_inline"):
             from app_mcp_tool_registry.utils import resolve_prompt_info
             prompt_info = resolve_prompt_info(
                 tool_version.prompt_ref,
-                config=tool_version.config
+                config=safe_config
             )
             if prompt_info and prompt_info.get('text'):
                 prompt_text = prompt_info['text']
@@ -216,7 +217,7 @@ def resolve_tool(request):
             "tool": tool.name,
             "version": tool_version.version,
             "runtime": tool_version.runtime,
-            "config": tool_version.config,
+            "config": safe_config,
             "input_schema": tool_version.input_schema,
             "output_schema": tool_version.output_schema,
             "prompt_ref": tool_version.prompt_ref,

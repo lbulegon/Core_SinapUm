@@ -27,6 +27,14 @@ class ImageAnalyzer:
         
         # URL base do OpenMind.org (endpoint válido atual).
         self.base_url = getattr(settings, 'OPENMIND_ORG_BASE_URL', '')
+        # Hardening: alguns ambientes legados ainda carregam ".org".
+        # Normalizamos para ".com" para evitar 404 no upstream.
+        if isinstance(self.base_url, str) and "api.openmind.org" in self.base_url:
+            self.base_url = self.base_url.replace("api.openmind.org", "api.openmind.com")
+            logger.warning(
+                "OPENMIND_ORG_BASE_URL continha domínio legado '.org'; normalizado para '.com': %s",
+                self.base_url,
+            )
         self.model = getattr(settings, 'OPENMIND_ORG_MODEL', 'gpt-4o')
         
         logger.info(f"Inicializado ImageAnalyzer com OpenMind.org | Base URL: {self.base_url} | Modelo: {self.model}")

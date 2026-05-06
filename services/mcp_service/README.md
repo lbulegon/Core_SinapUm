@@ -15,11 +15,27 @@ O MCP Service é o ponto de entrada para aplicações que precisam chamar tools 
 
 ## 🚀 Como Subir
 
-Após `git pull` no servidor, **recrie a imagem** para aplicar mudanças em `main.py`:
-`docker compose build --no-cache mcp_service && docker compose up -d mcp_service`.
-Só `docker restart mcp_sinapum_mcp` **não** atualiza o código dentro da imagem.
+### Deploy rápido na VPS (recomendado)
 
-### Opção 1: Docker Compose (Recomendado)
+Na raiz do repositório `Core_SinapUm`:
+
+```bash
+./scripts/deploy_mcp_service.sh
+```
+
+Isso faz `git pull`, **`docker compose build --no-cache mcp_service`** e `up -d`.  
+**Somente `docker restart` não aplica novo `main.py`.**
+
+Variáveis úteis: `SKIP_PULL=1`, `MCP_BUILD_NO_CACHE=0`, `GIT_BRANCH=main`.
+
+**Evora / Railway:** defina `MCP_SERVICE_URL` como `http://<IP_ou_DNS_público_da_VPS>:7010` (sem path `/mcp/call`).
+
+---
+
+Após `git pull` manual, o equivalente ao script é:
+`docker compose build --no-cache mcp_service && docker compose up -d mcp_service`.
+
+### Opção 1: Docker Compose (somente pasta do serviço)
 
 ```bash
 cd /root/Core_SinapUm/services/mcp_service
